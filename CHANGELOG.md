@@ -12,6 +12,7 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[iOS]** Résolution du build iPhone réel : profil `iOS Team Provisioning Profile: com.yamstack.viim` avec Push activé, build signé OK, installation et lancement confirmés sur l'iPhone de Guy.
 - **[iOS]** Correction du packaging app : ajout des clés bundle standard dans `Info.plist` pour permettre l'installation (`CFBundleIdentifier`, version, exécutable, type).
 - **[Repo]** Préparation de la publication du monorepo `Viim-ios` vers GitHub afin que Coolify puisse construire `backend/Dockerfile`.
+- **[Repo]** Publication effective du monorepo sur `Lookasbrook/Viim-ios`, branche `main`, commit `253ee3a`, pour débloquer la création de l'app Viim dans Coolify.
 
 ## 2026-07-01 (nuit) — QA pré-handoff builder
 

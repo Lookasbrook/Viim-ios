@@ -18,9 +18,9 @@
   - Vérifié : `xcodebuild -list` OK ; build simulateur iOS OK ; `npm install` OK ; `npm run check` OK ; `/health` local OK hors sandbox.
   - Diagnostic signature résolu : `xcodebuild -allowProvisioningUpdates` a créé/téléchargé `iOS Team Provisioning Profile: com.yamstack.viim` avec `aps-environment`. Build iPhone réel OK avec Push activé.
   - Packaging iOS corrigé : ajout des clés bundle standard dans `ios/Viim/Resources/Info.plist`; installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
-  - Blocage confirmé : SSH vers `burktech-ia.com` refuse la clé locale pour `lookasbrook`, `ubuntu` et `coolify`. Test `root` non exécuté sans autorisation explicite.
-  - Blocage VPS remonté par l'agent infrastructure : le repo GitHub `Lookasbrook/Viim-ios` est vide côté distant, donc Coolify ne peut pas construire `backend/Dockerfile`.
-  - Action en cours : publier le code local `Viim-ios/` sur GitHub pour débloquer le déploiement Coolify.
+  - Accès VPS/Coolify confirmé par l'agent infrastructure : VPS `178.105.115.6`, Coolify joignable, PostgreSQL `g1gh08f3k842vrnjy4lxmoi8` sain.
+  - Blocage source Coolify résolu : le repo GitHub `Lookasbrook/Viim-ios` n'est plus vide ; le monorepo local a été publié sur `main`, commit `253ee3a`.
+  - Blocages restants côté déploiement : DNS `api.burktech-ia.com` en `NXDOMAIN`, secrets `NEWAGENT_URL` et `NEWAGENT_TOKEN` non disponibles/configurés, Uptime Robot non configuré.
 
 Format d'entrée :
 
