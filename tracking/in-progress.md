@@ -39,6 +39,19 @@
   - Implémenté : `OnboardingStore`, stockage profil local hors ligne avec `synced=false`, contact d'urgence Keychain-only, écran SwiftUI 3 étapes et sélection véhicule adaptative.
   - Vérifié : build simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
 
+## Phase 1 — LocationService background GPS
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [blueprints/01-ios-app.md](../blueprints/01-ios-app.md), [architecture/sensor-algorithms.md](../architecture/sensor-algorithms.md), [qa/test-plan.md](../qa/test-plan.md)
+- Notes d'avancement :
+  - Objectif : activer le GPS arrière-plan et la détection automatique début/fin de trajet.
+  - Règle cible : début si vitesse GPS > 10 km/h pendant 30 s ; fin si arrêt prolongé > 5 min.
+  - Implémenté : autorisation When In Use puis Always, `allowsBackgroundLocationUpdates`, indicateur arrière-plan, précision 5 m par défaut / 20 m en mode économie, activité adaptée au type de véhicule, échantillons GPS et état de trajet observable.
+  - Accueil : affichage du véhicule utilisateur et de l'état de détection GPS avec chaînes localisées.
+  - Vérifié : build simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
+  - Validation terrain restante : scénario S1 complet (20 min écran verrouillé) à exécuter dans `qa/test-results.md` avant ouverture externe.
+
 Format d'entrée :
 
 ```

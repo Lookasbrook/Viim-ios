@@ -12,7 +12,7 @@ Rappels transverses : app nommée **Viim** (règle de marque dans `design/brandi
 
 ## Phase 1 — Capteurs & trajets (cœur du MVP)
 - [x] Parcours d'inscription 3 étapes avec véhicule adaptatif + illustration (features/inscription-onboarding.md).
-- [ ] `LocationService` : background GPS, détection auto début/fin de trajet.
+- [x] `LocationService` : background GPS, détection auto début/fin de trajet.
 - [ ] `SensorService` : CoreMotion 50 Hz, filtre passe-bas (alpha selon véhicule), buffer 30 s.
 - [ ] `TripManager` + CoreData (`Trip`, `TripEvent`, flag `synced`).
 - [ ] Détection d'événements avec confirmation GPS (sensor-algorithms.md §2-3).

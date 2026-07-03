@@ -7,6 +7,8 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[iOS]** Ajout du parcours d'inscription 3 étapes au premier lancement : identité, moyen de déplacement adaptatif, sécurité.
 - **[Sécurité]** Contact d'urgence stocké dans le Keychain uniquement ; profil local sauvegardé hors ligne avec `synced=false`.
 - **[QA]** Onboarding validé par build simulateur, build signé iPhone réel, installation et lancement de `com.yamstack.viim` sur l'iPhone de Guy.
+- **[iOS]** Ajout de `LocationService` : GPS arrière-plan, autorisation Always, détection automatique début/fin de trajet, précision normale/économie et état de suivi visible sur l'Accueil.
+- **[QA]** Préflight S1 validé sur iPhone réel : build signé, installation et lancement OK ; roulage terrain 20 min écran verrouillé encore à exécuter.
 
 ## 2026-07-02
 

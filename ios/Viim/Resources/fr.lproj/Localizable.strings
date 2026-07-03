@@ -46,13 +46,25 @@
 "status.pendingCalibration" = "En attente de calibration";
 
 "home.title" = "Accueil";
-"home.vehicle.title" = "Votre moto";
+"home.vehicle.title" = "Votre moyen de déplacement";
 "home.vehicle.status" = "Suivi actif";
+"home.vehicle.empty" = "Moyen de déplacement à confirmer";
 "home.summary.title" = "Résumé du jour";
 "home.summary.calibration" = "Calibration en cours (trajet 0/5)";
 "home.status.tripDetection" = "Détection de trajet";
 "home.status.collisionDetection" = "Détection de collision";
 "home.status.network" = "Connexion réseau";
+
+"location.monitoring.paused" = "Suivi en pause";
+"location.permission.notDetermined" = "Autorisation à confirmer";
+"location.permission.restricted" = "Autorisation restreinte";
+"location.permission.denied" = "Position refusée";
+"location.permission.whenInUse" = "Position active dans l'app";
+"location.permission.always" = "Position active en arrière-plan";
+"location.trip.idle" = "Prêt à détecter";
+"location.trip.starting" = "Début de trajet en confirmation";
+"location.trip.active" = "Trajet en cours";
+"location.trip.stopping" = "Fin de trajet en confirmation";
 
 "driving.title" = "Votre conduite";
 "driving.score.title" = "Score de conduite";
