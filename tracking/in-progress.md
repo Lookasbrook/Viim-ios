@@ -24,8 +24,8 @@
   - PostgreSQL Viim créé dans Coolify : DB UUID `v46pxb68fon91lz66pdyomot`; migration initiale appliquée (`users`, `trips`, `trip_events`, `daily_summaries`).
   - Vérification runtime : `curl -k --resolve api.burktech-ia.com:443:178.105.115.6 https://api.burktech-ia.com/health` retourne `{"status":"degraded","api":"ok","db":"ok","whatsapp":"not_configured","version":"0.1.0"}`.
   - DNS API résolu côté authoritative : `dig @ns1.dns-parking.com +short api.burktech-ia.com A` retourne `178.105.115.6`. Certains résolveurs locaux peuvent garder temporairement un cache `NXDOMAIN`.
-  - Endpoint NEwAGENT candidat vérifié : `https://burktech-ia.com/health` retourne HTTP 200. Le vrai `NEWAGENT_TOKEN` reste à fournir/configurer.
-  - Blocages restants côté déploiement : secrets `NEWAGENT_URL`/`NEWAGENT_TOKEN` non configurés dans Coolify, `/health` Viim public encore `503 degraded` avec `whatsapp:"not_configured"`, Uptime Robot non configuré.
+  - Endpoint NEwAGENT configuré côté runtime : `has_NEWAGENT_URL=true`; `https://burktech-ia.com/health` retourne HTTP 200. Le vrai `NEWAGENT_TOKEN` reste à fournir/configurer (`has_NEWAGENT_TOKEN=false`).
+  - Blocages restants côté déploiement : secret `NEWAGENT_TOKEN` non configuré dans Coolify, `/health` Viim public encore `503 degraded` avec `whatsapp:"not_configured"`, Uptime Robot non configuré.
 
 Format d'entrée :
 

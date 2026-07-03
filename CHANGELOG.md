@@ -15,6 +15,7 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[Repo]** Publication effective du monorepo sur `Lookasbrook/Viim-ios`, branche `main`, commit `253ee3a`, pour débloquer la création de l'app Viim dans Coolify.
 - **[Backend]** Déploiement Coolify confirmé sur le VPS `178.105.115.6` : app Viim `blqn1beg8ae0dvddmqio6rth`, PostgreSQL Viim `v46pxb68fon91lz66pdyomot`, migrations initiales appliquées, `/health` runtime en `degraded` tant que NEwAGENT-IA n'est pas configuré.
 - **[DNS]** Enregistrement `api.burktech-ia.com` corrigé côté authoritative vers `178.105.115.6`; TLS Let's Encrypt confirmé côté infra, mais `/health` reste `degraded` tant que le token NEwAGENT-IA n'est pas configuré.
+- **[Backend]** Runtime Viim revérifié : `DATABASE_URL` et `NEWAGENT_URL` sont présents, `NEWAGENT_TOKEN` absent ; `/health` public retourne encore HTTP 503 `degraded`.
 
 ## 2026-07-01 (nuit) — QA pré-handoff builder
 
