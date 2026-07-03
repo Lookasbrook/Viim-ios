@@ -122,6 +122,18 @@
   - Tests : `ViimTests/VehiclePhotoCatalogTests.swift` couvre Corolla, Hilux, RAV4, Prado, Land Cruiser, Yamaha Crypton/YBR, Bajaj Boxer, TVS Apache, Honda CG125, les variantes de saisie et les cas inconnus.
   - Vérifié : `xcodebuild test` sur iPhone 17 Simulator OK, 5 tests passés ; build simulateur OK ; build signé iPhone réel OK ; installation et lancement OK.
 
+## UI — Réalignement des onglets Conduite, Assistance et Prévention
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [design/maquettes-ecrans.html](../design/maquettes-ecrans.html), [qa/known-issues.md](../qa/known-issues.md)
+- Notes d'avancement :
+  - Objectif : finaliser `UI-002` en rapprochant les trois onglets restants de la maquette HTML.
+  - Périmètre : structure visuelle, cartes, hiérarchie, couleurs, chaînes localisées, sans logique métier destructive.
+  - Implémenté : onglet Conduite avec héros statistiques, performance, critères et conseil ; Assistance avec héros rouge, soutien temps réel, actions et urgences ; Prévention avec héros vert, zones ONASER, alertes, entretien et défi.
+  - Vérifié : build simulateur OK ; grep sans texte français direct dans Swift ; build signé iPhone réel OK ; installation et lancement OK.
+
+
 Format d'entrée :
 
 ```

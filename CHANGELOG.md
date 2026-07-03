@@ -17,6 +17,7 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[QA]** Ajout du target `ViimTests` avec tests XCTest de résolution marque/modèle et vérification que chaque entrée du catalogue pointe vers un asset embarqué.
 - **[iOS]** Correction du mode GPS visible après autorisation : Viim ne démarre plus le GPS continu au lancement, ne demande plus `Always` automatiquement et désactive l'indicateur arrière-plan par défaut.
 - **[ADR]** Décision `2026-07-03-localisation-discrete-ios` : localisation discrète par défaut, suivi arrière-plan à traiter avec consentement explicite et déclenchement CoreMotion/GPS.
+- **[Design]** Réalignement des onglets Votre conduite, Assistance et Prévention sur la maquette HTML : héros, cartes riches, listes d'actions, sections d'urgence, prévention ONASER et entretien.
 
 ## 2026-07-02
 
