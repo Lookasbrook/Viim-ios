@@ -18,9 +18,10 @@ struct PreventionView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("prevention.road.title")
                                 .font(.headline)
+                                .foregroundStyle(ViimColors.text)
                             Text("prevention.road.placeholder")
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(ViimColors.muted)
                         }
                     }
 
@@ -28,9 +29,10 @@ struct PreventionView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("prevention.maintenance.title")
                                 .font(.headline)
+                                .foregroundStyle(ViimColors.text)
                             Text("prevention.maintenance.placeholder")
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(ViimColors.muted)
                         }
                     }
                 }

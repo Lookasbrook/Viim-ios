@@ -1,0 +1,21 @@
+# Lisibilité des onglets Conduite, Assistance et Prévention — 2026-07-03
+
+- Tâche : corriger les textes blancs illisibles dans les trois onglets restants.
+- Référence : `qa/known-issues.md`, `design/maquettes-ecrans.html`.
+- Diagnostic :
+  - Symptôme : textes non visibles dans Votre conduite, Assistance et Prévention sur iPhone.
+  - Cause racine : `ViimCard` utilise un fond blanc fixe, alors que ces onglets utilisaient encore les couleurs système `.primary` et `.secondary`. En mode sombre iPhone, ces couleurs deviennent claires et perdent le contraste sur fond blanc.
+- Implémentation iOS :
+  - `ViimCard` applique maintenant `ViimColors.text` par défaut à son contenu.
+  - `StatusRow` force le titre en `ViimColors.text` et le détail en `ViimColors.muted`.
+  - Les textes secondaires de Conduite, Assistance et Prévention n'utilisent plus `.secondary`.
+- Vérifications :
+  - `rg "foregroundStyle\\(\\.secondary\\)|foregroundColor\\(\\.secondary\\)|\\.foregroundStyle\\(\\.white\\)|\\.foregroundColor\\(\\.white\\)" ios/Viim/Features/Conduite ios/Viim/Features/Assistance ios/Viim/Features/Prevention ios/Viim/DesignSystem` : aucune occurrence texte problématique restante.
+  - `xcodebuild -quiet -project ios/Viim.xcodeproj -scheme Viim -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` : OK.
+  - `xcodebuild -quiet -project ios/Viim.xcodeproj -scheme Viim -destination 'id=6724848A-DBF2-45CB-AFA1-8C29F7FFE5B9' CODE_SIGNING_ALLOWED=NO build` : OK.
+  - Capture simulateur mode sombre : `/private/tmp/viim-dark-after-readable-text-fix.png`.
+  - `xcodebuild -quiet -project ios/Viim.xcodeproj -scheme Viim -destination 'id=E21236A8-1735-5EB6-9A8D-E41C165B962E' -allowProvisioningUpdates -allowProvisioningDeviceRegistration DEVELOPMENT_TEAM=MJJ6A56JHS CODE_SIGN_STYLE=Automatic build` : OK.
+  - Installation iPhone réel via `xcrun devicectl device install app` : OK.
+  - Lancement iPhone réel de `com.yamstack.viim` : OK.
+- Limite :
+  - Le simulateur garde le pop-up système de permission localisation sur certaines captures. Le bug corrigé est l'héritage de couleur des textes, validé par code et build.

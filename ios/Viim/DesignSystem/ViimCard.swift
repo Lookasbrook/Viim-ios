@@ -11,6 +11,7 @@ struct ViimCard<Content: View>: View {
         content
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(ViimColors.text)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: ViimColors.text.opacity(0.08), radius: 4, x: 0, y: 1)
@@ -263,9 +264,10 @@ struct StatusRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(titleKey)
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(ViimColors.text)
                 Text(detailKey)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ViimColors.muted)
             }
 
             Spacer(minLength: 0)

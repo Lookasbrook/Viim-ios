@@ -11,6 +11,7 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[QA]** Préflight S1 validé sur iPhone réel : build signé, installation et lancement OK ; roulage terrain 20 min écran verrouillé encore à exécuter.
 - **[iOS]** Correction de l'affichage plein écran : ajout d'un Launch Screen natif pour supprimer le letterboxing sur iPhone.
 - **[Design]** Réalignement des écrans Onboarding et Accueil sur `design/maquettes-ecrans.html` : brand mark, hero, carte véhicule, KPI, statuts et illustration adaptative.
+- **[iOS]** Correction de lisibilité en mode sombre : textes explicites sur les cartes des onglets Votre conduite, Assistance et Prévention.
 
 ## 2026-07-02
 

@@ -18,9 +18,10 @@ struct AssistanceView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("assistance.family.title")
                                 .font(.headline)
+                                .foregroundStyle(ViimColors.text)
                             Text("assistance.family.empty")
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(ViimColors.muted)
                         }
                     }
 
@@ -28,15 +29,16 @@ struct AssistanceView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("assistance.medical.title")
                                 .font(.headline)
+                                .foregroundStyle(ViimColors.text)
                             Text("assistance.medical.privacy")
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(ViimColors.muted)
                         }
                     }
 
                     Text("assistance.footer.publisher")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ViimColors.muted)
                         .multilineTextAlignment(.center)
                         .padding(.top, 8)
                 }

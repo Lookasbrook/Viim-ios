@@ -63,6 +63,18 @@
   - Implémenté : `LaunchScreen.storyboard` déclaré dans `Info.plist`, composants visuels partagés, onboarding et Accueil réalignés sur la maquette HTML.
   - Vérifié : build simulateur OK ; captures simulateur avant/après conservées dans `/private/tmp/viim-current-screen.png`, `/private/tmp/viim-after-localized-ui-fix.png` et `/private/tmp/viim-home-final-clean.png`.
 
+## UI — Lisibilité des onglets Conduite, Assistance et Prévention
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [qa/known-issues.md](../qa/known-issues.md), [design/maquettes-ecrans.html](../design/maquettes-ecrans.html)
+- Notes d'avancement :
+  - Objectif : corriger le texte blanc illisible dans les trois onglets restants.
+  - Bug ciblé : `UI-003`.
+  - Cause : cartes blanches fixes avec textes restés sur les couleurs système `.primary` / `.secondary`, illisibles en mode sombre iPhone.
+  - Implémenté : couleurs explicites `ViimColors.text` et `ViimColors.muted` dans `ViimCard`, `StatusRow`, Conduite, Assistance et Prévention.
+  - Vérifié : grep sans texte `.secondary` dans les trois onglets, build simulateur OK, build signé iPhone réel OK, installation et lancement OK.
+
 Format d'entrée :
 
 ```
