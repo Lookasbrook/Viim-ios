@@ -22,11 +22,23 @@
 		10000000000000000000000D /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010D /* PersistenceController.swift */; };
 		100000000000000000000011 /* OnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000114 /* OnboardingStore.swift */; };
 		100000000000000000000012 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000115 /* OnboardingView.swift */; };
+		200000000000000000000001 /* VehiclePhotoCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000101 /* VehiclePhotoCatalog.swift */; };
+		200000000000000000000002 /* VehiclePhotoCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000103 /* VehiclePhotoCatalogTests.swift */; };
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
 		100000000000000000000013 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000116 /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		200000000000000000000902 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 100000000000000000000601 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 100000000000000000000401;
+			remoteInfo = Viim;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		100000000000000000000101 /* ViimApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/ViimApp.swift; sourceTree = "<group>"; };
@@ -41,6 +53,7 @@
 		10000000000000000000010A /* VehicleType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/VehicleType.swift; sourceTree = "<group>"; };
 		10000000000000000000010B /* SensorFiltering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/SensorFiltering.swift; sourceTree = "<group>"; };
 		10000000000000000000010C /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LocationService.swift; sourceTree = "<group>"; };
+		200000000000000000000101 /* VehiclePhotoCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/VehiclePhotoCatalog.swift; sourceTree = "<group>"; };
 		10000000000000000000010D /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/PersistenceController.swift; sourceTree = "<group>"; };
 		100000000000000000000114 /* OnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStore.swift; sourceTree = "<group>"; };
 		100000000000000000000115 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -51,10 +64,13 @@
 		100000000000000000000112 /* Viim.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Viim.entitlements; sourceTree = "<group>"; };
 		100000000000000000000113 /* Viim.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Viim.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		100000000000000000000116 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		200000000000000000000102 /* ViimTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ViimTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000103 /* VehiclePhotoCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoCatalogTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		100000000000000000000201 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ( ); runOnlyForDeploymentPostprocessing = 0; };
+		200000000000000000000201 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ( ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -62,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				100000000000000000000302 /* Viim */,
+				200000000000000000000301 /* ViimTests */,
 				100000000000000000000303 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -80,6 +97,7 @@
 				100000000000000000000108 /* PreventionView.swift */,
 				100000000000000000000109 /* ProfilView.swift */,
 				10000000000000000000010A /* VehicleType.swift */,
+				200000000000000000000101 /* VehiclePhotoCatalog.swift */,
 				10000000000000000000010B /* SensorFiltering.swift */,
 				10000000000000000000010C /* LocationService.swift */,
 				10000000000000000000010D /* PersistenceController.swift */,
@@ -92,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				100000000000000000000113 /* Viim.app */,
+				200000000000000000000102 /* ViimTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -118,6 +137,14 @@
 			path = Onboarding;
 			sourceTree = "<group>";
 		};
+		200000000000000000000301 /* ViimTests */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000103 /* VehiclePhotoCatalogTests.swift */,
+			);
+			path = ViimTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -135,6 +162,23 @@
 			productName = Viim;
 			productReference = 100000000000000000000113 /* Viim.app */;
 			productType = "com.apple.product-type.application";
+		};
+		200000000000000000000401 /* ViimTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 200000000000000000000801 /* Build configuration list for PBXNativeTarget "ViimTests" */;
+			buildPhases = (
+				200000000000000000000501 /* Sources */,
+				200000000000000000000201 /* Frameworks */,
+				200000000000000000000502 /* Resources */,
+			);
+			buildRules = ( );
+			dependencies = (
+				200000000000000000000901 /* PBXTargetDependency */,
+			);
+			name = ViimTests;
+			productName = ViimTests;
+			productReference = 200000000000000000000102 /* ViimTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -156,6 +200,12 @@
 							};
 						};
 					};
+					200000000000000000000401 = {
+						CreatedOnToolsVersion = 26.6;
+						DevelopmentTeam = MJJ6A56JHS;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 100000000000000000000401;
+					};
 				};
 			};
 			buildConfigurationList = 100000000000000000000802 /* Build configuration list for PBXProject "Viim" */;
@@ -173,6 +223,7 @@
 			projectRoot = "";
 			targets = (
 				100000000000000000000401 /* Viim */,
+				200000000000000000000401 /* ViimTests */,
 			);
 		};
 /* End PBXProject section */
@@ -187,6 +238,12 @@
 				100000000000000000000010 /* Assets.xcassets in Resources */,
 				100000000000000000000013 /* LaunchScreen.storyboard in Resources */,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		200000000000000000000502 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = ( );
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -211,10 +268,27 @@
 				10000000000000000000000D /* PersistenceController.swift in Sources */,
 				100000000000000000000011 /* OnboardingStore.swift in Sources */,
 				100000000000000000000012 /* OnboardingView.swift in Sources */,
+				200000000000000000000001 /* VehiclePhotoCatalog.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		200000000000000000000501 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				200000000000000000000002 /* VehiclePhotoCatalogTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		200000000000000000000901 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 100000000000000000000401 /* Viim */;
+			targetProxy = 200000000000000000000902 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		100000000000000000000701 /* Debug */ = {
@@ -376,6 +450,44 @@
 			};
 			name = Release;
 		};
+		200000000000000000000703 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MJJ6A56JHS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yamstack.viim.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Viim.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Viim";
+			};
+			name = Debug;
+		};
+		200000000000000000000704 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MJJ6A56JHS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yamstack.viim.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Viim.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Viim";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -393,6 +505,15 @@
 			buildConfigurations = (
 				100000000000000000000701 /* Debug */,
 				100000000000000000000702 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		200000000000000000000801 /* Build configuration list for PBXNativeTarget "ViimTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				200000000000000000000703 /* Debug */,
+				200000000000000000000704 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

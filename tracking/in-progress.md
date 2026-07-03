@@ -95,6 +95,7 @@
   - Objectif : afficher de vraies photos réutilisables de moto, voiture et vélo dans l'Accueil pour un rendu plus premium.
   - Périmètre : assets locaux dans `Assets.xcassets`, attribution/licence documentée, aucune dépendance réseau runtime.
   - Implémenté : `VehiclePhotoMoto`, `VehiclePhotoCar`, `VehiclePhotoVelo`, vignette photo responsive dans la carte véhicule de l'Accueil.
+  - Supersédé le 2026-07-03 : les photos génériques par type sont retirées au profit du catalogue marque/modèle, pour éviter une image incohérente avec le véhicule saisi.
   - Vérifié : images redimensionnées à 1200 px maximum ; build simulateur OK ; build signé iPhone réel OK ; installation et lancement OK.
 
 ## iOS — Indicateur GPS visible après autorisation
@@ -108,6 +109,18 @@
   - Implémenté : préparation localisation passive au lancement, demande `When In Use` uniquement, plus d'escalade automatique `Always`, indicateur arrière-plan désactivé.
   - ADR : [2026-07-03-localisation-discrete-ios](../decisions/2026-07-03-localisation-discrete-ios.md).
   - Vérifié : grep sans `requestAlwaysAuthorization` ni `showsBackgroundLocationIndicator=true`; build simulateur OK ; build signé iPhone réel OK ; installation et lancement OK.
+
+## UI — Catalogue véhicule par marque et modèle
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [features/inscription-onboarding.md](../features/inscription-onboarding.md), [design/maquettes-ecrans.html](../design/maquettes-ecrans.html)
+- Notes d'avancement :
+  - Objectif : remplacer les photos génériques par un catalogue modèle-aware, afin que l'Accueil affiche une photo cohérente avec la marque et le modèle saisis.
+  - Périmètre : matching local offline, assets open source documentés, tests automatisés de résolution marque/modèle.
+  - Implémenté : catalogue local `VehiclePhotoCatalog`, fallback neutre sans photo pour les modèles inconnus, 10 assets modèle-aware.
+  - Tests : `ViimTests/VehiclePhotoCatalogTests.swift` couvre Corolla, Hilux, RAV4, Prado, Land Cruiser, Yamaha Crypton/YBR, Bajaj Boxer, TVS Apache, Honda CG125, les variantes de saisie et les cas inconnus.
+  - Vérifié : `xcodebuild test` sur iPhone 17 Simulator OK, 5 tests passés ; build simulateur OK ; build signé iPhone réel OK ; installation et lancement OK.
 
 Format d'entrée :
 

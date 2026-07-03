@@ -13,7 +13,8 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[Design]** Réalignement des écrans Onboarding et Accueil sur `design/maquettes-ecrans.html` : brand mark, hero, carte véhicule, KPI, statuts et illustration adaptative.
 - **[iOS]** Correction de lisibilité en mode sombre : textes explicites sur les cartes des onglets Votre conduite, Assistance et Prévention.
 - **[Design]** Ajout du premier visuel système Viim : icône d'application iPhone complète dans `Assets.xcassets`.
-- **[Design]** Ajout de photos premium locales pour les moyens de déplacement moto, voiture et vélo sur l'Accueil, avec attributions Wikimedia Commons documentées.
+- **[Design]** Remplacement des photos génériques par un catalogue local par marque/modèle : Corolla, Hilux, RAV4, Prado, Land Cruiser, Yamaha Crypton/YBR, Bajaj Boxer, TVS Apache et Honda CG125.
+- **[QA]** Ajout du target `ViimTests` avec tests XCTest de résolution marque/modèle et vérification que chaque entrée du catalogue pointe vers un asset embarqué.
 - **[iOS]** Correction du mode GPS visible après autorisation : Viim ne démarre plus le GPS continu au lancement, ne demande plus `Always` automatiquement et désactive l'indicateur arrière-plan par défaut.
 - **[ADR]** Décision `2026-07-03-localisation-discrete-ios` : localisation discrète par défaut, suivi arrière-plan à traiter avec consentement explicite et déclenchement CoreMotion/GPS.
 

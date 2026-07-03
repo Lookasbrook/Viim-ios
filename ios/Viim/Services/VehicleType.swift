@@ -35,14 +35,6 @@ enum VehicleType: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    var photoAssetName: String {
-        switch self {
-        case .moto: "VehiclePhotoMoto"
-        case .voiture: "VehiclePhotoCar"
-        case .velo: "VehiclePhotoVelo"
-        }
-    }
-
     var tint: Color {
         switch self {
         case .moto: ViimColors.blue

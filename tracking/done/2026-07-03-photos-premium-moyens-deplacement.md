@@ -6,10 +6,11 @@
 
 ## Réalisé
 
-- Ajout de trois photos locales dans `Assets.xcassets` : moto, voiture, vélo.
-- Ajout d'une vignette photo dans la carte véhicule de l'Accueil, adaptée au type de véhicule du profil.
+- Ajout initial de trois photos locales dans `Assets.xcassets` : moto, voiture, vélo.
+- Ajout d'une vignette photo dans la carte véhicule de l'Accueil.
 - Documentation des attributions et licences dans `design/vehicle-image-attributions.md`.
 - Aucun chargement réseau runtime.
+- Supersédé le 2026-07-03 par le catalogue marque/modèle : les photos génériques ont été retirées pour éviter d'afficher une voiture sans rapport avec le modèle saisi.
 
 ## Vérification
 

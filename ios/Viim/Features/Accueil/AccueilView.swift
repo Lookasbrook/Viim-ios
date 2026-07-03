@@ -121,7 +121,7 @@ private struct VehicleTrackingCard: View {
     var body: some View {
         ViimCard {
             HStack(spacing: 12) {
-                VehiclePhotoThumbnail(type: profile?.vehicleType ?? .moto)
+                VehiclePhotoThumbnail(profile: profile)
                     .frame(width: 112, height: 84)
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -164,27 +164,33 @@ private struct VehicleTrackingCard: View {
 }
 
 private struct VehiclePhotoThumbnail: View {
-    let type: VehicleType
+    let profile: UserProfile?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            Image(type.photoAssetName)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 112, height: 84)
-                .clipped()
+            if let resolution = VehiclePhotoCatalog.resolve(for: profile) {
+                Image(resolution.assetName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 112, height: 84)
+                    .clipped()
 
-            LinearGradient(
-                colors: [.clear, ViimColors.text.opacity(0.45)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+                LinearGradient(
+                    colors: [.clear, ViimColors.text.opacity(0.45)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            } else {
+                Color(hex: 0xEDF3F8)
+                VehicleIllustration(type: vehicleType, width: 102)
+                    .frame(width: 102, height: 62)
+            }
 
-            Image(systemName: type.symbolName)
+            Image(systemName: vehicleType.symbolName)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(width: 26, height: 26)
-                .background(type.tint)
+                .background(vehicleType.tint)
                 .clipShape(Circle())
                 .padding(7)
         }
@@ -196,6 +202,10 @@ private struct VehiclePhotoThumbnail: View {
         )
         .shadow(color: ViimColors.text.opacity(0.12), radius: 6, x: 0, y: 3)
         .accessibilityHidden(true)
+    }
+
+    private var vehicleType: VehicleType {
+        profile?.vehicleType ?? .moto
     }
 }
 
