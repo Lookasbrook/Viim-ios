@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viim — Maquettes écrans iOS</title>
+<style>
+  :root{
+    --navy:#1A3A5C; --blue:#2E75B6; --red:#C00000; --green:#217346;
+    --bg:#F2F5F8; --card:#FFFFFF; --txt:#122A42; --muted:#6B7B8C;
+    --ok:#1FA363; --warn:#F29B1D; --bad:#D93636; --gold:#E8B932;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:#0E1E30;color:#fff;padding:40px 24px;}
+  .intro{max-width:1320px;margin:0 auto 34px;}
+  .intro h1{font-size:36px;letter-spacing:.5px;}
+  .intro h1 em{font-style:normal;color:var(--gold);}
+  .intro p{color:#AFC2D4;margin-top:10px;max-width:880px;line-height:1.55;}
+  .grid{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:34px;}
+  .slot h2{font-size:14px;font-weight:600;color:#AFC2D4;margin-bottom:12px;text-transform:uppercase;letter-spacing:.07em;}
+
+  /* ---- Téléphone ---- */
+  .phone{width:100%;max-width:330px;background:var(--bg);border-radius:38px;border:8px solid #060D15;
+         overflow:hidden;box-shadow:0 22px 50px rgba(0,0,0,.5);color:var(--txt);margin:0 auto;}
+  .statusbar{display:flex;justify-content:space-between;padding:9px 20px 4px;font-size:11px;font-weight:600;}
+  .screen{min-height:580px;display:flex;flex-direction:column;}
+  .content{flex:1;padding:12px 14px 8px;}
+
+  /* ---- Composants ---- */
+  .card{background:var(--card);border-radius:16px;padding:13px 14px;margin-bottom:11px;box-shadow:0 1px 4px rgba(18,42,66,.08);}
+  .row{display:flex;align-items:center;justify-content:space-between;}
+  .muted{color:var(--muted);font-size:11.5px;line-height:1.45;}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;border-radius:999px;padding:3px 9px;}
+  .chip.ok{background:#E2F5EA;color:var(--ok);}
+  .chip.alert{background:#FBE5E5;color:var(--bad);}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
+  .dot.g{background:var(--ok);} .dot.r{background:var(--bad);} .dot.o{background:var(--warn);}
+  h3.section{font-size:16px;font-weight:700;margin:14px 2px 9px;}
+  .bar{height:9px;border-radius:6px;background:#DCE7F0;overflow:hidden;margin-top:7px;}
+  .bar i{display:block;height:100%;border-radius:6px;}
+  .others{font-size:10px;color:var(--muted);margin-top:3px;}
+  .others::before{content:"▲ ";color:var(--navy);}
+  .btn{display:block;text-align:center;background:var(--blue);color:#fff;font-weight:700;font-size:14px;border-radius:999px;padding:12px;margin-top:10px;}
+  .btn.ghost{background:#fff;color:var(--blue);border:1.5px solid var(--blue);}
+
+  /* ---- Tab bar : alignement strict ---- */
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid #E3EAF1;padding:8px 0 13px;}
+  .tab{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;
+       font-size:10px;color:#8A9AAB;font-weight:600;line-height:1;}
+  .tab svg{width:22px;height:22px;stroke:#8A9AAB;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .tab.on{color:var(--blue);}       .tab.on svg{stroke:var(--blue);}
+  .tab.on-red{color:var(--red);}    .tab.on-red svg{stroke:var(--red);}
+  .tab.on-green{color:var(--green);}.tab.on-green svg{stroke:var(--green);}
+
+  /* ---- En-têtes d'onglet ---- */
+  .hero{background:linear-gradient(180deg,#D7E5F0 0%,var(--bg) 100%);text-align:center;padding:14px 14px 8px;}
+  .brand{font-size:20px;font-weight:800;letter-spacing:.5px;color:var(--navy);}
+  .brand em{font-style:normal;color:var(--gold);}
+  .hello{font-size:14px;color:var(--muted);margin-top:6px;}
+  .hello-name{font-size:26px;font-weight:800;color:var(--navy);}
+  .assist-hero{background:linear-gradient(180deg,#7A1010 0%,var(--red) 100%);color:#fff;text-align:center;padding:16px 12px 13px;}
+  .prev-hero{background:linear-gradient(180deg,#123A28 0%,var(--green) 100%);color:#fff;text-align:center;padding:16px 12px 13px;}
+  .assist-hero h4,.prev-hero h4{font-size:19px;font-weight:800;}
+
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;}
+  .kpi b{font-size:17px;display:block;} .kpi span{font-size:9.5px;color:var(--muted);}
+  .score-big{font-size:34px;font-weight:800;color:var(--ok);}
+  .trip{display:flex;gap:10px;align-items:center;}
+  .mini-map{width:74px;height:64px;border-radius:10px;background:#E8F0E4;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+  .ev{display:flex;gap:6px;margin-top:5px;}
+  .ev span{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;}
+  .ev .e-ok{background:var(--blue);} .ev .e-no{background:#C9D6E2;}
+
+  .statbox{background:#fff;color:var(--txt);border-radius:14px;display:flex;margin:12px 10px -1px;padding:10px 4px;box-shadow:0 4px 14px rgba(0,0,0,.18);}
+  .statbox div{flex:1;text-align:center;border-right:1px solid #E5ECF3;}
+  .statbox div:last-child{border:none;}
+  .statbox b{font-size:17px;display:block;} .statbox span{font-size:9.5px;color:var(--muted);}
+
+  .list-item{display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px solid #EDF2F6;font-size:13px;font-weight:600;}
+  .list-item:last-child{border:none;}
+  .list-item .lic{width:34px;height:34px;border-radius:50%;background:#F0F5FA;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .list-item .arr{margin-left:auto;color:#8A9AAB;font-weight:500;font-size:11.5px;text-align:right;}
+  .sos{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+  .sos a{display:block;text-align:center;border-radius:13px;padding:11px 6px;color:#fff;font-weight:800;font-size:13px;text-decoration:none;}
+  .sos small{display:block;font-weight:500;font-size:10px;opacity:.85;margin-top:2px;}
+  .badge-count{background:#FDEBD7;color:#B4610E;font-size:10px;font-weight:700;border-radius:999px;padding:2px 8px;}
+
+  /* ---- Formulaire inscription ---- */
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
+  .input{background:#fff;border:1.5px solid #D7E2EC;border-radius:12px;padding:11px 12px;font-size:14px;color:var(--txt);}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .seg div{background:#fff;border:1.5px solid #D7E2EC;border-radius:13px;text-align:center;padding:10px 4px 8px;font-size:11.5px;font-weight:700;color:var(--muted);}
+  .seg div.sel{border-color:var(--blue);color:var(--blue);background:#EDF5FC;box-shadow:0 0 0 1px var(--blue);}
+  .seg .sic{font-size:20px;display:block;margin-bottom:3px;}
+  .steps{display:flex;gap:6px;justify-content:center;margin:8px 0 12px;}
+  .steps i{width:26px;height:4px;border-radius:2px;background:#D7E2EC;}
+  .steps i.done{background:var(--blue);}
+
+  .vehicle-card{background:linear-gradient(180deg,#FFFFFF 0%,#F4F8FC 100%);}
+  .caption{font-size:11px;color:#7E93A8;margin-top:10px;text-align:center;line-height:1.5;}
+  footer{max-width:1320px;margin:44px auto 0;color:#7E93A8;font-size:12px;text-align:center;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Viim<em>.</em> <small style="font-size:15px;color:#AFC2D4;font-weight:400;">— « la vie » en mooré · maquettes iOS v2</small></h1>
+  <p>Sept écrans de référence pour le builder. Cartographie : <b>MapKit natif iOS</b> exclusivement, affichée dans l'app.
+     L'app s'adapte au moyen de déplacement déclaré à l'inscription (illustration du véhicule, seuils, textes).
+     Marque YAMSTACK TECHNOLOGIE : uniquement en pied de l'onglet Assistance.</p>
+</div>
+
+<div class="grid">
+
+<!-- ================= ÉCRAN 0 : INSCRIPTION ================= -->
+<div class="slot">
+<h2>0 · Inscription — Moyen de déplacement</h2>
+<div class="phone"><div class="screen">
+  <div class="statusbar"><span>20:40</span><span>5G ▮▮▮</span></div>
+  <div class="content">
+    <div style="text-align:center;padding:6px 0 2px;"><span class="brand">Viim<em>.</em></span></div>
+    <div class="steps"><i class="done"></i><i class="done"></i><i></i></div>
+    <h3 class="section" style="margin-top:2px;">Votre moyen de déplacement</h3>
+    <div class="muted" style="margin-bottom:12px;">Viim adapte ses mesures et ses conseils à votre véhicule.</div>
+    <div class="field">
+      <label>Type de véhicule</label>
+      <div class="seg">
+        <div class="sel"><span class="sic">🏍</span>Moto</div>
+        <div><span class="sic">🚗</span>Voiture</div>
+        <div><span class="sic">🚲</span>Vélo</div>
+      </div>
+    </div>
+    <div class="field"><label>Marque</label><div class="input">Yamaha</div></div>
+    <div class="field"><label>Modèle</label><div class="input">Crypton 110</div></div>
+    <div class="field"><label>Année <span style="font-weight:400;text-transform:none;">(facultatif)</span></label><div class="input" style="color:#9AAABB;">2021</div></div>
+    <div class="card vehicle-card" style="text-align:center;margin-top:4px;">
+      <svg viewBox="0 0 200 90" style="width:150px;">
+        <ellipse cx="100" cy="82" rx="80" ry="5" fill="#E1EAF2"/>
+        <circle cx="48" cy="62" r="20" fill="none" stroke="#1A3A5C" stroke-width="5"/>
+        <circle cx="48" cy="62" r="7" fill="#1A3A5C"/>
+        <circle cx="152" cy="62" r="20" fill="none" stroke="#1A3A5C" stroke-width="5"/>
+        <circle cx="152" cy="62" r="7" fill="#1A3A5C"/>
+        <path d="M48 62 L82 62 L100 40 L128 40 L152 62" fill="none" stroke="#2E75B6" stroke-width="6" stroke-linejoin="round"/>
+        <path d="M128 40 L140 22 L152 22" fill="none" stroke="#2E75B6" stroke-width="5" stroke-linecap="round"/>
+        <path d="M82 62 L74 38 L60 34" fill="none" stroke="#2E75B6" stroke-width="5" stroke-linecap="round"/>
+        <rect x="88" y="30" width="34" height="10" rx="5" fill="#1A3A5C"/>
+        <rect x="64" y="46" width="26" height="12" rx="6" fill="#E8B932"/>
+      </svg>
+      <div style="font-weight:800;font-size:14px;margin-top:2px;">YAMAHA CRYPTON 110</div>
+      <div class="muted">Aperçu — vous pourrez ajouter une photo de votre moto</div>
+    </div>
+    <a class="btn">Continuer</a>
+  </div>
+</div></div>
+<p class="caption">Réf. BNA : le véhicule assuré illustré (« Toyota Corolla LE 4P — 2015 »).<br>Adapté : type + marque/modèle saisis, illustration adaptée, photo personnelle possible.</p>
+</div>
+
+<!-- ================= ÉCRAN 1 : ACCUEIL ================= -->
+<div class="slot">
+<h2>1 · Accueil</h2>
+<div class="phone"><div class="screen">
+  <div class="statusbar"><span>20:45</span><span>5G ▮▮▮</span></div>
+  <div class="hero">
+    <span class="brand">Viim<em>.</em></span>
+    <div class="hello">Bonsoir</div>
+    <div class="hello-name">Guy</div>
+    <div class="muted" style="margin-top:2px;">Mardi 1ᵉʳ juillet</div>
+  </div>
+  <div class="content">
+    <div class="card vehicle-card trip">
+      <svg viewBox="0 0 200 90" style="width:92px;flex-shrink:0;">
+        <ellipse cx="100" cy="82" rx="80" ry="5" fill="#E1EAF2"/>
+        <circle cx="48" cy="62" r="20" fill="none" stroke="#1A3A5C" stroke-width="5"/>
+        <circle cx="48" cy="62" r="7" fill="#1A3A5C"/>
+        <circle cx="152" cy="62" r="20" fill="none" stroke="#1A3A5C" stroke-width="5"/>
+        <circle cx="152" cy="62" r="7" fill="#1A3A5C"/>
+        <path d="M48 62 L82 62 L100 40 L128 40 L152 62" fill="none" stroke="#2E75B6" stroke-width="6" stroke-linejoin="round"/>
+        <path d="M128 40 L140 22 L152 22" fill="none" stroke="#2E75B6" stroke-width="5" stroke-linecap="round"/>
+        <path d="M82 62 L74 38 L60 34" fill="none" stroke="#2E75B6" stroke-width="5" stroke-linecap="round"/>
+        <rect x="88" y="30" width="34" height="10" rx="5" fill="#1A3A5C"/>
+        <rect x="64" y="46" width="26" height="12" rx="6" fill="#E8B932"/>
+      </svg>
+      <div style="flex:1;">
+        <b style="font-size:13.5px;">YAMAHA CRYPTON 110</b>
+        <div class="muted">2021</div>
+        <span class="chip ok" style="margin-top:5px;">✓ Suivi actif</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:9px;"><b style="font-size:13px;">Résumé du jour</b><span class="chip ok">À jour</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="score-big">82</span><span>Score /100</span></div>
+        <div class="kpi"><b>23 km</b><span>Distance</span></div>
+        <div class="kpi"><b>4</b><span>Trajets</span></div>
+      </div>
+      <div class="kpis" style="margin-top:9px;">
+        <div class="kpi"><b>52 min</b><span>Conduite</span></div>
+        <div class="kpi"><b>0,9 L</b><span>Essence</span></div>
+        <div class="kpi"><b style="color:var(--green);">640 F</b><span>Économisés</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="list-item"><span class="lic">🛰</span>Détection de trajet<span class="arr"><span class="dot g"></span>&nbsp;Activée</span></div>
+      <div class="list-item"><span class="lic">💥</span>Détection de collision<span class="arr"><span class="dot g"></span>&nbsp;Activée</span></div>
+      <div class="list-item"><span class="lic">👨‍👩‍👧</span>Alerte famille<span class="arr">2 contacts</span></div>
+      <div class="list-item"><span class="lic">📶</span>Réseau<span class="arr"><span class="dot o"></span>&nbsp;1 trajet à synchroniser</span></div>
+    </div>
+    <h3 class="section">Trajets récents</h3>
+    <div class="card trip">
+      <div class="mini-map">
+        <svg width="60" height="50" viewBox="0 0 60 50"><path d="M8 44 L18 30 L16 18 L34 14 L52 8" fill="none" stroke="#1FA363" stroke-width="4" stroke-linecap="round"/><circle cx="8" cy="44" r="4" fill="#1A3A5C"/><circle cx="52" cy="8" r="4" fill="#1FA363"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div class="row"><b style="font-size:13px;">1ᵉʳ juillet · 19 h 06</b><span class="chip ok">86</span></div>
+        <div class="muted">8 km · 17 min</div>
+        <div class="ev"><span class="e-ok">🚀</span><span class="e-no">〰</span><span class="e-ok">📵</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 11 L12 3.5 L21 11 M5.5 9.5 V20 H10 V14.5 H14 V20 H18.5 V9.5"/></svg>Accueil</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M4 10.5 L9.6 11.5 M20 10.5 L14.4 11.5 M12 14.8 V20.4"/></svg>Conduite</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 4 L21 19.5 H3 Z"/><path d="M12 10 V14.5 M12 16.8 V17"/></svg>Assistance</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3 L19.5 5.8 V11.5 C19.5 16.5 16.4 19.6 12 21 C7.6 19.6 4.5 16.5 4.5 11.5 V5.8 Z"/></svg>Prévention</div>
+  </div>
+</div></div>
+<p class="caption">Réf. BNA : accueil « Bonjour Guy » + carte du véhicule couvert.<br>Adapté : véhicule suivi (illustration selon modèle inscrit), score du jour, FCFA.</p>
+</div>
+
+<!-- ================= ÉCRAN 2 : CONDUITE — MONTAGNE ================= -->
+<div class="slot">
+<h2>2 · Votre conduite — Score</h2>
+<div class="phone"><div class="screen">
+  <div class="statusbar" style="background:var(--navy);color:#fff;"><span>20:45</span><span>5G ▮▮▮</span></div>
+  <div style="background:linear-gradient(180deg,var(--navy) 0%,#245081 100%);color:#fff;text-align:center;padding:14px 12px 0;">
+    <h4 style="font-size:19px;font-weight:800;margin-bottom:4px;">Quel est votre style ?</h4>
+    <svg viewBox="0 0 300 150" style="width:100%;display:block;">
+      <path d="M0 150 L90 60 L150 18 L215 70 L300 150 Z" fill="#16304C"/>
+      <path d="M150 18 L215 70 L300 150 L150 150 Z" fill="#0F2439"/>
+      <path d="M0 150 L55 105 L110 150 Z" fill="#1E3E60"/>
+      <path d="M245 150 L275 118 L300 150 Z" fill="#1E3E60"/>
+      <line x1="150" y1="18" x2="150" y2="4" stroke="#fff" stroke-width="2"/>
+      <path d="M150 4 L168 9 L150 14 Z" fill="#D93636"/>
+      <circle cx="118" cy="52" r="7" fill="#E8B932" stroke="#fff" stroke-width="2"/>
+      <text x="118" y="36" text-anchor="middle" fill="#E8B932" font-size="11" font-weight="700">Vous</text>
+      <circle cx="176" cy="46" r="6" fill="#1FA363" stroke="#fff" stroke-width="2"/>
+      <text x="196" y="34" text-anchor="middle" fill="#9FD8BC" font-size="10">Ouaga</text>
+    </svg>
+    <div class="statbox">
+      <div><b>53</b><span>Trajets</span></div>
+      <div><b>360</b><span>km</span></div>
+      <div><b>9 h 51</b><span>Durée</span></div>
+    </div>
+  </div>
+  <div class="content" style="padding-top:14px;">
+    <div class="muted" style="text-align:center;margin-bottom:10px;">Selon les 30 derniers jours</div>
+    <h3 class="section">Performance globale <span style="color:var(--blue);font-size:12px;">ⓘ</span></h3>
+    <div class="card row" style="gap:10px;">
+      <div>
+        <b style="font-size:13.5px;">Vous avez obtenu 62 % de tous les badges de conduite.</b>
+        <div style="color:var(--blue);font-size:12px;font-weight:700;margin-top:4px;">Autres conducteurs à Ouagadougou : 64 %</div>
+      </div>
+      <div style="width:58px;height:58px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">👍</div>
+    </div>
+    <div class="card row">
+      <b style="font-size:13px;">⛽ Écoconduite ce mois-ci</b>
+      <span style="color:var(--green);font-weight:800;font-size:12.5px;">1 200 – 1 800 F économisés</span>
+    </div>
+    <div class="card row">
+      <b style="font-size:13px;">🏅 Badges de conduite</b><span style="color:#8A9AAB;">🥉🥈 ›</span>
+    </div>
+    <a class="btn">Voir mon style de conduite</a>
+  </div>
+  <div class="tabs">
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 11 L12 3.5 L21 11 M5.5 9.5 V20 H10 V14.5 H14 V20 H18.5 V9.5"/></svg>Accueil</div>
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M4 10.5 L9.6 11.5 M20 10.5 L14.4 11.5 M12 14.8 V20.4"/></svg>Conduite</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 4 L21 19.5 H3 Z"/><path d="M12 10 V14.5 M12 16.8 V17"/></svg>Assistance</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3 L19.5 5.8 V11.5 C19.5 16.5 16.4 19.6 12 21 C7.6 19.6 4.5 16.5 4.5 11.5 V5.8 Z"/></svg>Prévention</div>
+  </div>
+</div></div>
+<p class="caption">Réf. BNA : « Style de conduite » — montagne, stats 30 jours, performance comparée.<br>Adapté : moyenne Ouagadougou, économies en FCFA.</p>
+</div>
+
+<!-- ================= ÉCRAN 3 : PORTRAIT DÉTAILLÉ ================= -->
+<div class="slot">
+<h2>3 · Portrait détaillé — 5 critères</h2>
+<div class="phone"><div class="screen">
+  <div class="statusbar"><span>20:46</span><span>5G ▮▮▮</span></div>
+  <div class="content">
+    <div style="text-align:center;font-weight:700;padding:4px 0 10px;">‹ &nbsp;Style de conduite</div>
+    <h3 class="section" style="margin-top:0;">Portrait détaillé</h3>
+    <div class="card">
+      <div class="row"><b>🚀 Vitesse</b><span style="color:var(--blue);">ⓘ</span></div>
+      <div style="font-size:26px;font-weight:800;color:var(--ok);margin-top:4px;">75<small style="font-size:13px;"> %</small></div>
+      <div class="muted">de vos trajets sont sans excès de vitesse.</div>
+      <div class="bar"><i style="width:75%;background:linear-gradient(90deg,#28B46E,#1FA363);"></i></div>
+      <div class="others" style="margin-left:62%;">Les autres</div>
+    </div>
+    <div class="card">
+      <div class="row"><b>〰 Fluidité</b><span style="color:var(--blue);">ⓘ</span></div>
+      <div style="font-size:26px;font-weight:800;color:var(--warn);margin-top:4px;">32<small style="font-size:13px;"> %</small></div>
+      <div class="muted">de vos freinages et accélérations sont modérés.</div>
+      <div class="bar"><i style="width:32%;background:linear-gradient(90deg,#F5B041,#F29B1D);"></i></div>
+      <div class="others" style="margin-left:55%;">Les autres</div>
+    </div>
+    <div class="card">
+      <div class="row"><b>📵 Vigilance</b><span style="color:var(--blue);">ⓘ</span></div>
+      <div style="font-size:26px;font-weight:800;color:var(--ok);margin-top:4px;">77<small style="font-size:13px;"> %</small></div>
+      <div class="muted">de vos trajets sont sans distraction.</div>
+      <div class="bar"><i style="width:77%;background:linear-gradient(90deg,#28B46E,#1FA363);"></i></div>
+      <div class="others" style="margin-left:66%;">Les autres</div>
+    </div>
+    <div class="card row" style="padding:10px 14px;">
+      <b style="font-size:12.5px;">🛡 Sécurité</b><span class="chip" style="background:#FFF3D6;color:#B4610E;">Modérée</span>
+      <b style="font-size:12.5px;">🌿 Éco</b><span class="chip ok">+13 %</span>
+    </div>
+    <div class="card" style="background:#FFF9EC;border:1px solid #F3E2B3;">
+      <b style="font-size:12px;color:#8A6A14;">⭐ Conseil pratique — Restez zen</b>
+      <div class="muted" style="margin-top:3px;">Anticipez les feux 100 m à l'avance : l'impatience rend la conduite plus brusque.</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 11 L12 3.5 L21 11 M5.5 9.5 V20 H10 V14.5 H14 V20 H18.5 V9.5"/></svg>Accueil</div>
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M4 10.5 L9.6 11.5 M20 10.5 L14.4 11.5 M12 14.8 V20.4"/></svg>Conduite</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 4 L21 19.5 H3 Z"/><path d="M12 10 V14.5 M12 16.8 V17"/></svg>Assistance</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3 L19.5 5.8 V11.5 C19.5 16.5 16.4 19.6 12 21 C7.6 19.6 4.5 16.5 4.5 11.5 V5.8 Z"/></svg>Prévention</div>
+  </div>
+</div></div>
+<p class="caption">Réf. BNA : Vitesse 75 % / Fluidité 32 % / Vigilance 77 % avec curseur « Les autres ».<br>Adapté : + Sécurité et Écoconduite, seuils selon le véhicule inscrit.</p>
+</div>
+
+<!-- ================= ÉCRAN 4 : DÉTAIL TRAJET ================= -->
+<div class="slot">
+<h2>4 · Détail d'un trajet (MapKit natif)</h2>
+<div class="phone"><div class="screen">
+  <div class="statusbar"><span>20:47</span><span>5G ▮▮▮</span></div>
+  <div style="background:#E8F0E4;height:180px;position:relative;">
+    <svg width="100%" height="180" viewBox="0 0 300 180" preserveAspectRatio="xMidYMid slice">
+      <rect width="300" height="180" fill="#EAF1E6"/>
+      <path d="M0 40 H300 M0 90 H300 M0 140 H300 M60 0 V180 M140 0 V180 M220 0 V180" stroke="#fff" stroke-width="5"/>
+      <path d="M40 160 L70 120 L66 88" fill="none" stroke="#1FA363" stroke-width="5" stroke-linecap="round"/>
+      <path d="M66 88 L150 70" fill="none" stroke="#F29B1D" stroke-width="5" stroke-linecap="round"/>
+      <path d="M150 70 L255 40" fill="none" stroke="#1FA363" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="40" cy="160" r="7" fill="#1A3A5C"/>
+      <circle cx="255" cy="40" r="7" fill="#1FA363"/>
+      <circle cx="108" cy="79" r="9" fill="#D93636" stroke="#fff" stroke-width="2.5"/>
+      <text x="108" y="83" text-anchor="middle" fill="#fff" font-size="10" font-weight="800">!</text>
+      <text x="8" y="172" fill="#8FA391" font-size="9" font-weight="600"> Plans (MapKit)</text>
+    </svg>
+    <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-weight:700;">‹ &nbsp;Mes trajets</div>
+    <div style="position:absolute;bottom:10px;right:10px;background:#fff;border-radius:11px;padding:6px 11px;font-size:11px;box-shadow:0 3px 9px rgba(0,0,0,.2);"><b>17 min</b> · 8 km</div>
+  </div>
+  <div class="content">
+    <div class="row"><b style="font-size:17px;">1ᵉʳ juillet</b><span class="chip ok">Score 86</span></div>
+    <div class="muted">19 h 06 · Ouagadougou</div>
+    <h3 class="section">Bilan du trajet</h3>
+    <div class="card" style="display:flex;justify-content:space-around;text-align:center;">
+      <div><div class="ev" style="justify-content:center;"><span class="e-ok" style="width:40px;height:40px;font-size:18px;">🚀</span></div><div class="muted" style="margin-top:4px;">Vitesse</div></div>
+      <div><div class="ev" style="justify-content:center;"><span class="e-no" style="width:40px;height:40px;font-size:18px;">〰</span></div><div class="muted" style="margin-top:4px;">Fluidité</div></div>
+      <div><div class="ev" style="justify-content:center;"><span class="e-ok" style="width:40px;height:40px;font-size:18px;">📵</span></div><div class="muted" style="margin-top:4px;">Vigilance</div></div>
+    </div>
+    <div class="card">
+      <div class="list-item"><span class="lic" style="background:#FBE5E5;">⚠</span>Freinage brusque · 19 h 14<span class="arr">Av. Kwame N'Krumah</span></div>
+      <div class="list-item"><span class="lic">⛽</span>Consommation estimée<span class="arr">0,35 L · ≈ 250 F</span></div>
+      <div class="list-item"><span class="lic">🛞</span>Vous étiez conducteur<span class="arr" style="color:var(--blue);font-weight:700;">Modifier</span></div>
+    </div>
+    <div class="card" style="background:#EDF6FF;border:1px solid #CBE2F7;">
+      <b style="font-size:12px;color:var(--blue);">💬 Conseil</b>
+      <div class="muted" style="margin-top:3px;">Un freinage brusque détecté — gardez davantage de distance avec le véhicule qui vous précède.</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 11 L12 3.5 L21 11 M5.5 9.5 V20 H10 V14.5 H14 V20 H18.5 V9.5"/></svg>Accueil</div>
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M4 10.5 L9.6 11.5 M20 10.5 L14.4 11.5 M12 14.8 V20.4"/></svg>Conduite</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 4 L21 19.5 H3 Z"/><path d="M12 10 V14.5 M12 16.8 V17"/></svg>Assistance</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3 L19.5 5.8 V11.5 C19.5 16.5 16.4 19.6 12 21 C7.6 19.6 4.5 16.5 4.5 11.5 V5.8 Z"/></svg>Prévention</div>
+  </div>
+</div></div>
+<p class="caption">Réf. BNA : « Mes trajets » sur Plans Apple — bulle durée/km, bilan 3 pastilles,<br>« Vous étiez conducteur · Modifier ». Carte : <b>MapKit natif</b>, dans l'app.</p>
+</div>
+
+<!-- ================= ÉCRAN 5 : ASSISTANCE ================= -->
+<div class="slot">
+<h2>5 · Assistance</h2>
+<div class="phone"><div class="screen">
+  <div class="statusbar" style="background:#7A1010;color:#fff;"><span>20:48</span><span>5G ▮▮▮</span></div>
+  <div class="assist-hero"><h4>Assistance</h4></div>
+  <div class="content" style="margin-top:-4px;">
+    <div class="card" style="background:#F4F8FC;">
+      <div class="row">
+        <b style="font-size:13px;">📡 Soutien en temps réel</b>
+        <span class="chip ok"><span class="dot g"></span>&nbsp;Activé</span>
+      </div>
+      <div class="muted" style="margin-top:4px;">Vos proches reçoivent un message WhatsApp dès qu'une collision est détectée. Vous disposez de 60 secondes pour annuler.</div>
+    </div>
+    <div class="card">
+      <div class="list-item"><span class="lic">📍</span>Voir ma localisation<span class="arr">›</span></div>
+      <div class="list-item"><span class="lic">👨‍👩‍👧</span>Mes contacts d'urgence<span class="arr">2/3&nbsp;›</span></div>
+      <div class="list-item"><span class="lic">🩺</span>Ma fiche médicale<span class="arr"><span class="chip ok" style="font-size:9.5px;">Complète</span></span></div>
+      <div class="list-item"><span class="lic">📋</span>Remplir un constat d'accident<span class="arr">›</span></div>
+      <div class="list-item"><span class="lic">🛻</span>Appeler un dépanneur<span class="arr">›</span></div>
+    </div>
+    <h3 class="section">Urgences</h3>
+    <div class="sos">
+      <a style="background:var(--red);">Sapeurs-pompiers<small>Appeler le 18</small></a>
+      <a style="background:var(--navy);">Police<small>Appeler le 17</small></a>
+    </div>
+    <div class="card" style="margin-top:11px;">
+      <div class="list-item"><span class="lic">🏥</span>Hôpitaux proches<span class="arr">CHU Yalgado · 2,3 km&nbsp;›</span></div>
+    </div>
+    <div class="muted" style="text-align:center;">🔒 Votre fiche médicale ne quitte jamais ce téléphone, sauf en cas d'accident confirmé.</div>
+    <div style="text-align:center;font-size:9px;color:#A9B8C6;margin-top:10px;letter-spacing:.04em;">Viim est édité par YAMSTACK TECHNOLOGIE — Ouagadougou, Burkina Faso</div>
+  </div>
+  <div class="tabs">
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 11 L12 3.5 L21 11 M5.5 9.5 V20 H10 V14.5 H14 V20 H18.5 V9.5"/></svg>Accueil</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M4 10.5 L9.6 11.5 M20 10.5 L14.4 11.5 M12 14.8 V20.4"/></svg>Conduite</div>
+    <div class="tab on-red"><svg viewBox="0 0 24 24"><path d="M12 4 L21 19.5 H3 Z"/><path d="M12 10 V14.5 M12 16.8 V17"/></svg>Assistance</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3 L19.5 5.8 V11.5 C19.5 16.5 16.4 19.6 12 21 C7.6 19.6 4.5 16.5 4.5 11.5 V5.8 Z"/></svg>Prévention</div>
+  </div>
+</div></div>
+<p class="caption">Réf. BNA : « Soutien en temps réel : Activé », localisation, constat, n° 24/7.<br>Seule mention YAMSTACK TECHNOLOGIE de l'app : pied de cet onglet.</p>
+</div>
+
+<!-- ================= ÉCRAN 6 : PRÉVENTION ================= -->
+<div class="slot">
+<h2>6 · Prévention</h2>
+<div class="phone"><div class="screen">
+  <div class="statusbar" style="background:#123A28;color:#fff;"><span>20:49</span><span>5G ▮▮▮</span></div>
+  <div class="prev-hero"><h4>Prévention</h4></div>
+  <div class="content" style="margin-top:-4px;">
+    <div class="card">
+      <div class="row"><b style="font-size:13px;">⚠ Zones dangereuses — Ouagadougou</b><span class="chip ok"><span class="dot g"></span>&nbsp;Alertes</span></div>
+      <div class="muted" style="margin-top:5px;">Source : données ONASER</div>
+      <div class="list-item" style="font-weight:500;font-size:12.5px;"><span class="dot r"></span>&nbsp;Boulevard de la Jeunesse<span class="arr">zone n°1</span></div>
+      <div class="list-item" style="font-weight:500;font-size:12.5px;"><span class="dot r"></span>&nbsp;Bd de l'Insurrection Populaire<span class="arr">zone n°2</span></div>
+      <div class="list-item" style="font-weight:500;font-size:12.5px;"><span class="dot o"></span>&nbsp;Avenue Bassawarga<span class="arr">zone n°3</span></div>
+    </div>
+    <div class="card">
+      <div class="list-item"><span class="lic">🌧</span>Saison des pluies<span class="arr"><span class="chip alert" style="font-size:9.5px;">Alerte active</span></span></div>
+      <div class="list-item"><span class="lic">🌪</span>Harmattan<span class="arr">—</span></div>
+      <div class="list-item"><span class="lic">🌙</span>Conduite de nuit (20 h – 6 h)<span class="arr"><span class="dot g"></span></span></div>
+      <div class="list-item"><span class="lic">⛽</span>Pénuries de carburant signalées<span class="arr">2 stations&nbsp;›</span></div>
+    </div>
+    <div class="card">
+      <div class="row"><b style="font-size:13px;">🔧 Entretien de ma moto</b><span class="badge-count">3 tâches</span></div>
+      <div class="muted" style="margin-top:4px;">Yamaha Crypton 110 · 12 450 km</div>
+      <div class="list-item" style="font-weight:500;font-size:12.5px;">Vidange<span class="arr">dans 550 km</span></div>
+      <div class="list-item" style="font-weight:500;font-size:12.5px;">Tension de la chaîne<span class="arr" style="color:var(--bad);font-weight:700;">en retard</span></div>
+    </div>
+    <div class="card" style="background:#EFFAF3;border:1px solid #CBEBD8;">
+      <b style="font-size:12px;color:var(--green);">🏆 Défi de la semaine</b>
+      <div class="muted" style="margin-top:3px;">Aucun freinage brusque sur 5 trajets → badge Bronze 🥉 — <b>3/5 réussis</b></div>
+      <div class="bar"><i style="width:60%;background:var(--green);"></i></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 11 L12 3.5 L21 11 M5.5 9.5 V20 H10 V14.5 H14 V20 H18.5 V9.5"/></svg>Accueil</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M4 10.5 L9.6 11.5 M20 10.5 L14.4 11.5 M12 14.8 V20.4"/></svg>Conduite</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 4 L21 19.5 H3 Z"/><path d="M12 10 V14.5 M12 16.8 V17"/></svg>Assistance</div>
+    <div class="tab on-green"><svg viewBox="0 0 24 24"><path d="M12 3 L19.5 5.8 V11.5 C19.5 16.5 16.4 19.6 12 21 C7.6 19.6 4.5 16.5 4.5 11.5 V5.8 Z"/></svg>Prévention</div>
+  </div>
+</div></div>
+<p class="caption">Réf. BNA : Prévention — « Entretien auto », « Alertes météo extrême », badge « 5+ tâches ».<br>Adapté : zones ONASER, pluies/harmattan/nuit, entretien selon le véhicule inscrit.</p>
+</div>
+
+</div>
+
+<footer>
+  Viim — maquettes v2 · 1ᵉʳ juillet 2026 · Cartographie MapKit natif iOS · Spécifications : <code>features/</code> · Exécution : <code>blueprints/</code>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+# TODO — priorisé pour le builder (Codex)
+
+Ordre recommandé — démarrer par [blueprints/00-ordre-execution.md](../blueprints/00-ordre-execution.md). Chaque tâche terminée : déplacer vers `in-progress.md` puis `done/`, mettre à jour `CHANGELOG.md`.
+
+Rappels transverses : app nommée **Viim** (règle de marque dans `design/branding-vocabulaire.md`), cartes **MapKit natif dans l'app**, aucune chaîne en dur (Localizable.strings), vouvoiement.
+
+## Phase 0 — Fondations
+- [ ] Créer le repo Git + projet Xcode « Viim » (Swift 5.9+, iOS 16+, SwiftUI) avec les 4 onglets vides et la charte couleurs (README).
+- [ ] Activer Capabilities : Background Modes (`location`), Push Notifications.
+- [ ] Squelette backend Node.js sur Coolify + PostgreSQL + endpoint `/health`.
+- [ ] Configurer Uptime Robot sur `/health` (5 min, alerte SMS + WhatsApp). **Obligatoire avant tout testeur externe.**
+
+## Phase 1 — Capteurs & trajets (cœur du MVP)
+- [ ] Parcours d'inscription 3 étapes avec véhicule adaptatif + illustration (features/inscription-onboarding.md).
+- [ ] `LocationService` : background GPS, détection auto début/fin de trajet.
+- [ ] `SensorService` : CoreMotion 50 Hz, filtre passe-bas (alpha selon véhicule), buffer 30 s.
+- [ ] `TripManager` + CoreData (`Trip`, `TripEvent`, flag `synced`).
+- [ ] Détection d'événements avec confirmation GPS (sensor-algorithms.md §2-3).
+- [ ] Phase de calibration silencieuse (5 trajets, `calibration: true`).
+- [ ] Onglet Accueil (résumé du jour + statuts + trajets récents).
+- [ ] Onglet Votre conduite : historique + détail trajet (carte, événements).
+
+## Phase 2 — Score & sync
+- [ ] `ScoreEngine` : 5 critères + score global + couleur polyline.
+- [ ] Vue montagne + portrait détaillé avec comparaison "Les autres".
+- [ ] `SyncManager` : NWPathMonitor, `/trips/batch` idempotent.
+- [ ] Backend : agrégats communautaires + `/community/averages`.
+
+## Phase 3 — Sécurité (Assistance)
+- [ ] `CollisionDetector` + fenêtre annulation 60 s.
+- [ ] `MedicalVault` (Keychain AES-256) + écran fiche médicale.
+- [ ] Contacts d'urgence + bouton test WhatsApp (`/alerts/test`).
+- [ ] Micro-sync collision (URLSession background) + cascade WhatsApp backend + SMS fallback.
+- [ ] Voir ma localisation, assistance routière (18/17, hôpitaux), constat PDF.
+
+## Phase 4 — Prévention & engagement
+- [ ] Zones dangereuses ONASER + geofencing ; conditions de route.
+- [ ] Entretien véhicule + rappels.
+- [ ] Résumé WhatsApp 20h00 (cron backend via NEwAGENT-IA).
+- [ ] Écoconduite FCFA + saisie de plein ; badges ; classement opt-in.
+- [ ] Profil & Paramètres complets (export, suppression, batterie, sensibilité).
+
+## Phase 5 — Validation
+- [ ] Dérouler le plan de test (`qa/test-plan.md`) et consigner dans `qa/test-results.md`.

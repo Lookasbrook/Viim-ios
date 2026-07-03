@@ -1,0 +1,45 @@
+"tab.accueil" = "Accueil";
+"tab.conduite" = "Votre conduite";
+"tab.assistance" = "Assistance";
+"tab.prevention" = "Prévention";
+
+"status.enabled" = "Activé";
+"status.disabled" = "Désactivé";
+"status.offlineReady" = "Prêt hors ligne";
+"status.pendingCalibration" = "En attente de calibration";
+
+"home.title" = "Accueil";
+"home.vehicle.title" = "Votre moto";
+"home.vehicle.status" = "Suivi actif";
+"home.summary.title" = "Résumé du jour";
+"home.summary.calibration" = "Calibration en cours (trajet 0/5)";
+"home.status.tripDetection" = "Détection de trajet";
+"home.status.collisionDetection" = "Détection de collision";
+"home.status.network" = "Connexion réseau";
+
+"driving.title" = "Votre conduite";
+"driving.score.title" = "Score de conduite";
+"driving.score.calibration" = "Votre score apparaîtra après 5 trajets de calibration.";
+"driving.portrait.title" = "Portrait détaillé";
+"driving.criteria.speed" = "Vitesse";
+"driving.criteria.smoothness" = "Fluidité";
+"driving.criteria.vigilance" = "Vigilance";
+
+"assistance.title" = "Assistance";
+"assistance.realtime.title" = "Soutien en temps réel";
+"assistance.family.title" = "Alerte famille";
+"assistance.family.empty" = "Ajoutez au moins un contact d'urgence pour activer les alertes WhatsApp.";
+"assistance.medical.title" = "Fiche médicale";
+"assistance.medical.privacy" = "Ces données ne quittent jamais votre téléphone sauf en cas d'accident confirmé.";
+"assistance.footer.publisher" = "Viim est édité par YAMSTACK TECHNOLOGIE — Ouagadougou, Burkina Faso";
+
+"prevention.title" = "Prévention";
+"prevention.dangerZones.title" = "Alertes zones dangereuses";
+"prevention.road.title" = "Conditions de route";
+"prevention.road.placeholder" = "Les alertes saison des pluies, harmattan et travaux seront affichées ici.";
+"prevention.maintenance.title" = "Entretien véhicule";
+"prevention.maintenance.placeholder" = "Les rappels seront calculés avec le kilométrage réel de vos trajets.";
+
+"profile.title" = "Profil";
+"profile.section.account" = "Mon profil";
+"profile.placeholder" = "Vos informations de conduite et de sécurité apparaîtront ici.";
