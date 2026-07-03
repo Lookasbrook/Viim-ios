@@ -26,7 +26,7 @@
   - DNS API résolu côté authoritative : `dig @ns1.dns-parking.com +short api.burktech-ia.com A` retourne `178.105.115.6`. Certains résolveurs locaux peuvent garder temporairement un cache `NXDOMAIN`.
   - Endpoint NEwAGENT configuré côté runtime : `has_NEWAGENT_URL=true`, `has_NEWAGENT_TOKEN=true`; token généré/configuré dans Coolify sans être affiché ni écrit dans le repo.
   - Health API public validé : `curl -i https://api.burktech-ia.com/health` retourne HTTP 200 avec `{"status":"ok","api":"ok","db":"ok","whatsapp":"ok","version":"0.1.0"}`.
-  - Blocage restant côté déploiement : Uptime Robot non configuré.
+  - Blocage restant côté déploiement : Uptime Robot non configuré. Tentative Codex : aucune variable `UPTIMEROBOT`/`UPTIME_ROBOT`, aucune CLI `uptimerobot`, aucune configuration locale exploitable trouvée ; endpoint prêt pour monitor HTTPS GET toutes les 5 minutes.
 
 Format d'entrée :
 
