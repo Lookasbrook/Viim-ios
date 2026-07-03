@@ -13,6 +13,7 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[iOS]** Correction du packaging app : ajout des clés bundle standard dans `Info.plist` pour permettre l'installation (`CFBundleIdentifier`, version, exécutable, type).
 - **[Repo]** Préparation de la publication du monorepo `Viim-ios` vers GitHub afin que Coolify puisse construire `backend/Dockerfile`.
 - **[Repo]** Publication effective du monorepo sur `Lookasbrook/Viim-ios`, branche `main`, commit `253ee3a`, pour débloquer la création de l'app Viim dans Coolify.
+- **[Backend]** Déploiement Coolify confirmé sur le VPS `178.105.115.6` : app Viim `blqn1beg8ae0dvddmqio6rth`, PostgreSQL Viim `v46pxb68fon91lz66pdyomot`, migrations initiales appliquées, `/health` runtime en `degraded` tant que NEwAGENT-IA n'est pas configuré.
 
 ## 2026-07-01 (nuit) — QA pré-handoff builder
 
