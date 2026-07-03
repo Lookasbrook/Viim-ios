@@ -132,11 +132,15 @@ final class LocationService: NSObject, ObservableObject {
         switch authorizationState {
         case .notDetermined:
             manager.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse:
-            manager.requestAlwaysAuthorization()
-        case .authorizedAlways, .denied, .restricted:
+        case .authorizedWhenInUse, .authorizedAlways, .denied, .restricted:
             break
         }
+    }
+
+    func prepareForForegroundUse() {
+        shouldMonitorAfterAuthorization = false
+        configureManager()
+        requestAuthorization()
     }
 
     func startMonitoring() {
@@ -148,13 +152,11 @@ final class LocationService: NSObject, ObservableObject {
             return
         }
 
-        if authorizationState == .authorizedWhenInUse {
-            manager.requestAlwaysAuthorization()
-        }
-
         configureManager()
         manager.startUpdatingLocation()
-        manager.startMonitoringSignificantLocationChanges()
+        if authorizationState == .authorizedAlways {
+            manager.startMonitoringSignificantLocationChanges()
+        }
         isMonitoring = true
     }
 
@@ -167,9 +169,9 @@ final class LocationService: NSObject, ObservableObject {
     }
 
     private func configureManager() {
-        manager.allowsBackgroundLocationUpdates = true
+        manager.allowsBackgroundLocationUpdates = authorizationState == .authorizedAlways
         manager.pausesLocationUpdatesAutomatically = false
-        manager.showsBackgroundLocationIndicator = true
+        manager.showsBackgroundLocationIndicator = false
         manager.activityType = vehicleType == .velo ? .fitness : .automotiveNavigation
         manager.desiredAccuracy = batterySavingMode ? Constants.economyAccuracyMeters : Constants.normalAccuracyMeters
         manager.distanceFilter = batterySavingMode ? Constants.economyDistanceFilterMeters : Constants.normalDistanceFilterMeters
@@ -363,10 +365,7 @@ final class LocationService: NSObject, ObservableObject {
 extension LocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationState = LocationAuthorizationState(status: manager.authorizationStatus)
-
-        if authorizationState == .authorizedWhenInUse {
-            manager.requestAlwaysAuthorization()
-        }
+        configureManager()
 
         if shouldMonitorAfterAuthorization, authorizationState.canTrackLocation {
             startMonitoring()

@@ -86,6 +86,29 @@
   - Implémenté : `AppIcon.appiconset` complet avec source 1024 px et déclinaisons iPhone.
   - Vérifié : dimensions PNG OK, build simulateur OK, build signé iPhone réel OK, installation et lancement OK.
 
+## UI — Photos premium des moyens de déplacement
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [design/maquettes-ecrans.html](../design/maquettes-ecrans.html), [features/inscription-onboarding.md](../features/inscription-onboarding.md)
+- Notes d'avancement :
+  - Objectif : afficher de vraies photos réutilisables de moto, voiture et vélo dans l'Accueil pour un rendu plus premium.
+  - Périmètre : assets locaux dans `Assets.xcassets`, attribution/licence documentée, aucune dépendance réseau runtime.
+  - Implémenté : `VehiclePhotoMoto`, `VehiclePhotoCar`, `VehiclePhotoVelo`, vignette photo responsive dans la carte véhicule de l'Accueil.
+  - Vérifié : images redimensionnées à 1200 px maximum ; build simulateur OK ; build signé iPhone réel OK ; installation et lancement OK.
+
+## iOS — Indicateur GPS visible après autorisation
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [blueprints/01-ios-app.md](../blueprints/01-ios-app.md), [architecture/sensor-algorithms.md](../architecture/sensor-algorithms.md)
+- Notes d'avancement :
+  - Objectif : empêcher l'affichage persistant de l'indicateur de localisation en haut de l'écran après autorisation.
+  - Cause confirmée : `showsBackgroundLocationIndicator=true`, demande automatique `Always` et démarrage immédiat du suivi GPS après onboarding.
+  - Implémenté : préparation localisation passive au lancement, demande `When In Use` uniquement, plus d'escalade automatique `Always`, indicateur arrière-plan désactivé.
+  - ADR : [2026-07-03-localisation-discrete-ios](../decisions/2026-07-03-localisation-discrete-ios.md).
+  - Vérifié : grep sans `requestAlwaysAuthorization` ni `showsBackgroundLocationIndicator=true`; build simulateur OK ; build signé iPhone réel OK ; installation et lancement OK.
+
 Format d'entrée :
 
 ```

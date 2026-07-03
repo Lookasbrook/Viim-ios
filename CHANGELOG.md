@@ -7,12 +7,15 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[iOS]** Ajout du parcours d'inscription 3 étapes au premier lancement : identité, moyen de déplacement adaptatif, sécurité.
 - **[Sécurité]** Contact d'urgence stocké dans le Keychain uniquement ; profil local sauvegardé hors ligne avec `synced=false`.
 - **[QA]** Onboarding validé par build simulateur, build signé iPhone réel, installation et lancement de `com.yamstack.viim` sur l'iPhone de Guy.
-- **[iOS]** Ajout de `LocationService` : GPS arrière-plan, autorisation Always, détection automatique début/fin de trajet, précision normale/économie et état de suivi visible sur l'Accueil.
+- **[iOS]** Ajout de `LocationService` : service de position, détection début/fin de trajet, précision normale/économie et état de suivi visible sur l'Accueil.
 - **[QA]** Préflight S1 validé sur iPhone réel : build signé, installation et lancement OK ; roulage terrain 20 min écran verrouillé encore à exécuter.
 - **[iOS]** Correction de l'affichage plein écran : ajout d'un Launch Screen natif pour supprimer le letterboxing sur iPhone.
 - **[Design]** Réalignement des écrans Onboarding et Accueil sur `design/maquettes-ecrans.html` : brand mark, hero, carte véhicule, KPI, statuts et illustration adaptative.
 - **[iOS]** Correction de lisibilité en mode sombre : textes explicites sur les cartes des onglets Votre conduite, Assistance et Prévention.
 - **[Design]** Ajout du premier visuel système Viim : icône d'application iPhone complète dans `Assets.xcassets`.
+- **[Design]** Ajout de photos premium locales pour les moyens de déplacement moto, voiture et vélo sur l'Accueil, avec attributions Wikimedia Commons documentées.
+- **[iOS]** Correction du mode GPS visible après autorisation : Viim ne démarre plus le GPS continu au lancement, ne demande plus `Always` automatiquement et désactive l'indicateur arrière-plan par défaut.
+- **[ADR]** Décision `2026-07-03-localisation-discrete-ios` : localisation discrète par défaut, suivi arrière-plan à traiter avec consentement explicite et déclenchement CoreMotion/GPS.
 
 ## 2026-07-02
 

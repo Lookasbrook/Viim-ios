@@ -11,7 +11,8 @@ struct AccueilView: View {
 
                 VehicleTrackingCard(
                     profile: onboardingStore.profile,
-                    phase: locationService.tripPhase
+                    statusKey: tripDetectionDetailKey,
+                    statusStyle: tripDetectionStyle
                 )
 
                 DailySummaryCard()
@@ -67,6 +68,13 @@ struct AccueilView: View {
         }
         return locationService.isMonitoring ? locationService.tripPhase.statusKey : "location.monitoring.paused"
     }
+
+    private var tripDetectionStyle: ViimChip.Style {
+        guard locationService.authorizationState.canTrackLocation else {
+            return locationService.authorizationState == .denied ? .danger : .warning
+        }
+        return locationService.isMonitoring ? .success : .warning
+    }
 }
 
 private struct HomeHero: View {
@@ -107,13 +115,14 @@ private struct HomeHero: View {
 
 private struct VehicleTrackingCard: View {
     let profile: UserProfile?
-    let phase: TripDetectionPhase
+    let statusKey: LocalizedStringKey
+    let statusStyle: ViimChip.Style
 
     var body: some View {
         ViimCard {
-            HStack(spacing: 10) {
-                VehicleIllustration(type: profile?.vehicleType ?? .moto, width: 92)
-                    .frame(width: 92)
+            HStack(spacing: 12) {
+                VehiclePhotoThumbnail(type: profile?.vehicleType ?? .moto)
+                    .frame(width: 112, height: 84)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(vehicleName)
@@ -128,7 +137,7 @@ private struct VehicleTrackingCard: View {
                             .foregroundStyle(ViimColors.muted)
                     }
 
-                    ViimChip(titleKey: phase.statusKey, style: .success)
+                    ViimChip(titleKey: statusKey, style: statusStyle)
                         .padding(.top, 2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -151,6 +160,42 @@ private struct VehicleTrackingCard: View {
             return nil
         }
         return year
+    }
+}
+
+private struct VehiclePhotoThumbnail: View {
+    let type: VehicleType
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Image(type.photoAssetName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 112, height: 84)
+                .clipped()
+
+            LinearGradient(
+                colors: [.clear, ViimColors.text.opacity(0.45)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            Image(systemName: type.symbolName)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 26, height: 26)
+                .background(type.tint)
+                .clipShape(Circle())
+                .padding(7)
+        }
+        .frame(width: 112, height: 84)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.9), lineWidth: 1)
+        )
+        .shadow(color: ViimColors.text.opacity(0.12), radius: 6, x: 0, y: 3)
+        .accessibilityHidden(true)
     }
 }
 

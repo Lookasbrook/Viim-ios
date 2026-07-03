@@ -28,7 +28,7 @@ private struct AppLaunchView: View {
                         return
                     }
                     locationService.configure(vehicleType: profile.vehicleType)
-                    locationService.startMonitoring()
+                    locationService.prepareForForegroundUse()
                 }
         } else {
             OnboardingView()
