@@ -3,6 +3,43 @@
 "tab.assistance" = "Assistance";
 "tab.prevention" = "Prévention";
 
+"vehicle.type.moto" = "Moto";
+"vehicle.type.voiture" = "Voiture";
+"vehicle.type.velo" = "Vélo";
+"vehicle.status.trackingActive" = "Suivi actif";
+
+"onboarding.identity.title" = "Votre profil";
+"onboarding.identity.header" = "Bienvenue dans Viim";
+"onboarding.identity.detail" = "Créez votre profil local pour préparer le suivi de conduite et les alertes de sécurité.";
+"onboarding.identity.firstName.placeholder" = "Votre prénom";
+"onboarding.identity.phone.placeholder" = "+226 00 00 00 00";
+"onboarding.identity.consent" = "Viim demandera votre localisation ensuite pour détecter vos trajets et partager votre position uniquement en cas d'accident confirmé.";
+"onboarding.identity.error" = "Renseignez votre prénom et un numéro burkinabè au format +226.";
+
+"onboarding.vehicle.title" = "Moyen de déplacement";
+"onboarding.vehicle.header" = "Votre moyen de déplacement";
+"onboarding.vehicle.detail" = "Le type choisi adapte les seuils de détection, les rappels et les textes de l'app.";
+"onboarding.vehicle.preview.title" = "Aperçu dans l'accueil";
+"onboarding.vehicle.brand.placeholder" = "Marque";
+"onboarding.vehicle.model.placeholder" = "Modèle";
+"onboarding.vehicle.year.placeholder" = "Année";
+"onboarding.vehicle.error" = "Choisissez votre moyen de déplacement.";
+
+"onboarding.safety.title" = "Sécurité";
+"onboarding.safety.header" = "Préparez vos alertes";
+"onboarding.safety.detail" = "Vous pouvez ajouter un contact d'urgence maintenant ou terminer cette étape plus tard.";
+"onboarding.safety.contact.title" = "Contact d'urgence";
+"onboarding.safety.contactName.placeholder" = "Nom du contact";
+"onboarding.safety.contactPhone.placeholder" = "Téléphone du contact";
+"onboarding.safety.keychain" = "Ce contact est stocké dans le trousseau de l'iPhone.";
+"onboarding.safety.medical.title" = "Fiche médicale";
+"onboarding.safety.medical.detail" = "La fiche médicale sera proposée ensuite et restera dans le trousseau.";
+"onboarding.safety.error" = "Complétez le nom et le téléphone du contact, ou laissez les deux champs vides.";
+"onboarding.error.save" = "L'inscription n'a pas pu être enregistrée sur cet iPhone.";
+"onboarding.action.back" = "Retour";
+"onboarding.action.next" = "Continuer";
+"onboarding.action.finish" = "Terminer";
+
 "status.enabled" = "Activé";
 "status.disabled" = "Désactivé";
 "status.offlineReady" = "Prêt hors ligne";

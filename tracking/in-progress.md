@@ -26,7 +26,18 @@
   - DNS API résolu côté authoritative : `dig @ns1.dns-parking.com +short api.burktech-ia.com A` retourne `178.105.115.6`. Certains résolveurs locaux peuvent garder temporairement un cache `NXDOMAIN`.
   - Endpoint NEwAGENT configuré côté runtime : `has_NEWAGENT_URL=true`, `has_NEWAGENT_TOKEN=true`; token généré/configuré dans Coolify sans être affiché ni écrit dans le repo.
   - Health API public validé : `curl -i https://api.burktech-ia.com/health` retourne HTTP 200 avec `{"status":"ok","api":"ok","db":"ok","whatsapp":"ok","version":"0.1.0"}`.
-  - Blocage restant côté déploiement : Uptime Robot non configuré. Tentative Codex : aucune variable `UPTIMEROBOT`/`UPTIME_ROBOT`, aucune CLI `uptimerobot`, aucune configuration locale exploitable trouvée ; endpoint prêt pour monitor HTTPS GET toutes les 5 minutes.
+  - Uptime Robot non configuré. Tentative Codex : aucune variable `UPTIMEROBOT`/`UPTIME_ROBOT`, aucune CLI `uptimerobot`, aucune configuration locale exploitable trouvée ; endpoint prêt pour monitor HTTPS GET toutes les 5 minutes.
+  - Décision PO du 2026-07-03 : reporter Uptime Robot et continuer l'exécution. Ce report ne doit pas ouvrir l'app à des testeurs externes tant que le monitoring n'est pas actif.
+
+## Phase 1 — Onboarding véhicule adaptatif
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [features/inscription-onboarding.md](../features/inscription-onboarding.md), [blueprints/01-ios-app.md](../blueprints/01-ios-app.md)
+- Notes d'avancement :
+  - Objectif : afficher au premier lancement un parcours d'inscription 3 étapes (identité, moyen de déplacement, sécurité) avec véhicule adaptatif.
+  - Implémenté : `OnboardingStore`, stockage profil local hors ligne avec `synced=false`, contact d'urgence Keychain-only, écran SwiftUI 3 étapes et sélection véhicule adaptative.
+  - Vérifié : build simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
 
 Format d'entrée :
 

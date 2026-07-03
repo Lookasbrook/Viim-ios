@@ -2,6 +2,12 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-07-03
+
+- **[iOS]** Ajout du parcours d'inscription 3 étapes au premier lancement : identité, moyen de déplacement adaptatif, sécurité.
+- **[Sécurité]** Contact d'urgence stocké dans le Keychain uniquement ; profil local sauvegardé hors ligne avec `synced=false`.
+- **[QA]** Onboarding validé par build simulateur, build signé iPhone réel, installation et lancement de `com.yamstack.viim` sur l'iPhone de Guy.
+
 ## 2026-07-02
 
 - **[P0]** Initialisation du repo GitHub cloné `Viim-ios` avec la documentation existante et la structure monorepo `ios/` + `backend/`.
@@ -18,6 +24,7 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[Backend]** Runtime Viim revérifié : `DATABASE_URL` et `NEWAGENT_URL` sont présents, `NEWAGENT_TOKEN` absent ; `/health` public retourne encore HTTP 503 `degraded`.
 - **[Backend]** `NEWAGENT_TOKEN` configuré dans Coolify sans exposition du secret ; `/health` public de Viim retourne HTTP 200 avec `status:"ok"`, DB et WhatsApp OK.
 - **[Monitoring]** Uptime Robot reste à configurer : endpoint `/health` prêt et vert, mais aucun accès/API key Uptime Robot disponible dans la session Codex.
+- **[Décision]** Report PO de la configuration Uptime Robot : l'exécution Phase 1 peut continuer, mais le monitoring reste obligatoire avant tout testeur externe.
 
 ## 2026-07-01 (nuit) — QA pré-handoff builder
 

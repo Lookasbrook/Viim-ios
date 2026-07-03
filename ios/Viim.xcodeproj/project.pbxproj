@@ -20,6 +20,8 @@
 		10000000000000000000000B /* SensorFiltering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010B /* SensorFiltering.swift */; };
 		10000000000000000000000C /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010C /* LocationService.swift */; };
 		10000000000000000000000D /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010D /* PersistenceController.swift */; };
+		100000000000000000000011 /* OnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000114 /* OnboardingStore.swift */; };
+		100000000000000000000012 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000115 /* OnboardingView.swift */; };
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
@@ -39,6 +41,8 @@
 		10000000000000000000010B /* SensorFiltering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/SensorFiltering.swift; sourceTree = "<group>"; };
 		10000000000000000000010C /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LocationService.swift; sourceTree = "<group>"; };
 		10000000000000000000010D /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/PersistenceController.swift; sourceTree = "<group>"; };
+		100000000000000000000114 /* OnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStore.swift; sourceTree = "<group>"; };
+		100000000000000000000115 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		10000000000000000000010E /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		10000000000000000000010F /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		100000000000000000000110 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -65,6 +69,7 @@
 			children = (
 				100000000000000000000101 /* ViimApp.swift */,
 				100000000000000000000102 /* RootTabView.swift */,
+				100000000000000000000305 /* Onboarding */,
 				100000000000000000000103 /* ViimColors.swift */,
 				100000000000000000000104 /* ViimCard.swift */,
 				100000000000000000000105 /* AccueilView.swift */,
@@ -99,6 +104,15 @@
 				100000000000000000000110 /* Assets.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		100000000000000000000305 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000114 /* OnboardingStore.swift */,
+				100000000000000000000115 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -191,6 +205,8 @@
 				10000000000000000000000B /* SensorFiltering.swift in Sources */,
 				10000000000000000000000C /* LocationService.swift in Sources */,
 				10000000000000000000000D /* PersistenceController.swift in Sources */,
+				100000000000000000000011 /* OnboardingStore.swift in Sources */,
+				100000000000000000000012 /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

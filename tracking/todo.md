@@ -5,13 +5,13 @@ Ordre recommandé — démarrer par [blueprints/00-ordre-execution.md](../bluepr
 Rappels transverses : app nommée **Viim** (règle de marque dans `design/branding-vocabulaire.md`), cartes **MapKit natif dans l'app**, aucune chaîne en dur (Localizable.strings), vouvoiement.
 
 ## Phase 0 — Fondations
-- [ ] Créer le repo Git + projet Xcode « Viim » (Swift 5.9+, iOS 16+, SwiftUI) avec les 4 onglets vides et la charte couleurs (README).
-- [ ] Activer Capabilities : Background Modes (`location`), Push Notifications.
-- [ ] Squelette backend Node.js sur Coolify + PostgreSQL + endpoint `/health`.
-- [ ] Configurer Uptime Robot sur `/health` (5 min, alerte SMS + WhatsApp). **Obligatoire avant tout testeur externe.**
+- [x] Créer le repo Git + projet Xcode « Viim » (Swift 5.9+, iOS 16+, SwiftUI) avec les 4 onglets vides et la charte couleurs (README).
+- [x] Activer Capabilities : Background Modes (`location`), Push Notifications.
+- [x] Squelette backend Node.js sur Coolify + PostgreSQL + endpoint `/health`.
+- [ ] Configurer Uptime Robot sur `/health` (5 min, alerte SMS + WhatsApp). **Reporté par décision PO le 2026-07-03 ; obligatoire avant tout testeur externe.**
 
 ## Phase 1 — Capteurs & trajets (cœur du MVP)
-- [ ] Parcours d'inscription 3 étapes avec véhicule adaptatif + illustration (features/inscription-onboarding.md).
+- [x] Parcours d'inscription 3 étapes avec véhicule adaptatif + illustration (features/inscription-onboarding.md).
 - [ ] `LocationService` : background GPS, détection auto début/fin de trajet.
 - [ ] `SensorService` : CoreMotion 50 Hz, filtre passe-bas (alpha selon véhicule), buffer 30 s.
 - [ ] `TripManager` + CoreData (`Trip`, `TripEvent`, flag `synced`).
@@ -41,4 +41,5 @@ Rappels transverses : app nommée **Viim** (règle de marque dans `design/brandi
 - [ ] Profil & Paramètres complets (export, suppression, batterie, sensibilité).
 
 ## Phase 5 — Validation
+- [ ] Reprendre la configuration Uptime Robot si elle n'a pas été faite avant l'ouverture aux testeurs externes.
 - [ ] Dérouler le plan de test (`qa/test-plan.md`) et consigner dans `qa/test-results.md`.
