@@ -12,6 +12,7 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[iOS]** Correction de l'affichage plein écran : ajout d'un Launch Screen natif pour supprimer le letterboxing sur iPhone.
 - **[Design]** Réalignement des écrans Onboarding et Accueil sur `design/maquettes-ecrans.html` : brand mark, hero, carte véhicule, KPI, statuts et illustration adaptative.
 - **[iOS]** Correction de lisibilité en mode sombre : textes explicites sur les cartes des onglets Votre conduite, Assistance et Prévention.
+- **[Design]** Ajout du premier visuel système Viim : icône d'application iPhone complète dans `Assets.xcassets`.
 
 ## 2026-07-02
 

@@ -75,6 +75,17 @@
   - Implémenté : couleurs explicites `ViimColors.text` et `ViimColors.muted` dans `ViimCard`, `StatusRow`, Conduite, Assistance et Prévention.
   - Vérifié : grep sans texte `.secondary` dans les trois onglets, build simulateur OK, build signé iPhone réel OK, installation et lancement OK.
 
+## UI — Visuel d'app Viim
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [design/branding-vocabulaire.md](../design/branding-vocabulaire.md)
+- Notes d'avancement :
+  - Objectif : ajouter un premier visuel système pour l'app, visible sur l'écran d'accueil iPhone.
+  - Périmètre : icône d'application Viim dans l'asset catalog, sans mention YAMSTACK dans l'UI.
+  - Implémenté : `AppIcon.appiconset` complet avec source 1024 px et déclinaisons iPhone.
+  - Vérifié : dimensions PNG OK, build simulateur OK, build signé iPhone réel OK, installation et lancement OK.
+
 Format d'entrée :
 
 ```
