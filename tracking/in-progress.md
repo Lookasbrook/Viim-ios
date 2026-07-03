@@ -22,10 +22,11 @@
   - Blocage source Coolify résolu : le repo GitHub `Lookasbrook/Viim-ios` n'est plus vide ; le monorepo local a été publié sur `main`, commit `4dd4ca3`.
   - Déploiement Coolify Viim confirmé par l'agent infrastructure : app `Viim`, UUID `blqn1beg8ae0dvddmqio6rth`, commit déployé `4dd4ca395cdf7e004c4fae22156f523add79e24a`, root `/backend`, Dockerfile `/Dockerfile`, port `3000`, domaine `https://api.burktech-ia.com`.
   - PostgreSQL Viim créé dans Coolify : DB UUID `v46pxb68fon91lz66pdyomot`; migration initiale appliquée (`users`, `trips`, `trip_events`, `daily_summaries`).
-  - Vérification runtime : `curl -k --resolve api.burktech-ia.com:443:178.105.115.6 https://api.burktech-ia.com/health` retourne `{"status":"degraded","api":"ok","db":"ok","whatsapp":"not_configured","version":"0.1.0"}`.
+  - Vérification runtime initiale : `curl -k --resolve api.burktech-ia.com:443:178.105.115.6 https://api.burktech-ia.com/health` retournait `{"status":"degraded","api":"ok","db":"ok","whatsapp":"not_configured","version":"0.1.0"}` avant configuration du token NEwAGENT.
   - DNS API résolu côté authoritative : `dig @ns1.dns-parking.com +short api.burktech-ia.com A` retourne `178.105.115.6`. Certains résolveurs locaux peuvent garder temporairement un cache `NXDOMAIN`.
-  - Endpoint NEwAGENT configuré côté runtime : `has_NEWAGENT_URL=true`; `https://burktech-ia.com/health` retourne HTTP 200. Le vrai `NEWAGENT_TOKEN` reste à fournir/configurer (`has_NEWAGENT_TOKEN=false`).
-  - Blocages restants côté déploiement : secret `NEWAGENT_TOKEN` non configuré dans Coolify, `/health` Viim public encore `503 degraded` avec `whatsapp:"not_configured"`, Uptime Robot non configuré.
+  - Endpoint NEwAGENT configuré côté runtime : `has_NEWAGENT_URL=true`, `has_NEWAGENT_TOKEN=true`; token généré/configuré dans Coolify sans être affiché ni écrit dans le repo.
+  - Health API public validé : `curl -i https://api.burktech-ia.com/health` retourne HTTP 200 avec `{"status":"ok","api":"ok","db":"ok","whatsapp":"ok","version":"0.1.0"}`.
+  - Blocage restant côté déploiement : Uptime Robot non configuré.
 
 Format d'entrée :
 
