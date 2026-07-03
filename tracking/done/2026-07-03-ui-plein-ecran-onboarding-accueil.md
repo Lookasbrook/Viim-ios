@@ -1,0 +1,28 @@
+# UI plein écran et réalignement Onboarding/Accueil — 2026-07-03
+
+- Tâche : corriger l'affichage letterboxé sur iPhone et réaligner les premiers écrans SwiftUI sur la maquette HTML.
+- Référence : `design/maquettes-ecrans.html`, `qa/known-issues.md`.
+- Diagnostic :
+  - Symptôme initial : l'app s'affichait dans une zone réduite avec de grandes bandes noires sur simulateur/iPhone.
+  - Cause racine : aucun Launch Screen natif n'était déclaré dans `Info.plist`, ce qui empêchait iOS d'appliquer le plein écran moderne.
+  - Écart visuel : les vues SwiftUI Onboarding et Accueil étaient encore proches du squelette initial et ne reprenaient pas la composition BNA de la maquette HTML.
+- Implémentation iOS :
+  - Ajout de `Resources/LaunchScreen.storyboard` et déclaration `UILaunchStoryboardName`.
+  - Ajout de composants visuels partagés : `ViimBrandMark`, `ViimChip`, `VehicleIllustration`, `MetricGrid`.
+  - Onboarding réaligné : brand mark centré, barres d'étapes, champs libellés, carte véhicule illustrée, boutons segmentés et textes localisés.
+  - Accueil réaligné : hero, carte véhicule suivie, résumé quotidien, statuts de sécurité, trajets récents et barre d'onglets conservée.
+- Règles respectées :
+  - Nom visible : Viim.
+  - Chaînes utilisateur dans `Localizable.strings`.
+  - Vouvoiement et typographie française.
+  - Aucune donnée sensible ajoutée hors Keychain.
+- Vérifications :
+  - `xcodebuild -quiet -project ios/Viim.xcodeproj -scheme Viim -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` : OK.
+  - `xcodebuild -quiet -project ios/Viim.xcodeproj -scheme Viim -destination 'id=E21236A8-1735-5EB6-9A8D-E41C165B962E' -allowProvisioningUpdates -allowProvisioningDeviceRegistration DEVELOPMENT_TEAM=MJJ6A56JHS CODE_SIGN_STYLE=Automatic build` : OK.
+  - Installation iPhone réel via `xcrun devicectl device install app` : OK.
+  - Lancement iPhone réel de `com.yamstack.viim` : OK.
+  - Capture avant : `/private/tmp/viim-current-screen.png` montre le letterboxing.
+  - Capture après onboarding : `/private/tmp/viim-after-localized-ui-fix.png` montre l'écran plein format avec textes localisés.
+  - Capture après Accueil : `/private/tmp/viim-home-final-clean.png` confirme l'absence de bandes noires ; la permission iOS localisation peut encore masquer l'écran au premier lancement, comportement attendu.
+- Limite :
+  - `UI-002` reste ouvert pour les onglets Conduite, Assistance et Prévention, qui devront être réalignés écran par écran sur la maquette HTML.

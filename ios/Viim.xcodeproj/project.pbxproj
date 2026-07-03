@@ -25,6 +25,7 @@
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
+		100000000000000000000013 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000116 /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 		100000000000000000000111 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		100000000000000000000112 /* Viim.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Viim.entitlements; sourceTree = "<group>"; };
 		100000000000000000000113 /* Viim.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Viim.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		100000000000000000000116 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				100000000000000000000111 /* Info.plist */,
+				100000000000000000000116 /* LaunchScreen.storyboard */,
 				100000000000000000000112 /* Viim.entitlements */,
 				10000000000000000000010E /* Localizable.strings */,
 				10000000000000000000010F /* InfoPlist.strings */,
@@ -182,6 +185,7 @@
 				10000000000000000000000E /* Localizable.strings in Resources */,
 				10000000000000000000000F /* InfoPlist.strings in Resources */,
 				100000000000000000000010 /* Assets.xcassets in Resources */,
+				100000000000000000000013 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

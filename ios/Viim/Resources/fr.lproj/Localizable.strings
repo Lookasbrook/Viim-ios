@@ -11,17 +11,24 @@
 "onboarding.identity.title" = "Votre profil";
 "onboarding.identity.header" = "Bienvenue dans Viim";
 "onboarding.identity.detail" = "Créez votre profil local pour préparer le suivi de conduite et les alertes de sécurité.";
+"onboarding.identity.firstName.label" = "Prénom";
 "onboarding.identity.firstName.placeholder" = "Votre prénom";
+"onboarding.identity.phone.label" = "Téléphone";
 "onboarding.identity.phone.placeholder" = "+226 00 00 00 00";
 "onboarding.identity.consent" = "Viim demandera votre localisation ensuite pour détecter vos trajets et partager votre position uniquement en cas d'accident confirmé.";
 "onboarding.identity.error" = "Renseignez votre prénom et un numéro burkinabè au format +226.";
 
 "onboarding.vehicle.title" = "Moyen de déplacement";
 "onboarding.vehicle.header" = "Votre moyen de déplacement";
-"onboarding.vehicle.detail" = "Le type choisi adapte les seuils de détection, les rappels et les textes de l'app.";
+"onboarding.vehicle.detail" = "Viim adapte ses mesures et ses conseils à votre véhicule.";
+"onboarding.vehicle.type.label" = "Type de véhicule";
 "onboarding.vehicle.preview.title" = "Aperçu dans l'accueil";
+"onboarding.vehicle.preview.detail" = "Aperçu — vous pourrez ajouter une photo de votre véhicule";
+"onboarding.vehicle.brand.label" = "Marque";
 "onboarding.vehicle.brand.placeholder" = "Marque";
+"onboarding.vehicle.model.label" = "Modèle";
 "onboarding.vehicle.model.placeholder" = "Modèle";
+"onboarding.vehicle.year.label" = "Année";
 "onboarding.vehicle.year.placeholder" = "Année";
 "onboarding.vehicle.error" = "Choisissez votre moyen de déplacement.";
 
@@ -29,7 +36,9 @@
 "onboarding.safety.header" = "Préparez vos alertes";
 "onboarding.safety.detail" = "Vous pouvez ajouter un contact d'urgence maintenant ou terminer cette étape plus tard.";
 "onboarding.safety.contact.title" = "Contact d'urgence";
+"onboarding.safety.contactName.label" = "Nom";
 "onboarding.safety.contactName.placeholder" = "Nom du contact";
+"onboarding.safety.contactPhone.label" = "Téléphone";
 "onboarding.safety.contactPhone.placeholder" = "Téléphone du contact";
 "onboarding.safety.keychain" = "Ce contact est stocké dans le trousseau de l'iPhone.";
 "onboarding.safety.medical.title" = "Fiche médicale";
@@ -46,14 +55,34 @@
 "status.pendingCalibration" = "En attente de calibration";
 
 "home.title" = "Accueil";
+"home.greeting" = "Bonsoir";
+"home.greeting.defaultName" = "Conducteur";
 "home.vehicle.title" = "Votre moyen de déplacement";
 "home.vehicle.status" = "Suivi actif";
 "home.vehicle.empty" = "Moyen de déplacement à confirmer";
 "home.summary.title" = "Résumé du jour";
+"home.summary.status" = "À jour";
 "home.summary.calibration" = "Calibration en cours (trajet 0/5)";
+"home.metric.score.calibration" = "--";
+"home.metric.score.label" = "Score /100";
+"home.metric.distance.empty" = "0 km";
+"home.metric.distance.label" = "Distance";
+"home.metric.trips.empty" = "0";
+"home.metric.trips.label" = "Trajets";
+"home.metric.duration.empty" = "0 min";
+"home.metric.duration.label" = "Conduite";
+"home.metric.fuel.empty" = "0 L";
+"home.metric.fuel.label" = "Essence";
+"home.metric.savings.empty" = "0 F";
+"home.metric.savings.label" = "Économisés";
 "home.status.tripDetection" = "Détection de trajet";
 "home.status.collisionDetection" = "Détection de collision";
+"home.status.familyAlert" = "Alerte famille";
+"home.status.familyAlert.empty" = "À configurer";
 "home.status.network" = "Connexion réseau";
+"home.recentTrips.title" = "Trajets récents";
+"home.recentTrips.empty.title" = "Aucun trajet enregistré";
+"home.recentTrips.empty.detail" = "Vos premiers trajets apparaîtront ici après la calibration.";
 
 "location.monitoring.paused" = "Suivi en pause";
 "location.permission.notDetermined" = "Autorisation à confirmer";

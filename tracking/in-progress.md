@@ -52,6 +52,17 @@
   - Vérifié : build simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
   - Validation terrain restante : scénario S1 complet (20 min écran verrouillé) à exécuter dans `qa/test-results.md` avant ouverture externe.
 
+## UI — Plein écran et réalignement maquette HTML
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [design/maquettes-ecrans.html](../design/maquettes-ecrans.html), [qa/known-issues.md](../qa/known-issues.md)
+- Notes d'avancement :
+  - Objectif : corriger l'affichage letterboxé sur iPhone et réaligner les premiers écrans SwiftUI sur la maquette HTML.
+  - Bugs ciblés : `UI-001` plein écran iOS, `UI-002` écart visuel HTML.
+  - Implémenté : `LaunchScreen.storyboard` déclaré dans `Info.plist`, composants visuels partagés, onboarding et Accueil réalignés sur la maquette HTML.
+  - Vérifié : build simulateur OK ; captures simulateur avant/après conservées dans `/private/tmp/viim-current-screen.png`, `/private/tmp/viim-after-localized-ui-fix.png` et `/private/tmp/viim-home-final-clean.png`.
+
 Format d'entrée :
 
 ```

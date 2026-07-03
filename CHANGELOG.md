@@ -9,6 +9,8 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[QA]** Onboarding validé par build simulateur, build signé iPhone réel, installation et lancement de `com.yamstack.viim` sur l'iPhone de Guy.
 - **[iOS]** Ajout de `LocationService` : GPS arrière-plan, autorisation Always, détection automatique début/fin de trajet, précision normale/économie et état de suivi visible sur l'Accueil.
 - **[QA]** Préflight S1 validé sur iPhone réel : build signé, installation et lancement OK ; roulage terrain 20 min écran verrouillé encore à exécuter.
+- **[iOS]** Correction de l'affichage plein écran : ajout d'un Launch Screen natif pour supprimer le letterboxing sur iPhone.
+- **[Design]** Réalignement des écrans Onboarding et Accueil sur `design/maquettes-ecrans.html` : brand mark, hero, carte véhicule, KPI, statuts et illustration adaptative.
 
 ## 2026-07-02
 

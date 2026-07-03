@@ -7,31 +7,41 @@ struct OnboardingView: View {
     @State private var errorKey: LocalizedStringKey?
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                ViimBrandMark()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
+
                 OnboardingProgressView(currentStep: step)
+                    .frame(maxWidth: .infinity)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        stepContent
+                Text(step.titleKey)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(ViimColors.text)
+                    .padding(.horizontal, 2)
 
-                        if let errorKey {
-                            Text(errorKey)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(ViimColors.danger)
-                        }
-                    }
-                    .padding(20)
+                Text(step.detailKey)
+                    .font(.subheadline)
+                    .foregroundStyle(ViimColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 2)
+
+                stepContent
+
+                if let errorKey {
+                    Text(errorKey)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(ViimColors.danger)
                 }
 
                 actionBar
-                    .padding(20)
-                    .background(.regularMaterial)
+                    .padding(.top, 2)
             }
-            .background(ViimColors.background)
-            .navigationTitle(step.titleKey)
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 18)
         }
+        .background(ViimColors.background.ignoresSafeArea())
     }
 
     @ViewBuilder
@@ -47,82 +57,80 @@ struct OnboardingView: View {
     }
 
     private var identityStep: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            OnboardingHeader(
-                systemImage: "person.crop.circle.badge.checkmark",
-                titleKey: "onboarding.identity.header",
-                detailKey: "onboarding.identity.detail",
-                tint: ViimColors.navy
+        VStack(alignment: .leading, spacing: 10) {
+            LabeledTextField(
+                labelKey: "onboarding.identity.firstName.label",
+                placeholderKey: "onboarding.identity.firstName.placeholder",
+                text: $draft.firstName
             )
+            .textContentType(.givenName)
+            .submitLabel(.next)
+            .textInputAutocapitalization(.words)
 
-            VStack(spacing: 12) {
-                TextField("onboarding.identity.firstName.placeholder", text: $draft.firstName)
-                    .textContentType(.givenName)
-                    .submitLabel(.next)
-                    .textInputAutocapitalization(.words)
-                    .formFieldStyle()
-
-                TextField("onboarding.identity.phone.placeholder", text: $draft.phoneNumber)
-                    .textContentType(.telephoneNumber)
-                    .keyboardType(.phonePad)
-                    .formFieldStyle()
-            }
+            LabeledTextField(
+                labelKey: "onboarding.identity.phone.label",
+                placeholderKey: "onboarding.identity.phone.placeholder",
+                text: $draft.phoneNumber
+            )
+            .textContentType(.telephoneNumber)
+            .keyboardType(.phonePad)
 
             Text("onboarding.identity.consent")
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ViimColors.muted)
                 .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
         }
     }
 
     private var vehicleStep: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            OnboardingHeader(
-                systemImage: draft.vehicleType.symbolName,
-                titleKey: "onboarding.vehicle.header",
-                detailKey: "onboarding.vehicle.detail",
-                tint: draft.vehicleType.tint
-            )
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("onboarding.vehicle.type.label")
+                    .fieldLabelStyle()
 
-            HStack(spacing: 10) {
-                ForEach(VehicleType.allCases) { type in
-                    VehicleTypeButton(
-                        type: type,
-                        isSelected: draft.vehicleType == type
-                    ) {
-                        draft.vehicleType = type
+                HStack(spacing: 8) {
+                    ForEach(VehicleType.allCases) { type in
+                        VehicleTypeButton(
+                            type: type,
+                            isSelected: draft.vehicleType == type
+                        ) {
+                            draft.vehicleType = type
+                        }
                     }
                 }
             }
 
+            LabeledTextField(
+                labelKey: "onboarding.vehicle.brand.label",
+                placeholderKey: "onboarding.vehicle.brand.placeholder",
+                text: $draft.vehicleBrand
+            )
+            .textContentType(.organizationName)
+            .textInputAutocapitalization(.words)
+
+            LabeledTextField(
+                labelKey: "onboarding.vehicle.model.label",
+                placeholderKey: "onboarding.vehicle.model.placeholder",
+                text: $draft.vehicleModel
+            )
+            .textInputAutocapitalization(.words)
+
+            LabeledTextField(
+                labelKey: "onboarding.vehicle.year.label",
+                placeholderKey: "onboarding.vehicle.year.placeholder",
+                text: $draft.vehicleYear
+            )
+            .keyboardType(.numberPad)
+
             VehiclePreviewCard(draft: draft)
-
-            VStack(spacing: 12) {
-                TextField("onboarding.vehicle.brand.placeholder", text: $draft.vehicleBrand)
-                    .textContentType(.organizationName)
-                    .textInputAutocapitalization(.words)
-                    .formFieldStyle()
-
-                TextField("onboarding.vehicle.model.placeholder", text: $draft.vehicleModel)
-                    .textInputAutocapitalization(.words)
-                    .formFieldStyle()
-
-                TextField("onboarding.vehicle.year.placeholder", text: $draft.vehicleYear)
-                    .keyboardType(.numberPad)
-                    .formFieldStyle()
-            }
         }
     }
 
     private var safetyStep: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            OnboardingHeader(
-                systemImage: "cross.case.fill",
-                titleKey: "onboarding.safety.header",
-                detailKey: "onboarding.safety.detail",
-                tint: ViimColors.red
-            )
-
+        VStack(alignment: .leading, spacing: 10) {
             ViimCard {
                 VStack(alignment: .leading, spacing: 12) {
                     Label {
@@ -133,19 +141,25 @@ struct OnboardingView: View {
                             .foregroundStyle(ViimColors.red)
                     }
 
-                    TextField("onboarding.safety.contactName.placeholder", text: $draft.emergencyContactName)
-                        .textContentType(.name)
-                        .textInputAutocapitalization(.words)
-                        .formFieldStyle()
+                    LabeledTextField(
+                        labelKey: "onboarding.safety.contactName.label",
+                        placeholderKey: "onboarding.safety.contactName.placeholder",
+                        text: $draft.emergencyContactName
+                    )
+                    .textContentType(.name)
+                    .textInputAutocapitalization(.words)
 
-                    TextField("onboarding.safety.contactPhone.placeholder", text: $draft.emergencyContactPhone)
-                        .textContentType(.telephoneNumber)
-                        .keyboardType(.phonePad)
-                        .formFieldStyle()
+                    LabeledTextField(
+                        labelKey: "onboarding.safety.contactPhone.label",
+                        placeholderKey: "onboarding.safety.contactPhone.placeholder",
+                        text: $draft.emergencyContactPhone
+                    )
+                    .textContentType(.telephoneNumber)
+                    .keyboardType(.phonePad)
 
                     Text("onboarding.safety.keychain")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ViimColors.muted)
                 }
             }
 
@@ -156,7 +170,7 @@ struct OnboardingView: View {
                             .font(.headline)
                         Text("onboarding.safety.medical.detail")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(ViimColors.muted)
                     }
                 } icon: {
                     Image(systemName: "lock.shield.fill")
@@ -176,6 +190,7 @@ struct OnboardingView: View {
                     Label("onboarding.action.back", systemImage: "chevron.left")
                 }
                 .buttonStyle(.bordered)
+                .tint(ViimColors.blue)
             }
 
             Spacer(minLength: 0)
@@ -190,6 +205,7 @@ struct OnboardingView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .tint(step.tint)
         }
     }
@@ -261,6 +277,14 @@ private enum OnboardingStep: Int, CaseIterable {
         }
     }
 
+    var detailKey: LocalizedStringKey {
+        switch self {
+        case .identity: "onboarding.identity.detail"
+        case .vehicle: "onboarding.vehicle.detail"
+        case .safety: "onboarding.safety.detail"
+        }
+    }
+
     var errorKey: LocalizedStringKey {
         switch self {
         case .identity: "onboarding.identity.error"
@@ -308,39 +332,11 @@ private struct OnboardingProgressView: View {
         HStack(spacing: 8) {
             ForEach(OnboardingStep.allCases, id: \.rawValue) { step in
                 Capsule()
-                    .fill(step.rawValue <= currentStep.rawValue ? currentStep.tint : Color(.systemGray5))
-                    .frame(height: 4)
+                    .fill(step.rawValue <= currentStep.rawValue ? ViimColors.blue : Color(hex: 0xD7E2EC))
+                    .frame(width: 26, height: 4)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-    }
-}
-
-private struct OnboardingHeader: View {
-    let systemImage: String
-    let titleKey: LocalizedStringKey
-    let detailKey: LocalizedStringKey
-    let tint: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 52, height: 52)
-                .background(tint.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            Text(titleKey)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(ViimColors.text)
-
-            Text(detailKey)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        .padding(.vertical, 4)
     }
 }
 
@@ -359,11 +355,15 @@ private struct VehicleTypeButton: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .foregroundStyle(isSelected ? Color.white : type.tint)
+            .foregroundStyle(type.tint)
             .frame(maxWidth: .infinity)
-            .frame(height: 82)
-            .background(isSelected ? type.tint : type.tint.opacity(0.10))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .frame(height: 74)
+            .background(isSelected ? Color(hex: 0xEDF5FC) : Color.white)
+            .overlay(
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(isSelected ? ViimColors.blue : Color(hex: 0xD7E2EC), lineWidth: isSelected ? 2.5 : 1.5)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -374,26 +374,21 @@ private struct VehiclePreviewCard: View {
 
     var body: some View {
         ViimCard {
-            HStack(spacing: 14) {
-                Image(systemName: draft.vehicleType.symbolName)
-                    .font(.system(size: 44, weight: .semibold))
-                    .foregroundStyle(draft.vehicleType.tint)
-                    .frame(width: 72, height: 72)
-                    .background(draft.vehicleType.tint.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(spacing: 7) {
+                VehicleIllustration(type: draft.vehicleType)
+                    .frame(maxWidth: .infinity)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("onboarding.vehicle.preview.title")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text(vehicleName)
-                        .font(.headline)
-                        .foregroundStyle(ViimColors.text)
-                    Text(draft.vehicleType.statusKey)
-                        .font(.footnote)
-                        .foregroundStyle(ViimColors.success)
-                }
+                Text(vehicleName.uppercased())
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(ViimColors.text)
+                    .multilineTextAlignment(.center)
+
+                Text("onboarding.vehicle.preview.detail")
+                    .font(.caption)
+                    .foregroundStyle(ViimColors.muted)
+                    .multilineTextAlignment(.center)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -405,12 +400,41 @@ private struct VehiclePreviewCard: View {
     }
 }
 
+private struct LabeledTextField: View {
+    let labelKey: LocalizedStringKey
+    let placeholderKey: LocalizedStringKey
+    @Binding var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(labelKey)
+                .fieldLabelStyle()
+            TextField(placeholderKey, text: $text)
+                .formFieldStyle()
+        }
+    }
+}
+
 private extension View {
     func formFieldStyle() -> some View {
         self
             .textFieldStyle(.plain)
-            .padding(14)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .font(.body)
+            .foregroundStyle(ViimColors.text)
+            .padding(.horizontal, 12)
+            .frame(height: 46)
+            .background(Color.white)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(hex: 0xD7E2EC), lineWidth: 1.5)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    func fieldLabelStyle() -> some View {
+        self
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(ViimColors.muted)
+            .textCase(.uppercase)
     }
 }

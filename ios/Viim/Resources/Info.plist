@@ -32,6 +32,8 @@
 	<string>Viim utilise votre position pour afficher votre trajet et votre localisation actuelle.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Viim utilise les capteurs de mouvement pour détecter les freinages brusques et les collisions.</string>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
