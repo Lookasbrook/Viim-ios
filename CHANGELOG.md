@@ -27,6 +27,10 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[iOS]** Accueil recentré sur les trajets d'aujourd'hui : la liste est filtrée sur la journée en cours et affiche seulement les trajets persistés aujourd'hui.
 - **[QA]** Ajout de `MotionActivityServiceTests` pour valider les déclencheurs moto/voiture/vélo, l'immobilité et la faible confiance ; build/test simulateur OK, build signé iPhone réel OK, installation et lancement OK.
 - **[ADR]** Décision `2026-07-03-detection-mouvement-sans-bouton` : détection automatique par mouvement, GPS coupé à l'arrêt, pas de friction utilisateur.
+- **[iOS]** Correction du parcours du jour absent malgré GPS autorisé : ajout de diagnostics appareil, réveils passifs localisation, promotion GPS continu seulement sur mouvement réel et finalisation de trajet actif après immobilité.
+- **[Design]** Accueil : statut `Réveil automatique actif` quand Viim est prêt à démarrer automatiquement un trajet sans suivi GPS continu.
+- **[QA]** Diagnostic iPhone réel `TRIP-003` : autorisation `authorizedAlways` confirmée, base appareil vide (`ZTRIP=0`, `ZTRIPEVENT=0`, `ZDAILYSUMMARY=0`), tests simulateur OK, build signé et installation iPhone OK, logs finaux sans démarrage GPS continu à l'arrêt.
+- **[ADR]** Décision `2026-07-03-reveils-passifs-localisation` : écoute légère par changements significatifs et impossibilité de reconstruire rétroactivement un trajet non collecté.
 
 ## 2026-07-02
 

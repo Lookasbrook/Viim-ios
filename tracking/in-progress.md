@@ -159,6 +159,21 @@
   - ADR : [2026-07-03-detection-mouvement-sans-bouton](../decisions/2026-07-03-detection-mouvement-sans-bouton.md).
   - Tests : `MotionActivityServiceTests` et `TripStoreTests` mis à jour ; `xcodebuild test` simulateur OK ; build signé iPhone réel OK ; installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
 
+## Phase 1 — Parcours du jour absent malgré GPS autorisé
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [features/onglet-1-accueil.md](../features/onglet-1-accueil.md), [architecture/sensor-algorithms.md](../architecture/sensor-algorithms.md), [qa/known-issues.md](../qa/known-issues.md)
+- Notes d'avancement :
+  - Objectif : faire apparaître le parcours d'aujourd'hui dans l'Accueil après autorisation GPS.
+  - Symptôme : Guy ne voit aucune donnée de trajet du jour sur iPhone.
+  - Investigation demandée : lire les logs iPhone et trouver où le pipeline mouvement → GPS → trajet terminé → CoreData s'arrête.
+  - Cause confirmée : l'iPhone a bien `authorizedAlways`, mais la base locale de l'appareil contenait `0` ligne dans `ZTRIP`, `ZTRIPEVENT` et `ZDAILYSUMMARY`; aucun trajet n'avait donc été persisté à afficher.
+  - Cause technique : Viim dépendait surtout de l'app active et de `CoreMotion` pour lancer le GPS continu. Un départ en arrière-plan pouvait ne pas promouvoir la collecte, et un trajet actif pouvait rester non persisté si iOS cessait d'envoyer des points basse vitesse à l'arrêt.
+  - Bug secondaire trouvé sur logs iPhone : le réveil passif envoyait un point initial immobile et lançait le GPS continu, créant une boucle `start active` → `stationary` → `stop`.
+  - Implémenté : `ViimDiagnostics`, réveils passifs `startMonitoringSignificantLocationChanges`, promotion vers GPS continu seulement si vitesse/déplacement réel, finalisation de trajet actif après immobilité et affichage `Réveil automatique actif` dans l'Accueil.
+  - Vérifié : `xcodebuild test` simulateur OK ; build signé iPhone réel OK ; installation OK ; logs iPhone finaux : `location.authorization state=authorizedAlways`, `location.passiveWakeups.start`, `location.passiveWakeup.ignored count=1`, `motion.phase stationary`, sans `location.start active` à l'arrêt.
+
 
 Format d'entrée :
 

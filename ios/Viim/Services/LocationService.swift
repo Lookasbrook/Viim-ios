@@ -90,6 +90,9 @@ final class LocationService: NSObject, ObservableObject {
         static let stopSpeedThresholdKmh = 3.0
         static let stopSustainedDuration: TimeInterval = 5 * 60
         static let candidateWindow: TimeInterval = 120
+        static let minimumPersistedTripDistanceMeters: CLLocationDistance = 80
+        static let minimumPersistedTripDuration: TimeInterval = 60
+        static let passiveWakeupDistanceThresholdMeters: CLLocationDistance = 250
     }
 
     private let manager = CLLocationManager()
@@ -104,6 +107,7 @@ final class LocationService: NSObject, ObservableObject {
 
     @Published private(set) var authorizationState: LocationAuthorizationState = .notDetermined
     @Published private(set) var isMonitoring = false
+    @Published private(set) var isPassiveWakeupMonitoring = false
     @Published private(set) var tripPhase: TripDetectionPhase = .idle
     @Published private(set) var currentSpeedKmh = 0.0
     @Published private(set) var latestLocation: CLLocation?
@@ -141,6 +145,7 @@ final class LocationService: NSObject, ObservableObject {
         shouldMonitorAfterAuthorization = false
         configureManager()
         requestAuthorization()
+        startPassiveWakeupMonitoringIfAllowed()
     }
 
     func startMonitoring() {
@@ -148,6 +153,7 @@ final class LocationService: NSObject, ObservableObject {
 
         guard authorizationState.canTrackLocation else {
             isMonitoring = false
+            ViimDiagnostics.log("location.start.requestAuthorization state=\(authorizationState)")
             requestAuthorization()
             return
         }
@@ -156,16 +162,49 @@ final class LocationService: NSObject, ObservableObject {
         manager.startUpdatingLocation()
         if authorizationState == .authorizedAlways {
             manager.startMonitoringSignificantLocationChanges()
+            isPassiveWakeupMonitoring = true
         }
         isMonitoring = true
+        ViimDiagnostics.log("location.start active authorization=\(authorizationState)")
     }
 
-    func stopMonitoring() {
+    func stopMonitoring(keepPassiveWakeups: Bool = true) {
         shouldMonitorAfterAuthorization = false
         manager.stopUpdatingLocation()
-        manager.stopMonitoringSignificantLocationChanges()
         isMonitoring = false
+        ViimDiagnostics.log("location.stop phase=\(tripPhase)")
         resetDetectionState()
+
+        if keepPassiveWakeups {
+            startPassiveWakeupMonitoringIfAllowed()
+        } else {
+            manager.stopMonitoringSignificantLocationChanges()
+            isPassiveWakeupMonitoring = false
+        }
+    }
+
+    func finishActiveTripAfterStationaryMotion() {
+        guard let activeTrip else {
+            return
+        }
+
+        let endedAt = max(Date(), activeTrip.lastUpdatedAt)
+        let duration = endedAt.timeIntervalSince(activeTrip.startedAt)
+        guard Self.shouldPersistTripAfterStationaryMotion(distanceMeters: activeTrip.distanceMeters, duration: duration) else {
+            ViimDiagnostics.log("trip.finish.motionStop ignored distanceMeters=\(Int(activeTrip.distanceMeters)) durationSec=\(Int(duration))")
+            return
+        }
+
+        ViimDiagnostics.log("trip.finish.motionStop distanceMeters=\(Int(activeTrip.distanceMeters)) durationSec=\(Int(duration))")
+        endTrip(endedAt: endedAt)
+    }
+
+    static func shouldPersistTripAfterStationaryMotion(
+        distanceMeters: CLLocationDistance,
+        duration: TimeInterval
+    ) -> Bool {
+        distanceMeters >= Constants.minimumPersistedTripDistanceMeters ||
+            duration >= Constants.minimumPersistedTripDuration
     }
 
     private func configureManager() {
@@ -175,6 +214,36 @@ final class LocationService: NSObject, ObservableObject {
         manager.activityType = vehicleType == .velo ? .fitness : .automotiveNavigation
         manager.desiredAccuracy = batterySavingMode ? Constants.economyAccuracyMeters : Constants.normalAccuracyMeters
         manager.distanceFilter = batterySavingMode ? Constants.economyDistanceFilterMeters : Constants.normalDistanceFilterMeters
+    }
+
+    private func startPassiveWakeupMonitoringIfAllowed() {
+        guard authorizationState == .authorizedAlways else {
+            isPassiveWakeupMonitoring = false
+            return
+        }
+
+        guard !isPassiveWakeupMonitoring else {
+            return
+        }
+
+        manager.startMonitoringSignificantLocationChanges()
+        isPassiveWakeupMonitoring = true
+        ViimDiagnostics.log("location.passiveWakeups.start")
+    }
+
+    private func shouldPromotePassiveWakeupToContinuousMonitoring(_ locations: [CLLocation]) -> Bool {
+        for location in locations where isUsable(location) {
+            if resolvedSpeedKmh(for: location) >= Constants.startSpeedThresholdKmh {
+                return true
+            }
+
+            if let lastAcceptedLocation,
+               location.distance(from: lastAcceptedLocation) >= Constants.passiveWakeupDistanceThresholdMeters {
+                return true
+            }
+        }
+
+        return false
     }
 
     private func ingest(_ location: CLLocation) {
@@ -290,6 +359,7 @@ final class LocationService: NSObject, ObservableObject {
         resetStartCandidate()
         belowStopSpeedSince = nil
         tripPhase = .active
+        ViimDiagnostics.log("trip.begin samples=\(trip.sampleCount) distanceMeters=\(Int(trip.distanceMeters))")
     }
 
     private func appendActiveSample(_ sample: LocationSample, location: CLLocation) {
@@ -323,6 +393,7 @@ final class LocationService: NSObject, ObservableObject {
             distanceMeters: activeTrip.distanceMeters,
             sampleCount: activeTrip.sampleCount
         )
+        ViimDiagnostics.log("trip.end distanceMeters=\(Int(activeTrip.distanceMeters)) samples=\(activeTrip.sampleCount)")
 
         self.activeTrip = nil
         lastRouteLocation = nil
@@ -366,6 +437,8 @@ extension LocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationState = LocationAuthorizationState(status: manager.authorizationStatus)
         configureManager()
+        ViimDiagnostics.log("location.authorization state=\(authorizationState)")
+        startPassiveWakeupMonitoringIfAllowed()
 
         if shouldMonitorAfterAuthorization, authorizationState.canTrackLocation {
             startMonitoring()
@@ -373,6 +446,15 @@ extension LocationService: CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if !isMonitoring, authorizationState == .authorizedAlways {
+            if shouldPromotePassiveWakeupToContinuousMonitoring(locations) {
+                ViimDiagnostics.log("location.passiveWakeup.promote count=\(locations.count)")
+                startMonitoring()
+            } else {
+                ViimDiagnostics.log("location.passiveWakeup.ignored count=\(locations.count)")
+            }
+        }
+
         locations.forEach(ingest)
     }
 
@@ -380,6 +462,7 @@ extension LocationService: CLLocationManagerDelegate {
         if (error as? CLError)?.code == .denied {
             authorizationState = .denied
             isMonitoring = false
+            isPassiveWakeupMonitoring = false
         }
     }
 }

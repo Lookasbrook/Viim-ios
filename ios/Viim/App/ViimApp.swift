@@ -37,13 +37,14 @@ private struct AppLaunchView: View {
     @EnvironmentObject private var locationService: LocationService
     @EnvironmentObject private var motionActivityService: MotionActivityService
     @EnvironmentObject private var tripManager: TripManager
+    @State private var stationaryFinalizationTask: Task<Void, Never>?
 
     var body: some View {
         if onboardingStore.isCompleted {
             RootTabView()
                 .task(id: onboardingStore.profile?.vehicleType.rawValue) {
                     guard let profile = onboardingStore.profile else {
-                        locationService.stopMonitoring()
+                        locationService.stopMonitoring(keepPassiveWakeups: false)
                         return
                     }
                     locationService.configure(vehicleType: profile.vehicleType)
@@ -75,20 +76,56 @@ private struct AppLaunchView: View {
     }
 
     private func reconcileAutomaticTracking() {
+        ViimDiagnostics.log("motion.phase \(motionActivityService.phase)")
+
         if motionActivityService.phase.shouldTriggerLocationMonitoring {
+            stationaryFinalizationTask?.cancel()
+            stationaryFinalizationTask = nil
+
             if !locationService.isMonitoring {
+                ViimDiagnostics.log("motion.triggerLocationMonitoring")
                 locationService.startMonitoring()
             }
             return
         }
 
-        guard motionActivityService.phase == .stationary,
-              locationService.isMonitoring,
-              locationService.activeTrip == nil,
+        guard motionActivityService.phase == .stationary else {
+            stationaryFinalizationTask?.cancel()
+            stationaryFinalizationTask = nil
+            return
+        }
+
+        if locationService.activeTrip != nil {
+            scheduleStationaryTripFinalization()
+            return
+        }
+
+        guard locationService.isMonitoring,
               locationService.tripPhase == .idle else {
             return
         }
 
+        ViimDiagnostics.log("motion.stationaryStopLocationMonitoring")
         locationService.stopMonitoring()
+    }
+
+    private func scheduleStationaryTripFinalization() {
+        guard stationaryFinalizationTask == nil else {
+            return
+        }
+
+        stationaryFinalizationTask = Task { @MainActor in
+            ViimDiagnostics.log("trip.stationaryFinalize.scheduled")
+            try? await Task.sleep(nanoseconds: 90_000_000_000)
+
+            guard !Task.isCancelled,
+                  motionActivityService.phase == .stationary else {
+                ViimDiagnostics.log("trip.stationaryFinalize.cancelled")
+                return
+            }
+
+            locationService.finishActiveTripAfterStationaryMotion()
+            stationaryFinalizationTask = nil
+        }
     }
 }

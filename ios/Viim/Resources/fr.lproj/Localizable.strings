@@ -63,8 +63,10 @@
 "home.monitoring.title" = "Suivi de trajet";
 "home.monitoring.permission.detail" = "Autorisez la position pour détecter vos trajets.";
 "home.monitoring.denied.detail" = "La position est refusée dans les réglages iOS.";
+"home.monitoring.passive.detail" = "Viim reste en veille légère et démarrera le GPS au prochain déplacement.";
 "home.monitoring.status.needsPermission" = "Autorisation requise";
 "home.monitoring.status.gpsConfirming" = "Confirmation GPS active";
+"home.monitoring.status.passiveWakeup" = "Réveil automatique actif";
 "home.activeTrip.title" = "Trajet en cours";
 "home.summary.title" = "Résumé du jour";
 "home.summary.status" = "À jour";
@@ -106,7 +108,7 @@
 "motion.status.moving" = "Mouvement détecté";
 "motion.detail.unavailable" = "La détection de mouvement n'est pas disponible sur cet appareil.";
 "motion.detail.waiting" = "Viim attend un déplacement cohérent avec votre véhicule.";
-"motion.detail.stationary" = "Le GPS reste coupé tant que le téléphone est immobile.";
+"motion.detail.stationary" = "Viim attend le prochain déplacement sans suivi GPS continu.";
 "motion.detail.moving" = "Viim confirme le trajet avec le GPS et consigne les données utiles.";
 
 "format.distance.km" = "%.1f km";

@@ -48,9 +48,11 @@ final class TripManager: ObservableObject {
                 vehicleType: vehicleType,
                 isCalibration: isCalibration
             )
+            ViimDiagnostics.log("trip.persisted distanceMeters=\(Int(completedTrip.distanceMeters)) samples=\(completedTrip.sampleCount) calibration=\(isCalibration)")
             refresh()
         } catch {
             hasPersistenceError = true
+            ViimDiagnostics.log("trip.persist.failed")
         }
     }
 }

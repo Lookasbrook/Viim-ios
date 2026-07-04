@@ -29,6 +29,8 @@
 		300000000000000000000003 /* TripStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300000000000000000000103 /* TripStoreTests.swift */; };
 		400000000000000000000001 /* MotionActivityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000101 /* MotionActivityService.swift */; };
 		400000000000000000000002 /* MotionActivityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000102 /* MotionActivityServiceTests.swift */; };
+		500000000000000000000001 /* ViimDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500000000000000000000101 /* ViimDiagnostics.swift */; };
+		600000000000000000000001 /* LocationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600000000000000000000101 /* LocationServiceTests.swift */; };
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
@@ -61,6 +63,7 @@
 		200000000000000000000101 /* VehiclePhotoCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/VehiclePhotoCatalog.swift; sourceTree = "<group>"; };
 		300000000000000000000102 /* TripManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/TripManager.swift; sourceTree = "<group>"; };
 		400000000000000000000101 /* MotionActivityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/MotionActivityService.swift; sourceTree = "<group>"; };
+		500000000000000000000101 /* ViimDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/ViimDiagnostics.swift; sourceTree = "<group>"; };
 		10000000000000000000010D /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/PersistenceController.swift; sourceTree = "<group>"; };
 		300000000000000000000101 /* TripStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/TripStore.swift; sourceTree = "<group>"; };
 		100000000000000000000114 /* OnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStore.swift; sourceTree = "<group>"; };
@@ -76,6 +79,7 @@
 		200000000000000000000103 /* VehiclePhotoCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclePhotoCatalogTests.swift; sourceTree = "<group>"; };
 		300000000000000000000103 /* TripStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStoreTests.swift; sourceTree = "<group>"; };
 		400000000000000000000102 /* MotionActivityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionActivityServiceTests.swift; sourceTree = "<group>"; };
+		600000000000000000000101 /* LocationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +114,7 @@
 				200000000000000000000101 /* VehiclePhotoCatalog.swift */,
 				300000000000000000000102 /* TripManager.swift */,
 				400000000000000000000101 /* MotionActivityService.swift */,
+				500000000000000000000101 /* ViimDiagnostics.swift */,
 				10000000000000000000010B /* SensorFiltering.swift */,
 				10000000000000000000010C /* LocationService.swift */,
 				10000000000000000000010D /* PersistenceController.swift */,
@@ -156,6 +161,7 @@
 				200000000000000000000103 /* VehiclePhotoCatalogTests.swift */,
 				300000000000000000000103 /* TripStoreTests.swift */,
 				400000000000000000000102 /* MotionActivityServiceTests.swift */,
+				600000000000000000000101 /* LocationServiceTests.swift */,
 			);
 			path = ViimTests;
 			sourceTree = "<group>";
@@ -287,6 +293,7 @@
 				300000000000000000000001 /* TripStore.swift in Sources */,
 				300000000000000000000002 /* TripManager.swift in Sources */,
 				400000000000000000000001 /* MotionActivityService.swift in Sources */,
+				500000000000000000000001 /* ViimDiagnostics.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -297,6 +304,7 @@
 				200000000000000000000002 /* VehiclePhotoCatalogTests.swift in Sources */,
 				300000000000000000000003 /* TripStoreTests.swift in Sources */,
 				400000000000000000000002 /* MotionActivityServiceTests.swift in Sources */,
+				600000000000000000000001 /* LocationServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

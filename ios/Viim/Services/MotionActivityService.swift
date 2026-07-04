@@ -70,6 +70,7 @@ final class MotionActivityService: ObservableObject {
         guard CMMotionActivityManager.isActivityAvailable() else {
             phase = .unavailable
             isAutoDetectionActive = false
+            ViimDiagnostics.log("motion.unavailable")
             return
         }
 
@@ -79,6 +80,7 @@ final class MotionActivityService: ObservableObject {
 
         phase = .waitingForMovement
         isAutoDetectionActive = true
+        ViimDiagnostics.log("motion.startAutoDetection vehicleType=\(vehicleType.rawValue)")
 
         manager.startActivityUpdates(to: queue) { [weak self] activity in
             guard let activity else {
@@ -99,6 +101,7 @@ final class MotionActivityService: ObservableObject {
         manager.stopActivityUpdates()
         isAutoDetectionActive = false
         phase = .waitingForMovement
+        ViimDiagnostics.log("motion.stopAutoDetection")
     }
 
     nonisolated static func phase(

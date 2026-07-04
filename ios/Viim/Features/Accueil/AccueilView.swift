@@ -21,6 +21,7 @@ struct AccueilView: View {
                     authorizationState: locationService.authorizationState,
                     movementPhase: motionActivityService.phase,
                     isMonitoring: locationService.isMonitoring,
+                    isPassiveWakeupMonitoring: locationService.isPassiveWakeupMonitoring,
                     tripPhase: locationService.tripPhase,
                     speedKmh: locationService.currentSpeedKmh
                 )
@@ -96,12 +97,18 @@ struct AccueilView: View {
         guard locationService.authorizationState.canTrackLocation else {
             return locationService.authorizationState.statusKey
         }
+        if !locationService.isMonitoring, locationService.isPassiveWakeupMonitoring {
+            return "home.monitoring.status.passiveWakeup"
+        }
         return locationService.isMonitoring ? locationService.tripPhase.statusKey : motionActivityService.phase.statusKey
     }
 
     private var tripDetectionStyle: ViimChip.Style {
         guard locationService.authorizationState.canTrackLocation else {
             return locationService.authorizationState == .denied ? .danger : .warning
+        }
+        if locationService.isPassiveWakeupMonitoring {
+            return .success
         }
         return locationService.isMonitoring ? .success : .warning
     }
@@ -243,6 +250,7 @@ private struct AutoDetectionStatusCard: View {
     let authorizationState: LocationAuthorizationState
     let movementPhase: MovementDetectionPhase
     let isMonitoring: Bool
+    let isPassiveWakeupMonitoring: Bool
     let tripPhase: TripDetectionPhase
     let speedKmh: Double
 
@@ -291,6 +299,9 @@ private struct AutoDetectionStatusCard: View {
         if !authorizationState.canTrackLocation {
             return authorizationState == .denied ? ViimColors.danger : ViimColors.warning
         }
+        if isPassiveWakeupMonitoring {
+            return ViimColors.success
+        }
         return isMonitoring ? ViimColors.success : movementPhase.tint
     }
 
@@ -298,12 +309,18 @@ private struct AutoDetectionStatusCard: View {
         guard authorizationState.canTrackLocation else {
             return authorizationState == .denied ? "home.monitoring.denied.detail" : "home.monitoring.permission.detail"
         }
+        if !isMonitoring, isPassiveWakeupMonitoring {
+            return "home.monitoring.passive.detail"
+        }
         return isMonitoring ? tripPhase.statusKey : movementPhase.detailKey
     }
 
     private var statusKey: LocalizedStringKey {
         guard authorizationState.canTrackLocation else {
             return "home.monitoring.status.needsPermission"
+        }
+        if !isMonitoring, isPassiveWakeupMonitoring {
+            return "home.monitoring.status.passiveWakeup"
         }
         return isMonitoring ? "home.monitoring.status.gpsConfirming" : movementPhase.statusKey
     }
