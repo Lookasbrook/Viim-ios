@@ -28,4 +28,28 @@ final class LocationServiceTests: XCTestCase {
 
         XCTAssertTrue(shouldPersist)
     }
+
+    func testForegroundLocationRequestDoesNotPromotePassiveWakeup() {
+        XCTAssertFalse(
+            LocationService.shouldEvaluatePassiveWakeupPromotion(
+                wasRequestingCurrentLocation: true,
+                isMonitoring: false,
+                authorizationState: .authorizedAlways
+            )
+        )
+        XCTAssertTrue(
+            LocationService.shouldEvaluatePassiveWakeupPromotion(
+                wasRequestingCurrentLocation: false,
+                isMonitoring: false,
+                authorizationState: .authorizedAlways
+            )
+        )
+        XCTAssertFalse(
+            LocationService.shouldEvaluatePassiveWakeupPromotion(
+                wasRequestingCurrentLocation: false,
+                isMonitoring: true,
+                authorizationState: .authorizedAlways
+            )
+        )
+    }
 }

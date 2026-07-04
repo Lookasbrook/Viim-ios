@@ -180,7 +180,15 @@
 "assistance.location.shared.detail" = "Votre contact d'urgence reçoit votre position par WhatsApp.";
 "assistance.location.shared.error" = "La position n'a pas pu être envoyée. Vérifiez le réseau puis réessayez.";
 "assistance.location.waiting.title" = "Position en attente";
-"assistance.location.waiting.detail" = "Ouvrez l'Accueil ou autorisez la position pour afficher votre localisation actuelle.";
+"assistance.location.waiting.detail" = "Touchez Actualiser ma position pour demander une position GPS ponctuelle.";
+"assistance.location.loading.title" = "Recherche de position";
+"assistance.location.loading.detail" = "Viim demande votre position actuelle sans activer un suivi GPS continu.";
+"assistance.location.permission.title" = "Autorisation requise";
+"assistance.location.permission.detail" = "Autorisez la position pour afficher votre localisation actuelle.";
+"assistance.location.denied.title" = "Position refusée";
+"assistance.location.denied.detail" = "Activez la position pour Viim dans les réglages iOS.";
+"assistance.location.refresh" = "Actualiser ma position";
+"assistance.location.refreshing" = "Recherche en cours";
 "assistance.contacts.title" = "Mes contacts d'urgence";
 "assistance.contacts.status" = "À configurer";
 "assistance.contacts.configured" = "Configuré";
@@ -227,6 +235,7 @@
 "assistance.hospitals.screen.detail" = "La recherche MapKit des hôpitaux proches sera branchée après validation terrain de la localisation.";
 "assistance.footer.publisher" = "Viim est édité par YAMSTACK TECHNOLOGIE — Ouagadougou, Burkina Faso";
 "assistance.test.action" = "Envoyer un test WhatsApp";
+"assistance.test.configure" = "Configurer un contact";
 "assistance.test.sending" = "Envoi en cours";
 "assistance.test.success.title" = "Test envoyé";
 "assistance.test.success.detail" = "Le contact d'urgence doit recevoir un message WhatsApp de test.";

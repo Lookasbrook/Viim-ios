@@ -104,9 +104,11 @@ final class LocationService: NSObject, ObservableObject {
     private var candidateSamples: [LocationSample] = []
     private var lastAcceptedLocation: CLLocation?
     private var lastRouteLocation: CLLocation?
+    private var shouldRequestCurrentLocationAfterAuthorization = false
 
     @Published private(set) var authorizationState: LocationAuthorizationState = .notDetermined
     @Published private(set) var isMonitoring = false
+    @Published private(set) var isRequestingCurrentLocation = false
     @Published private(set) var isPassiveWakeupMonitoring = false
     @Published private(set) var tripPhase: TripDetectionPhase = .idle
     @Published private(set) var currentSpeedKmh = 0.0
@@ -146,6 +148,21 @@ final class LocationService: NSObject, ObservableObject {
         configureManager()
         requestAuthorization()
         startPassiveWakeupMonitoringIfAllowed()
+    }
+
+    func requestCurrentLocation() {
+        shouldMonitorAfterAuthorization = false
+        shouldRequestCurrentLocationAfterAuthorization = true
+        configureManager()
+
+        guard authorizationState.canTrackLocation else {
+            isRequestingCurrentLocation = authorizationState == .notDetermined
+            ViimDiagnostics.log("location.current.requestAuthorization state=\(authorizationState)")
+            requestAuthorization()
+            return
+        }
+
+        requestCurrentLocationIfAllowed()
     }
 
     func startMonitoring() {
@@ -207,6 +224,14 @@ final class LocationService: NSObject, ObservableObject {
             duration >= Constants.minimumPersistedTripDuration
     }
 
+    static func shouldEvaluatePassiveWakeupPromotion(
+        wasRequestingCurrentLocation: Bool,
+        isMonitoring: Bool,
+        authorizationState: LocationAuthorizationState
+    ) -> Bool {
+        !wasRequestingCurrentLocation && !isMonitoring && authorizationState == .authorizedAlways
+    }
+
     private func configureManager() {
         manager.allowsBackgroundLocationUpdates = authorizationState == .authorizedAlways
         manager.pausesLocationUpdatesAutomatically = false
@@ -229,6 +254,16 @@ final class LocationService: NSObject, ObservableObject {
         manager.startMonitoringSignificantLocationChanges()
         isPassiveWakeupMonitoring = true
         ViimDiagnostics.log("location.passiveWakeups.start")
+    }
+
+    private func requestCurrentLocationIfAllowed() {
+        guard authorizationState.canTrackLocation else {
+            return
+        }
+
+        isRequestingCurrentLocation = true
+        ViimDiagnostics.log("location.current.request")
+        manager.requestLocation()
     }
 
     private func shouldPromotePassiveWakeupToContinuousMonitoring(_ locations: [CLLocation]) -> Bool {
@@ -440,13 +475,30 @@ extension LocationService: CLLocationManagerDelegate {
         ViimDiagnostics.log("location.authorization state=\(authorizationState)")
         startPassiveWakeupMonitoringIfAllowed()
 
+        if shouldRequestCurrentLocationAfterAuthorization, authorizationState.canTrackLocation {
+            shouldRequestCurrentLocationAfterAuthorization = false
+            requestCurrentLocationIfAllowed()
+        }
+
         if shouldMonitorAfterAuthorization, authorizationState.canTrackLocation {
             startMonitoring()
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        if !isMonitoring, authorizationState == .authorizedAlways {
+        let wasRequestingCurrentLocation = isRequestingCurrentLocation
+
+        if wasRequestingCurrentLocation {
+            isRequestingCurrentLocation = false
+            shouldRequestCurrentLocationAfterAuthorization = false
+            ViimDiagnostics.log("location.current.received count=\(locations.count)")
+        }
+
+        if Self.shouldEvaluatePassiveWakeupPromotion(
+            wasRequestingCurrentLocation: wasRequestingCurrentLocation,
+            isMonitoring: isMonitoring,
+            authorizationState: authorizationState
+        ) {
             if shouldPromotePassiveWakeupToContinuousMonitoring(locations) {
                 ViimDiagnostics.log("location.passiveWakeup.promote count=\(locations.count)")
                 startMonitoring()
@@ -459,6 +511,10 @@ extension LocationService: CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        isRequestingCurrentLocation = false
+        shouldRequestCurrentLocationAfterAuthorization = false
+        ViimDiagnostics.log("location.error \(error.localizedDescription)")
+
         if (error as? CLError)?.code == .denied {
             authorizationState = .denied
             isMonitoring = false

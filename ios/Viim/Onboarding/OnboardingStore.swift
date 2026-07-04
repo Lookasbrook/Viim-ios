@@ -162,6 +162,19 @@ final class SecureEmergencyContactStore {
         return try JSONDecoder().decode(EmergencyContact.self, from: data)
     }
 
+    func loadNormalizedForBurkina() throws -> EmergencyContact? {
+        guard let contact = try load(),
+              let normalizedContact = contact.normalizedForBurkina else {
+            return nil
+        }
+
+        if normalizedContact != contact {
+            try save(normalizedContact)
+        }
+
+        return normalizedContact
+    }
+
     private func deleteIgnoringMissing() -> OSStatus {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

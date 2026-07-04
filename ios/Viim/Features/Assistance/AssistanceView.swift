@@ -31,17 +31,30 @@ struct AssistanceView: View {
                                 .foregroundStyle(ViimColors.muted)
                                 .fixedSize(horizontal: false, vertical: true)
 
-                            Button {
-                                sendTestWhatsApp()
-                            } label: {
-                                Label(isSendingTest ? "assistance.test.sending" : "assistance.test.action", systemImage: "paperplane.fill")
-                                    .font(.caption.weight(.bold))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 40)
+                            if emergencyContact == nil {
+                                NavigationLink {
+                                    EmergencyContactsView(onChange: reloadSecureData)
+                                } label: {
+                                    Label("assistance.test.configure", systemImage: "person.badge.plus.fill")
+                                        .font(.caption.weight(.bold))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 40)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(ViimColors.red)
+                            } else {
+                                Button {
+                                    sendTestWhatsApp()
+                                } label: {
+                                    Label(isSendingTest ? "assistance.test.sending" : "assistance.test.action", systemImage: "paperplane.fill")
+                                        .font(.caption.weight(.bold))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 40)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(ViimColors.red)
+                                .disabled(isSendingTest)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(ViimColors.red)
-                            .disabled(emergencyContact == nil || isSendingTest)
                         }
                     }
 
@@ -121,6 +134,9 @@ struct AssistanceView: View {
             .task {
                 reloadSecureData()
             }
+            .onAppear {
+                reloadSecureData()
+            }
             .alert(item: $alertMessage) { message in
                 Alert(
                     title: Text(message.titleKey),
@@ -132,15 +148,7 @@ struct AssistanceView: View {
     }
 
     private func reloadSecureData() {
-        if let contact = try? SecureEmergencyContactStore.shared.load(),
-           let normalizedContact = contact.normalizedForBurkina {
-            emergencyContact = normalizedContact
-            if normalizedContact != contact {
-                try? SecureEmergencyContactStore.shared.save(normalizedContact)
-            }
-        } else {
-            emergencyContact = nil
-        }
+        emergencyContact = try? SecureEmergencyContactStore.shared.loadNormalizedForBurkina()
         medicalProfile = try? SecureMedicalProfileStore.shared.load()
     }
 
@@ -336,9 +344,31 @@ private struct AssistanceLocationView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(ViimColors.blue)
-                    .disabled(emergencyContact == nil || isSharing)
+                    .disabled(isSharing)
                 } else {
-                    AssistanceDetailView(icon: "location.slash.fill", titleKey: "assistance.location.waiting.title", detailKey: "assistance.location.waiting.detail", tint: ViimColors.warning)
+                    ViimCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label(locationWaitingTitleKey, systemImage: locationService.isRequestingCurrentLocation ? "location.fill.viewfinder" : "location.slash.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(ViimColors.text)
+                            Text(locationWaitingDetailKey)
+                                .font(.caption)
+                                .foregroundStyle(ViimColors.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button {
+                                locationService.requestCurrentLocation()
+                            } label: {
+                                Label(locationService.isRequestingCurrentLocation ? "assistance.location.refreshing" : "assistance.location.refresh", systemImage: "location.fill")
+                                    .font(.caption.weight(.bold))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 40)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(ViimColors.blue)
+                            .disabled(locationService.isRequestingCurrentLocation || !locationService.authorizationState.canTrackLocation)
+                        }
+                    }
                 }
             }
             .padding(14)
@@ -346,8 +376,12 @@ private struct AssistanceLocationView: View {
         .background(ViimColors.background.ignoresSafeArea())
         .navigationTitle("assistance.location.title")
         .task {
-            emergencyContact = try? SecureEmergencyContactStore.shared.load()
+            emergencyContact = try? SecureEmergencyContactStore.shared.loadNormalizedForBurkina()
             locationService.prepareForForegroundUse()
+            locationService.requestCurrentLocation()
+        }
+        .onAppear {
+            emergencyContact = try? SecureEmergencyContactStore.shared.loadNormalizedForBurkina()
         }
         .alert(item: $alertMessage) { message in
             Alert(
@@ -355,6 +389,28 @@ private struct AssistanceLocationView: View {
                 message: Text(message.detailKey),
                 dismissButton: .default(Text("common.ok"))
             )
+        }
+    }
+
+    private var locationWaitingTitleKey: LocalizedStringKey {
+        switch locationService.authorizationState {
+        case .denied, .restricted:
+            return "assistance.location.denied.title"
+        case .notDetermined:
+            return "assistance.location.permission.title"
+        case .authorizedWhenInUse, .authorizedAlways:
+            return locationService.isRequestingCurrentLocation ? "assistance.location.loading.title" : "assistance.location.waiting.title"
+        }
+    }
+
+    private var locationWaitingDetailKey: LocalizedStringKey {
+        switch locationService.authorizationState {
+        case .denied, .restricted:
+            return "assistance.location.denied.detail"
+        case .notDetermined:
+            return "assistance.location.permission.detail"
+        case .authorizedWhenInUse, .authorizedAlways:
+            return locationService.isRequestingCurrentLocation ? "assistance.location.loading.detail" : "assistance.location.waiting.detail"
         }
     }
 

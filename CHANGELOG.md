@@ -4,6 +4,9 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 
 ## 2026-07-04
 
+- **[iOS]** Déblocage des actions Assistance : `Envoyer un test WhatsApp` n'est plus grisé sans explication et ouvre la configuration du contact si aucun contact valide n'est disponible.
+- **[iOS]** `Voir ma localisation` demande maintenant une position GPS ponctuelle foreground, avec états localisés de recherche, permission et refus, sans relancer le suivi GPS continu.
+- **[QA]** Ajout d'un test de non-promotion GPS continue après demande ponctuelle ; build signé, installation et lancement iPhone réel OK.
 - **[iOS]** Correction du test WhatsApp Assistance : les numéros burkinabè saisis avec espaces, indicatif `226`, préfixe `00226` ou format local 8 chiffres sont normalisés en `+226XXXXXXXX` avant stockage Keychain et avant appel API.
 - **[QA]** Ajout de `BurkinaPhoneNumberTests`, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés après correction.
 - **[QA]** Déploiement Coolify vérifié sur `cf47617` : `/health` public OK et `POST /v1/alerts/test` ne retourne plus 404 ; payload invalide rejeté correctement en HTTP 422 `invalid_contact`.

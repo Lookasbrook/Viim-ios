@@ -93,7 +93,7 @@ struct AccueilView: View {
         }
         .background(ViimColors.background.ignoresSafeArea())
         .task {
-            emergencyContact = try? SecureEmergencyContactStore.shared.load()
+            emergencyContact = try? SecureEmergencyContactStore.shared.loadNormalizedForBurkina()
         }
     }
 

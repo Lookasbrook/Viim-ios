@@ -201,6 +201,18 @@
   - Implémenté : normalisation locale `BurkinaPhoneNumber`, stockage Keychain canonique, validation onboarding/formulaire Assistance et garde avant appel API.
   - Tests : `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
 
+## Phase 3 — Déblocage actions Assistance sur iPhone
+- Démarré le : 2026-07-04
+- Terminé le : 2026-07-04
+- Par : Codex builder
+- Référence : [features/onglet-3-assistance.md](../features/onglet-3-assistance.md), [architecture/api-endpoints.md](../architecture/api-endpoints.md), [qa/known-issues.md](../qa/known-issues.md)
+- Notes d'avancement :
+  - Objectif : corriger `Voir ma localisation` qui ne donne pas de position et `Envoyer un test WhatsApp` grisé sur l'iPhone.
+  - Contraintes : garder MapKit natif, contacts Keychain-only, aucun envoi WhatsApp réel sans contact consenti.
+  - Cause confirmée : l'écran localisation dépendait d'un `latestLocation` préexistant sans demander une position ponctuelle ; le bouton test était désactivé quand aucun contact valide n'était chargé.
+  - Implémenté : demande GPS ponctuelle foreground, états localisés de recherche/permission/refus, bouton `Actualiser ma position`, action `Configurer un contact` au lieu d'un bouton test grisé.
+  - Tests : `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
+
 
 Format d'entrée :
 
