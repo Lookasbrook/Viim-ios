@@ -43,3 +43,25 @@ final class VehiclePhotoCatalogTests: XCTestCase {
         VehiclePhotoCatalog.resolve(vehicleType: type, brand: brand, model: model)?.assetName
     }
 }
+
+final class BurkinaPhoneNumberTests: XCTestCase {
+    func testNormalizesCommonBurkinaFormats() {
+        XCTAssertEqual(BurkinaPhoneNumber.normalized("+226 70 00 00 00"), "+22670000000")
+        XCTAssertEqual(BurkinaPhoneNumber.normalized("22670000000"), "+22670000000")
+        XCTAssertEqual(BurkinaPhoneNumber.normalized("0022670000000"), "+22670000000")
+        XCTAssertEqual(BurkinaPhoneNumber.normalized("70 00 00 00"), "+22670000000")
+    }
+
+    func testRejectsForeignOrIncompleteNumbers() {
+        XCTAssertNil(BurkinaPhoneNumber.normalized("+2250700000000"))
+        XCTAssertNil(BurkinaPhoneNumber.normalized("+2267000"))
+        XCTAssertNil(BurkinaPhoneNumber.normalized(""))
+    }
+
+    func testEmergencyContactNormalizesNameAndPhone() {
+        let contact = EmergencyContact(name: "  Contact famille  ", phoneNumber: "+226 70 00 00 00")
+
+        XCTAssertEqual(contact.normalizedForBurkina?.name, "Contact famille")
+        XCTAssertEqual(contact.normalizedForBurkina?.phoneNumber, "+22670000000")
+    }
+}

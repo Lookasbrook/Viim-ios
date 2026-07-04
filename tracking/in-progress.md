@@ -189,6 +189,18 @@
   - Tests : `npm test` OK hors sandbox, `npm run check` OK, `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement sur l'iPhone de Guy OK.
   - Reste : vérifier les routes après déploiement public Coolify et effectuer un vrai test WhatsApp avec un contact consenti ; cascade 3 contacts et fallback SMS consignés dans `ASSIST-003`.
 
+## Phase 3 — Correction test WhatsApp Assistance
+- Démarré le : 2026-07-04
+- Terminé le : 2026-07-04
+- Par : Codex builder
+- Référence : [features/onglet-3-assistance.md](../features/onglet-3-assistance.md), [architecture/api-endpoints.md](../architecture/api-endpoints.md), [qa/known-issues.md](../qa/known-issues.md)
+- Notes d'avancement :
+  - Objectif : investiguer pourquoi le bouton `Envoyer un test` ne fonctionne pas sur l'iPhone après déploiement des routes Assistance.
+  - Contraintes : ne pas envoyer de WhatsApp réel vers un numéro non consenti ; ne pas exposer de token NEwAGENT ; garder les contacts d'urgence Keychain-only.
+  - Cause confirmée : mismatch de format téléphone. L'onboarding pouvait stocker `+226 70 00 00 00` ou `70000000`, alors que le backend exige `+226XXXXXXXX`.
+  - Implémenté : normalisation locale `BurkinaPhoneNumber`, stockage Keychain canonique, validation onboarding/formulaire Assistance et garde avant appel API.
+  - Tests : `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
+
 
 Format d'entrée :
 

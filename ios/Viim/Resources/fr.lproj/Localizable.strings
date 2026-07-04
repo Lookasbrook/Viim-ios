@@ -43,7 +43,7 @@
 "onboarding.safety.keychain" = "Ce contact est stocké dans le trousseau de l'iPhone.";
 "onboarding.safety.medical.title" = "Fiche médicale";
 "onboarding.safety.medical.detail" = "La fiche médicale sera proposée ensuite et restera dans le trousseau.";
-"onboarding.safety.error" = "Complétez le nom et le téléphone du contact, ou laissez les deux champs vides.";
+"onboarding.safety.error" = "Complétez le nom et un téléphone burkinabè valide, ou laissez les deux champs vides.";
 "onboarding.error.save" = "L'inscription n'a pas pu être enregistrée sur cet iPhone.";
 "onboarding.action.back" = "Retour";
 "onboarding.action.next" = "Continuer";
@@ -232,6 +232,7 @@
 "assistance.test.success.detail" = "Le contact d'urgence doit recevoir un message WhatsApp de test.";
 "assistance.test.error" = "Le test WhatsApp n'a pas abouti. Vérifiez le réseau et la configuration du serveur.";
 "assistance.test.missingContact" = "Ajoutez d'abord un contact d'urgence.";
+"assistance.test.invalidContact" = "Corrigez le numéro du contact au format +226 00 00 00 00.";
 "assistance.error.title" = "Action impossible";
 
 "prevention.title" = "Prévention";

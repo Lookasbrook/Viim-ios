@@ -4,6 +4,7 @@ import Foundation
 enum BackendAPIError: Error {
     case invalidURL
     case invalidResponse
+    case invalidPayload
     case serverStatus(Int)
 }
 
@@ -18,9 +19,12 @@ final class BackendAPIClient {
     }
 
     func sendAlertTest(contact: EmergencyContact, driverName: String?) async throws {
+        guard let normalizedContact = contact.normalizedForBurkina else {
+            throw BackendAPIError.invalidPayload
+        }
         let payload = AlertTestPayload(
             driverName: driverName,
-            contact: AlertContactPayload(contact)
+            contact: AlertContactPayload(normalizedContact)
         )
         try await post(payload, path: "alerts/test")
     }
@@ -30,9 +34,12 @@ final class BackendAPIClient {
         driverName: String?,
         location: CLLocation
     ) async throws {
+        guard let normalizedContact = contact.normalizedForBurkina else {
+            throw BackendAPIError.invalidPayload
+        }
         let payload = LocationSharePayload(
             driverName: driverName,
-            contact: AlertContactPayload(contact),
+            contact: AlertContactPayload(normalizedContact),
             location: AlertLocationPayload(location)
         )
         try await post(payload, path: "alerts/location-share")

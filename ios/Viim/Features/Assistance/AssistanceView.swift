@@ -132,7 +132,15 @@ struct AssistanceView: View {
     }
 
     private func reloadSecureData() {
-        emergencyContact = try? SecureEmergencyContactStore.shared.load()
+        if let contact = try? SecureEmergencyContactStore.shared.load(),
+           let normalizedContact = contact.normalizedForBurkina {
+            emergencyContact = normalizedContact
+            if normalizedContact != contact {
+                try? SecureEmergencyContactStore.shared.save(normalizedContact)
+            }
+        } else {
+            emergencyContact = nil
+        }
         medicalProfile = try? SecureMedicalProfileStore.shared.load()
     }
 
@@ -141,13 +149,17 @@ struct AssistanceView: View {
             alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.test.missingContact")
             return
         }
+        guard let normalizedContact = emergencyContact.normalizedForBurkina else {
+            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.test.invalidContact")
+            return
+        }
 
         isSendingTest = true
         Task { @MainActor in
             defer { isSendingTest = false }
             do {
                 try await BackendAPIClient.shared.sendAlertTest(
-                    contact: emergencyContact,
+                    contact: normalizedContact,
                     driverName: onboardingStore.profile?.firstName
                 )
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.test.success.title", detailKey: "assistance.test.success.detail")
@@ -351,13 +363,17 @@ private struct AssistanceLocationView: View {
             alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.test.missingContact")
             return
         }
+        guard let normalizedContact = emergencyContact.normalizedForBurkina else {
+            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.test.invalidContact")
+            return
+        }
 
         isSharing = true
         Task { @MainActor in
             defer { isSharing = false }
             do {
                 try await BackendAPIClient.shared.shareLocation(
-                    contact: emergencyContact,
+                    contact: normalizedContact,
                     driverName: onboardingStore.profile?.firstName,
                     location: location
                 )
@@ -418,26 +434,28 @@ private struct EmergencyContactsView: View {
     }
 
     private var isValidContact: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).range(of: #"^\+226\d{8}$"#, options: .regularExpression) != nil
+        EmergencyContact(name: name, phoneNumber: phoneNumber).normalizedForBurkina != nil
     }
 
     private func loadContact() {
         guard let contact = try? SecureEmergencyContactStore.shared.load() else {
             return
         }
-        name = contact.name
-        phoneNumber = contact.phoneNumber
+        let displayContact = contact.normalizedForBurkina ?? contact
+        name = displayContact.name
+        phoneNumber = displayContact.phoneNumber
     }
 
     private func saveContact() {
+        guard let normalizedContact = EmergencyContact(name: name, phoneNumber: phoneNumber).normalizedForBurkina else {
+            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.test.invalidContact")
+            return
+        }
+
         do {
-            try SecureEmergencyContactStore.shared.save(
-                EmergencyContact(
-                    name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                    phoneNumber: phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
-            )
+            try SecureEmergencyContactStore.shared.save(normalizedContact)
+            name = normalizedContact.name
+            phoneNumber = normalizedContact.phoneNumber
             onChange()
             alertMessage = AssistanceAlertMessage(titleKey: "assistance.contacts.saved.title", detailKey: "assistance.contacts.saved.detail")
         } catch {

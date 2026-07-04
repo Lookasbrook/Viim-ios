@@ -22,6 +22,42 @@ struct UserProfile: Codable, Equatable {
 struct EmergencyContact: Codable, Equatable {
     let name: String
     let phoneNumber: String
+
+    var normalizedForBurkina: EmergencyContact? {
+        let cleanedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanedName.isEmpty,
+              let normalizedPhone = BurkinaPhoneNumber.normalized(phoneNumber) else {
+            return nil
+        }
+        return EmergencyContact(name: cleanedName, phoneNumber: normalizedPhone)
+    }
+}
+
+enum BurkinaPhoneNumber {
+    static func normalized(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return nil
+        }
+
+        let digits = trimmed.filter(\.isNumber)
+        let localDigits: Substring
+
+        if digits.hasPrefix("00226") {
+            localDigits = digits.dropFirst(5)
+        } else if digits.hasPrefix("226") {
+            localDigits = digits.dropFirst(3)
+        } else {
+            localDigits = digits[...]
+        }
+
+        guard localDigits.count == 8,
+              localDigits.allSatisfy(\.isNumber) else {
+            return nil
+        }
+
+        return "+226\(localDigits)"
+    }
 }
 
 final class OnboardingStore: ObservableObject {

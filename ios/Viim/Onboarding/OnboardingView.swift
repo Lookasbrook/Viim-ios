@@ -225,7 +225,7 @@ struct OnboardingView: View {
 
         let profile = UserProfile(
             firstName: draft.firstName.trimmingCharacters(in: .whitespacesAndNewlines),
-            phoneNumber: draft.phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines),
+            phoneNumber: BurkinaPhoneNumber.normalized(draft.phoneNumber) ?? draft.phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines),
             vehicleType: draft.vehicleType,
             vehicleBrand: draft.vehicleBrand.trimmingCharacters(in: .whitespacesAndNewlines),
             vehicleModel: draft.vehicleModel.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -260,7 +260,7 @@ private struct OnboardingDraft {
         guard !name.isEmpty && !phone.isEmpty else {
             return nil
         }
-        return EmergencyContact(name: name, phoneNumber: phone)
+        return EmergencyContact(name: name, phoneNumber: phone).normalizedForBurkina
     }
 }
 
@@ -313,14 +313,19 @@ private enum OnboardingStep: Int, CaseIterable {
         switch self {
         case .identity:
             return !draft.firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                draft.phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("+226") &&
-                draft.phoneNumber.filter(\.isNumber).count >= 11
+                BurkinaPhoneNumber.normalized(draft.phoneNumber) != nil
         case .vehicle:
             return true
         case .safety:
             let hasName = !draft.emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             let hasPhone = !draft.emergencyContactPhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            return hasName == hasPhone
+            guard hasName == hasPhone else {
+                return false
+            }
+            guard hasName, hasPhone else {
+                return true
+            }
+            return draft.emergencyContact != nil
         }
     }
 }

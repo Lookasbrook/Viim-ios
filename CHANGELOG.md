@@ -4,6 +4,8 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 
 ## 2026-07-04
 
+- **[iOS]** Correction du test WhatsApp Assistance : les numéros burkinabè saisis avec espaces, indicatif `226`, préfixe `00226` ou format local 8 chiffres sont normalisés en `+226XXXXXXXX` avant stockage Keychain et avant appel API.
+- **[QA]** Ajout de `BurkinaPhoneNumberTests`, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés après correction.
 - **[QA]** Déploiement Coolify vérifié sur `cf47617` : `/health` public OK et `POST /v1/alerts/test` ne retourne plus 404 ; payload invalide rejeté correctement en HTTP 422 `invalid_contact`.
 
 ## 2026-07-03
