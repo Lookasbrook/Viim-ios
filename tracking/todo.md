@@ -14,7 +14,7 @@ Rappels transverses : app nommée **Viim** (règle de marque dans `design/brandi
 - [x] Parcours d'inscription 3 étapes avec véhicule adaptatif + illustration (features/inscription-onboarding.md).
 - [x] `LocationService` : background GPS, détection auto début/fin de trajet.
 - [ ] `SensorService` : CoreMotion 50 Hz, filtre passe-bas (alpha selon véhicule), buffer 30 s.
-- [ ] `TripManager` + CoreData (`Trip`, `TripEvent`, flag `synced`).
+- [x] `TripManager` + CoreData (`Trip`, `TripEvent`, flag `synced`).
 - [ ] Détection d'événements avec confirmation GPS (sensor-algorithms.md §2-3).
 - [ ] Phase de calibration silencieuse (5 trajets, `calibration: true`).
 - [ ] Onglet Accueil (résumé du jour + statuts + trajets récents).

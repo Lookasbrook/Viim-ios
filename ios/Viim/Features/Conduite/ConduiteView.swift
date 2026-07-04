@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct ConduiteView: View {
+    @EnvironmentObject private var tripManager: TripManager
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
-                    DrivingHeroCard()
+                    DrivingHeroCard(summary: tripManager.last30DaysSummary)
 
                     Text("driving.period")
                         .font(.caption)
@@ -105,6 +107,8 @@ struct ConduiteView: View {
 }
 
 private struct DrivingHeroCard: View {
+    let summary: DrivingSummary
+
     var body: some View {
         ZStack(alignment: .bottom) {
             LinearGradient(
@@ -117,11 +121,11 @@ private struct DrivingHeroCard: View {
                 .padding(.top, 18)
 
             HStack(spacing: 0) {
-                HeroMetric(valueKey: "driving.hero.trips.value", labelKey: "driving.hero.trips.label")
+                HeroMetric(value: String(summary.tripsCount), labelKey: "driving.hero.trips.label")
                 Divider().background(Color.white.opacity(0.25))
-                HeroMetric(valueKey: "driving.hero.distance.value", labelKey: "driving.hero.distance.label")
+                HeroMetric(value: DrivingValueFormatter.distanceText(kilometers: summary.totalKm), labelKey: "driving.hero.distance.label")
                 Divider().background(Color.white.opacity(0.25))
-                HeroMetric(valueKey: "driving.hero.duration.value", labelKey: "driving.hero.duration.label")
+                HeroMetric(value: DrivingValueFormatter.durationText(seconds: summary.totalDurationSec), labelKey: "driving.hero.duration.label")
             }
             .frame(height: 58)
             .background(.white.opacity(0.96))
@@ -171,12 +175,12 @@ private struct MountainScene: View {
 }
 
 private struct HeroMetric: View {
-    let valueKey: LocalizedStringKey
+    let value: String
     let labelKey: LocalizedStringKey
 
     var body: some View {
         VStack(spacing: 2) {
-            Text(valueKey)
+            Text(value)
                 .font(.system(size: 18, weight: .heavy))
                 .foregroundStyle(ViimColors.navy)
             Text(labelKey)

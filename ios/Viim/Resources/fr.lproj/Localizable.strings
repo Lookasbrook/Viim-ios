@@ -60,9 +60,19 @@
 "home.vehicle.title" = "Votre moyen de déplacement";
 "home.vehicle.status" = "Suivi actif";
 "home.vehicle.empty" = "Moyen de déplacement à confirmer";
+"home.monitoring.title" = "Suivi de trajet";
+"home.monitoring.authorize" = "Autoriser la position";
+"home.monitoring.start" = "Démarrer le suivi";
+"home.monitoring.pause" = "Mettre en pause";
+"home.monitoring.permission.detail" = "Autorisez la position pour détecter vos trajets.";
+"home.monitoring.denied.detail" = "La position est refusée dans les réglages iOS.";
+"home.monitoring.paused.detail" = "Appuyez pour suivre un trajet en test.";
+"home.activeTrip.title" = "Trajet en cours";
 "home.summary.title" = "Résumé du jour";
 "home.summary.status" = "À jour";
+"home.summary.persistenceError" = "À vérifier";
 "home.summary.calibration" = "Calibration en cours (trajet 0/5)";
+"home.summary.calibration.format" = "Calibration en cours (trajet %d/5)";
 "home.metric.score.calibration" = "--";
 "home.metric.score.label" = "Score /100";
 "home.metric.distance.empty" = "0 km";
@@ -71,6 +81,9 @@
 "home.metric.trips.label" = "Trajets";
 "home.metric.duration.empty" = "0 min";
 "home.metric.duration.label" = "Conduite";
+"home.metric.speed.label" = "Vitesse";
+"home.metric.pendingSync.label" = "À sync";
+"home.metric.calibration.label" = "Calibr.";
 "home.metric.fuel.empty" = "0 L";
 "home.metric.fuel.label" = "Essence";
 "home.metric.savings.empty" = "0 F";
@@ -83,6 +96,16 @@
 "home.recentTrips.title" = "Trajets récents";
 "home.recentTrips.empty.title" = "Aucun trajet enregistré";
 "home.recentTrips.empty.detail" = "Vos premiers trajets apparaîtront ici après la calibration.";
+"home.recentTrips.calibration" = "Calibration";
+"home.recentTrips.saved" = "Enregistré";
+"home.recentTrips.pendingSync" = "En attente de synchronisation";
+"home.recentTrips.synced" = "Synchronisé";
+
+"format.distance.km" = "%.1f km";
+"format.duration.minutes" = "%d min";
+"format.duration.hoursMinutes" = "%d h %02d";
+"format.speed.kmh" = "%.0f km/h";
+"format.score.empty" = "--";
 
 "location.monitoring.paused" = "Suivi en pause";
 "location.permission.notDetermined" = "Autorisation à confirmer";

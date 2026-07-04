@@ -3,6 +3,7 @@ import SwiftUI
 struct AccueilView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
+    @EnvironmentObject private var tripManager: TripManager
 
     var body: some View {
         ScrollView {
@@ -15,7 +16,27 @@ struct AccueilView: View {
                     statusStyle: tripDetectionStyle
                 )
 
-                DailySummaryCard()
+                MonitoringControlCard(
+                    authorizationState: locationService.authorizationState,
+                    isMonitoring: locationService.isMonitoring,
+                    tripPhase: locationService.tripPhase,
+                    speedKmh: locationService.currentSpeedKmh,
+                    action: toggleMonitoring
+                )
+
+                if locationService.activeTrip != nil || locationService.tripPhase == .starting || locationService.tripPhase == .stopping {
+                    ActiveTripStatusCard(
+                        activeTrip: locationService.activeTrip,
+                        tripPhase: locationService.tripPhase,
+                        speedKmh: locationService.currentSpeedKmh
+                    )
+                }
+
+                DailySummaryCard(
+                    summary: tripManager.todaySummary,
+                    calibrationTripCount: tripManager.calibrationTripCount,
+                    hasPersistenceError: tripManager.hasPersistenceError
+                )
 
                 ViimCard {
                     VStack(spacing: 0) {
@@ -54,7 +75,15 @@ struct AccueilView: View {
                     .padding(.horizontal, 2)
                     .padding(.top, 2)
 
-                RecentTripPlaceholderCard()
+                if tripManager.recentTrips.isEmpty {
+                    RecentTripPlaceholderCard()
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(tripManager.recentTrips) { trip in
+                            RecentTripCard(trip: trip)
+                        }
+                    }
+                }
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 18)
@@ -74,6 +103,14 @@ struct AccueilView: View {
             return locationService.authorizationState == .denied ? .danger : .warning
         }
         return locationService.isMonitoring ? .success : .warning
+    }
+
+    private func toggleMonitoring() {
+        if locationService.isMonitoring {
+            locationService.stopMonitoring()
+        } else {
+            locationService.startMonitoring()
+        }
     }
 }
 
@@ -209,7 +246,127 @@ private struct VehiclePhotoThumbnail: View {
     }
 }
 
+private struct MonitoringControlCard: View {
+    let authorizationState: LocationAuthorizationState
+    let isMonitoring: Bool
+    let tripPhase: TripDetectionPhase
+    let speedKmh: Double
+    let action: () -> Void
+
+    var body: some View {
+        ViimCard {
+            VStack(alignment: .leading, spacing: 11) {
+                HStack(spacing: 10) {
+                    Image(systemName: "location.viewfinder")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(tint)
+                        .frame(width: 36, height: 36)
+                        .background(tint.opacity(0.12))
+                        .clipShape(Circle())
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("home.monitoring.title")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(ViimColors.text)
+                        Text(detailKey)
+                            .font(.caption)
+                            .foregroundStyle(ViimColors.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Text(DrivingValueFormatter.speedText(kmh: speedKmh))
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(tint)
+                }
+
+                Button(action: action) {
+                    Label(actionKey, systemImage: isMonitoring ? "pause.fill" : "play.fill")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(tint)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var tint: Color {
+        if !authorizationState.canTrackLocation {
+            return authorizationState == .denied ? ViimColors.danger : ViimColors.warning
+        }
+        return isMonitoring ? ViimColors.success : ViimColors.blue
+    }
+
+    private var actionKey: LocalizedStringKey {
+        guard authorizationState.canTrackLocation else {
+            return "home.monitoring.authorize"
+        }
+        return isMonitoring ? "home.monitoring.pause" : "home.monitoring.start"
+    }
+
+    private var detailKey: LocalizedStringKey {
+        guard authorizationState.canTrackLocation else {
+            return authorizationState == .denied ? "home.monitoring.denied.detail" : "home.monitoring.permission.detail"
+        }
+        return isMonitoring ? tripPhase.statusKey : "home.monitoring.paused.detail"
+    }
+}
+
+private struct ActiveTripStatusCard: View {
+    let activeTrip: ActiveDetectedTrip?
+    let tripPhase: TripDetectionPhase
+    let speedKmh: Double
+
+    var body: some View {
+        ViimCard {
+            VStack(alignment: .leading, spacing: 9) {
+                HStack {
+                    Text("home.activeTrip.title")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(ViimColors.text)
+                    Spacer()
+                    ViimChip(titleKey: tripPhase.statusKey, style: .success)
+                }
+
+                HStack(spacing: 8) {
+                    SummaryMetricTile(
+                        value: DrivingValueFormatter.distanceText(kilometers: (activeTrip?.distanceMeters ?? 0) / 1_000),
+                        labelKey: "home.metric.distance.label",
+                        color: ViimColors.blue
+                    )
+                    SummaryMetricTile(
+                        value: DrivingValueFormatter.durationText(seconds: activeDurationSec),
+                        labelKey: "home.metric.duration.label",
+                        color: ViimColors.navy
+                    )
+                    SummaryMetricTile(
+                        value: DrivingValueFormatter.speedText(kmh: speedKmh),
+                        labelKey: "home.metric.speed.label",
+                        color: ViimColors.success
+                    )
+                }
+            }
+        }
+    }
+
+    private var activeDurationSec: Int {
+        guard let activeTrip else {
+            return 0
+        }
+        return max(0, Int(Date().timeIntervalSince(activeTrip.startedAt)))
+    }
+}
+
 private struct DailySummaryCard: View {
+    let summary: DrivingSummary
+    let calibrationTripCount: Int
+    let hasPersistenceError: Bool
+
     var body: some View {
         ViimCard {
             VStack(spacing: 9) {
@@ -218,26 +375,73 @@ private struct DailySummaryCard: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(ViimColors.text)
                     Spacer()
-                    ViimChip(titleKey: "home.summary.status", style: .success)
+                    ViimChip(titleKey: summaryStatusKey, style: hasPersistenceError ? .danger : .success)
                 }
 
-                MetricGrid(
-                    metrics: [
-                        .init(valueKey: "home.metric.score.calibration", labelKey: "home.metric.score.label", color: ViimColors.success, isLarge: true),
-                        .init(valueKey: "home.metric.distance.empty", labelKey: "home.metric.distance.label"),
-                        .init(valueKey: "home.metric.trips.empty", labelKey: "home.metric.trips.label"),
-                        .init(valueKey: "home.metric.duration.empty", labelKey: "home.metric.duration.label"),
-                        .init(valueKey: "home.metric.fuel.empty", labelKey: "home.metric.fuel.label"),
-                        .init(valueKey: "home.metric.savings.empty", labelKey: "home.metric.savings.label", color: ViimColors.green)
-                    ]
-                )
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 10) {
+                    SummaryMetricTile(
+                        value: DrivingValueFormatter.scoreText(summary.avgScore),
+                        labelKey: "home.metric.score.label",
+                        color: ViimColors.success,
+                        isLarge: true
+                    )
+                    SummaryMetricTile(
+                        value: DrivingValueFormatter.distanceText(kilometers: summary.totalKm),
+                        labelKey: "home.metric.distance.label"
+                    )
+                    SummaryMetricTile(
+                        value: String(summary.tripsCount),
+                        labelKey: "home.metric.trips.label"
+                    )
+                    SummaryMetricTile(
+                        value: DrivingValueFormatter.durationText(seconds: summary.totalDurationSec),
+                        labelKey: "home.metric.duration.label"
+                    )
+                    SummaryMetricTile(
+                        value: String(summary.pendingSyncCount),
+                        labelKey: "home.metric.pendingSync.label",
+                        color: summary.pendingSyncCount > 0 ? ViimColors.warning : ViimColors.success
+                    )
+                    SummaryMetricTile(
+                        value: String(calibrationTripCount),
+                        labelKey: "home.metric.calibration.label",
+                        color: calibrationTripCount >= 5 ? ViimColors.success : ViimColors.blue
+                    )
+                }
 
-                Text("home.summary.calibration")
+                Text(DrivingValueFormatter.calibrationText(completedTrips: calibrationTripCount))
                     .font(.caption)
                     .foregroundStyle(ViimColors.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+    }
+
+    private var summaryStatusKey: LocalizedStringKey {
+        hasPersistenceError ? "home.summary.persistenceError" : "home.summary.status"
+    }
+}
+
+private struct SummaryMetricTile: View {
+    let value: String
+    let labelKey: LocalizedStringKey
+    var color: Color = ViimColors.text
+    var isLarge = false
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(isLarge ? .system(size: 34, weight: .heavy) : .system(size: 17, weight: .bold))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+            Text(labelKey)
+                .font(.caption2)
+                .foregroundStyle(ViimColors.muted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -315,6 +519,64 @@ private struct RecentTripPlaceholderCard: View {
                 }
             }
         }
+    }
+}
+
+private struct RecentTripCard: View {
+    let trip: TripRecord
+
+    var body: some View {
+        ViimCard {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(trip.vehicleType.tint.opacity(0.12))
+                    MiniRoute()
+                        .stroke(trip.vehicleType.tint, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                        .padding(10)
+                    Image(systemName: trip.vehicleType.symbolName)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 24, height: 24)
+                        .background(trip.vehicleType.tint)
+                        .clipShape(Circle())
+                        .offset(x: 24, y: 18)
+                }
+                .frame(width: 74, height: 64)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(DrivingValueFormatter.tripDateText(trip.endDate))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(ViimColors.text)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                        Spacer(minLength: 6)
+                        ViimChip(titleKey: statusKey, style: trip.isCalibration ? .neutral : .success)
+                    }
+
+                    HStack(spacing: 10) {
+                        Label(DrivingValueFormatter.distanceText(kilometers: trip.distanceKm), systemImage: "road.lanes")
+                        Label(DrivingValueFormatter.durationText(seconds: trip.durationSec), systemImage: "clock.fill")
+                        Label(DrivingValueFormatter.scoreText(trip.score), systemImage: "star.fill")
+                    }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(ViimColors.muted)
+
+                    Text(syncStatusKey)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(trip.synced ? ViimColors.success : ViimColors.warning)
+                }
+            }
+        }
+    }
+
+    private var statusKey: LocalizedStringKey {
+        trip.isCalibration ? "home.recentTrips.calibration" : "home.recentTrips.saved"
+    }
+
+    private var syncStatusKey: LocalizedStringKey {
+        trip.synced ? "home.recentTrips.synced" : "home.recentTrips.pendingSync"
     }
 }
 

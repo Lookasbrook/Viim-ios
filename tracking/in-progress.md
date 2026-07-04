@@ -133,6 +133,19 @@
   - Implémenté : onglet Conduite avec héros statistiques, performance, critères et conseil ; Assistance avec héros rouge, soutien temps réel, actions et urgences ; Prévention avec héros vert, zones ONASER, alertes, entretien et défi.
   - Vérifié : build simulateur OK ; grep sans texte français direct dans Swift ; build signé iPhone réel OK ; installation et lancement OK.
 
+## Phase 1 — Données trajets visibles et calibration locale
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [architecture/data-models.md](../architecture/data-models.md), [architecture/sensor-algorithms.md](../architecture/sensor-algorithms.md), [features/onglet-1-accueil.md](../features/onglet-1-accueil.md)
+- Notes d'avancement :
+  - Objectif : résoudre l'absence de données visibles sur iPhone après autorisation de localisation.
+  - Cause confirmée : l'autorisation position ne démarre plus le suivi GPS continu par défaut, `LocationService` garde les trajets terminés en mémoire uniquement, et aucune couche `TripManager`/CoreData n'alimente l'Accueil ou Votre conduite.
+  - Périmètre : persistance locale offline-first des trajets terminés, compteur de calibration local, résumé du jour et contrôle explicite de suivi.
+  - Implémenté : modèle CoreData programmatique `Trip`/`TripEvent`/`DailySummary`, `TripStore`, `TripManager`, résumé du jour dynamique, trajets récents persistés, compteur de calibration local et bouton Démarrer/Mettre en pause le suivi.
+  - ADR : [2026-07-03-coredata-modele-programmatique](../decisions/2026-07-03-coredata-modele-programmatique.md).
+  - Tests : `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
+
 
 Format d'entrée :
 
