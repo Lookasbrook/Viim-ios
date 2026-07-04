@@ -4,6 +4,7 @@ Format d'entrée : date, scénario (S1…S6 du test-plan), appareil, véhicule, 
 
 | Date | Scénario | Appareil | Véhicule | Résultat | Mesures | Notes |
 |---|---|---|---|---|---|---|
+| 2026-07-04 | ASSIST-002 public | API production | N/A | À redéployer | `https://api.burktech-ia.com/health` OK ; `POST /v1/alerts/test` avec payload invalide retourne encore HTTP 404 après push `ea739d3` | Le code local expose les routes et les tests Node passent. Coolify n'a pas encore redéployé le dernier commit ou l'auto-deploy n'est pas actif. |
 | 2026-07-03 | TRIP-003 diagnostic | iPhone de Guy | Voiture | OK diagnostic / OK correctif à l'arrêt | CoreData appareil : `ZTRIP=0`, `ZTRIPEVENT=0`, `ZDAILYSUMMARY=0`; logs finaux : `authorizedAlways`, `location.passiveWakeups.start`, `location.passiveWakeup.ignored count=1`, `motion.phase stationary` | Confirme que l'absence de données venait d'une absence de trajet persisté, pas d'un bug d'affichage. Roulage réel nécessaire pour valider la création d'un nouveau trajet après correctif. |
 | 2026-07-03 | S1 préflight | iPhone de Guy | Non roulant | OK partiel | Build signé OK, installation OK, lancement `com.yamstack.viim` OK | `LocationService` intégré ; le roulage 20 min écran verrouillé reste à exécuter pour valider la continuité GPS réelle. |
 
