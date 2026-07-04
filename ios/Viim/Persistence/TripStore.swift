@@ -108,11 +108,14 @@ struct TripStore {
         }
     }
 
-    func fetchRecentTrips(limit: Int = 3) throws -> [TripRecord] {
+    func fetchRecentTrips(limit: Int = 3, since startDate: Date? = nil) throws -> [TripRecord] {
         try context.performAndWait {
             let request = NSFetchRequest<NSManagedObject>(entityName: "Trip")
             request.sortDescriptors = [NSSortDescriptor(key: "endDate", ascending: false)]
             request.fetchLimit = limit
+            if let startDate {
+                request.predicate = NSPredicate(format: "endDate >= %@", startDate as NSDate)
+            }
             return try context.fetch(request).compactMap(Self.record(from:))
         }
     }

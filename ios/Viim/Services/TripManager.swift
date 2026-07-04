@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 final class TripManager: ObservableObject {
-    @Published private(set) var recentTrips: [TripRecord] = []
+    @Published private(set) var todayTrips: [TripRecord] = []
     @Published private(set) var todaySummary: DrivingSummary = .empty
     @Published private(set) var last30DaysSummary: DrivingSummary = .empty
     @Published private(set) var calibrationTripCount = 0
@@ -17,7 +17,10 @@ final class TripManager: ObservableObject {
 
     func refresh() {
         do {
-            recentTrips = try store.fetchRecentTrips()
+            todayTrips = try store.fetchRecentTrips(
+                limit: 3,
+                since: Calendar.current.startOfDay(for: Date())
+            )
             todaySummary = try store.fetchTodaySummary()
             last30DaysSummary = try store.fetchLast30DaysSummary()
             calibrationTripCount = try store.calibrationTripCount()

@@ -19,10 +19,14 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[ADR]** Décision `2026-07-03-localisation-discrete-ios` : localisation discrète par défaut, suivi arrière-plan à traiter avec consentement explicite et déclenchement CoreMotion/GPS.
 - **[Design]** Réalignement des onglets Votre conduite, Assistance et Prévention sur la maquette HTML : héros, cartes riches, listes d'actions, sections d'urgence, prévention ONASER et entretien.
 - **[iOS]** Ajout de la base trajets réelle : modèle CoreData local `Trip`/`TripEvent`/`DailySummary`, `TripStore`, `TripManager`, `synced=false` par défaut et persistance des trajets terminés.
-- **[iOS]** Accueil alimenté par les données locales : bouton explicite Démarrer/Mettre en pause le suivi, trajet en cours, résumé du jour, compteur calibration 0/5→5/5 et trajets récents persistés.
+- **[iOS]** Accueil alimenté par les données locales : trajet en cours, résumé du jour, compteur calibration 0/5→5/5 et trajets récents persistés.
 - **[iOS]** Onglet Votre conduite : compteurs du héros branchés sur les trajets des 30 derniers jours.
 - **[QA]** Ajout de `TripStoreTests` pour valider sauvegarde offline, compteur calibration et protection contre doublons ; `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement OK.
 - **[ADR]** Décision `2026-07-03-coredata-modele-programmatique` : modèle CoreData V1 défini en Swift pour débloquer la persistance locale testable sans `.xcdatamodeld`.
+- **[iOS]** Suppression du bouton manuel de suivi : Viim détecte maintenant un déplacement probable via `CoreMotion` et démarre automatiquement la confirmation GPS.
+- **[iOS]** Accueil recentré sur les trajets d'aujourd'hui : la liste est filtrée sur la journée en cours et affiche seulement les trajets persistés aujourd'hui.
+- **[QA]** Ajout de `MotionActivityServiceTests` pour valider les déclencheurs moto/voiture/vélo, l'immobilité et la faible confiance ; build/test simulateur OK, build signé iPhone réel OK, installation et lancement OK.
+- **[ADR]** Décision `2026-07-03-detection-mouvement-sans-bouton` : détection automatique par mouvement, GPS coupé à l'arrêt, pas de friction utilisateur.
 
 ## 2026-07-02
 

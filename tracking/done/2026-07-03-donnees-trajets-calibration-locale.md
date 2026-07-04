@@ -9,7 +9,7 @@
 
 - Ajout d'un modèle CoreData local offline-first : `Trip`, `TripEvent`, `DailySummary`, avec `synced` et `createdAt`.
 - Ajout de `TripStore` et `TripManager` pour enregistrer les trajets terminés depuis `LocationService`.
-- Accueil : contrôle explicite Démarrer/Mettre en pause le suivi, état du trajet en cours, résumé du jour dynamique, compteur calibration et trajets récents persistés.
+- Accueil : état du trajet en cours, résumé du jour dynamique, compteur calibration et trajets récents persistés. Le contrôle explicite initial a été supersédé par la détection automatique `CoreMotion`.
 - Votre conduite : compteurs du héros alimentés par les trajets des 30 derniers jours.
 - Calibration : les 5 premiers trajets sont persistés avec `isCalibration=true`, score masqué pendant cette phase.
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct AccueilView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
+    @EnvironmentObject private var motionActivityService: MotionActivityService
     @EnvironmentObject private var tripManager: TripManager
 
     var body: some View {
@@ -16,12 +17,12 @@ struct AccueilView: View {
                     statusStyle: tripDetectionStyle
                 )
 
-                MonitoringControlCard(
+                AutoDetectionStatusCard(
                     authorizationState: locationService.authorizationState,
+                    movementPhase: motionActivityService.phase,
                     isMonitoring: locationService.isMonitoring,
                     tripPhase: locationService.tripPhase,
-                    speedKmh: locationService.currentSpeedKmh,
-                    action: toggleMonitoring
+                    speedKmh: locationService.currentSpeedKmh
                 )
 
                 if locationService.activeTrip != nil || locationService.tripPhase == .starting || locationService.tripPhase == .stopping {
@@ -68,18 +69,18 @@ struct AccueilView: View {
                     }
                 }
 
-                Text("home.recentTrips.title")
+                Text("home.todayTrips.title")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(ViimColors.text)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 2)
                     .padding(.top, 2)
 
-                if tripManager.recentTrips.isEmpty {
+                if tripManager.todayTrips.isEmpty {
                     RecentTripPlaceholderCard()
                 } else {
                     VStack(spacing: 10) {
-                        ForEach(tripManager.recentTrips) { trip in
+                        ForEach(tripManager.todayTrips) { trip in
                             RecentTripCard(trip: trip)
                         }
                     }
@@ -95,7 +96,7 @@ struct AccueilView: View {
         guard locationService.authorizationState.canTrackLocation else {
             return locationService.authorizationState.statusKey
         }
-        return locationService.isMonitoring ? locationService.tripPhase.statusKey : "location.monitoring.paused"
+        return locationService.isMonitoring ? locationService.tripPhase.statusKey : motionActivityService.phase.statusKey
     }
 
     private var tripDetectionStyle: ViimChip.Style {
@@ -103,14 +104,6 @@ struct AccueilView: View {
             return locationService.authorizationState == .denied ? .danger : .warning
         }
         return locationService.isMonitoring ? .success : .warning
-    }
-
-    private func toggleMonitoring() {
-        if locationService.isMonitoring {
-            locationService.stopMonitoring()
-        } else {
-            locationService.startMonitoring()
-        }
     }
 }
 
@@ -246,16 +239,16 @@ private struct VehiclePhotoThumbnail: View {
     }
 }
 
-private struct MonitoringControlCard: View {
+private struct AutoDetectionStatusCard: View {
     let authorizationState: LocationAuthorizationState
+    let movementPhase: MovementDetectionPhase
     let isMonitoring: Bool
     let tripPhase: TripDetectionPhase
     let speedKmh: Double
-    let action: () -> Void
 
     var body: some View {
         ViimCard {
-            VStack(alignment: .leading, spacing: 11) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
                     Image(systemName: "location.viewfinder")
                         .font(.headline.weight(.bold))
@@ -281,16 +274,15 @@ private struct MonitoringControlCard: View {
                         .foregroundStyle(tint)
                 }
 
-                Button(action: action) {
-                    Label(actionKey, systemImage: isMonitoring ? "pause.fill" : "play.fill")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(tint)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(tint)
+                        .frame(width: 7, height: 7)
+                    Text(statusKey)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(tint)
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -299,21 +291,21 @@ private struct MonitoringControlCard: View {
         if !authorizationState.canTrackLocation {
             return authorizationState == .denied ? ViimColors.danger : ViimColors.warning
         }
-        return isMonitoring ? ViimColors.success : ViimColors.blue
-    }
-
-    private var actionKey: LocalizedStringKey {
-        guard authorizationState.canTrackLocation else {
-            return "home.monitoring.authorize"
-        }
-        return isMonitoring ? "home.monitoring.pause" : "home.monitoring.start"
+        return isMonitoring ? ViimColors.success : movementPhase.tint
     }
 
     private var detailKey: LocalizedStringKey {
         guard authorizationState.canTrackLocation else {
             return authorizationState == .denied ? "home.monitoring.denied.detail" : "home.monitoring.permission.detail"
         }
-        return isMonitoring ? tripPhase.statusKey : "home.monitoring.paused.detail"
+        return isMonitoring ? tripPhase.statusKey : movementPhase.detailKey
+    }
+
+    private var statusKey: LocalizedStringKey {
+        guard authorizationState.canTrackLocation else {
+            return "home.monitoring.status.needsPermission"
+        }
+        return isMonitoring ? "home.monitoring.status.gpsConfirming" : movementPhase.statusKey
     }
 }
 
@@ -608,6 +600,35 @@ private extension TripDetectionPhase {
         case .starting: ViimColors.green
         case .active: ViimColors.success
         case .stopping: ViimColors.red
+        }
+    }
+}
+
+private extension MovementDetectionPhase {
+    var statusKey: LocalizedStringKey {
+        switch self {
+        case .unavailable: "motion.status.unavailable"
+        case .waitingForMovement: "motion.status.waiting"
+        case .stationary: "motion.status.stationary"
+        case .movementDetected: "motion.status.moving"
+        }
+    }
+
+    var detailKey: LocalizedStringKey {
+        switch self {
+        case .unavailable: "motion.detail.unavailable"
+        case .waitingForMovement: "motion.detail.waiting"
+        case .stationary: "motion.detail.stationary"
+        case .movementDetected: "motion.detail.moving"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .unavailable: ViimColors.warning
+        case .waitingForMovement: ViimColors.blue
+        case .stationary: ViimColors.muted
+        case .movementDetected: ViimColors.success
         }
     }
 }

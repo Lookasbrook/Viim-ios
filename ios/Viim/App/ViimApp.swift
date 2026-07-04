@@ -6,6 +6,7 @@ struct ViimApp: App {
 
     @StateObject private var onboardingStore = OnboardingStore()
     @StateObject private var locationService = LocationService()
+    @StateObject private var motionActivityService = MotionActivityService()
     @StateObject private var tripManager: TripManager
 
     init() {
@@ -23,6 +24,7 @@ struct ViimApp: App {
             AppLaunchView()
                 .environmentObject(onboardingStore)
                 .environmentObject(locationService)
+                .environmentObject(motionActivityService)
                 .environmentObject(tripManager)
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environment(\.locale, Locale(identifier: "fr_BF"))
@@ -33,6 +35,7 @@ struct ViimApp: App {
 private struct AppLaunchView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
+    @EnvironmentObject private var motionActivityService: MotionActivityService
     @EnvironmentObject private var tripManager: TripManager
 
     var body: some View {
@@ -45,6 +48,10 @@ private struct AppLaunchView: View {
                     }
                     locationService.configure(vehicleType: profile.vehicleType)
                     locationService.prepareForForegroundUse()
+                    motionActivityService.startAutoDetection(vehicleType: profile.vehicleType)
+                }
+                .onChange(of: motionActivityService.phase) { _ in
+                    reconcileAutomaticTracking()
                 }
                 .onChange(of: locationService.lastCompletedTrip?.id) { _ in
                     persistLastCompletedTripIfNeeded()
@@ -65,5 +72,23 @@ private struct AppLaunchView: View {
             samples: locationService.routeSamples,
             vehicleType: profile.vehicleType
         )
+    }
+
+    private func reconcileAutomaticTracking() {
+        if motionActivityService.phase.shouldTriggerLocationMonitoring {
+            if !locationService.isMonitoring {
+                locationService.startMonitoring()
+            }
+            return
+        }
+
+        guard motionActivityService.phase == .stationary,
+              locationService.isMonitoring,
+              locationService.activeTrip == nil,
+              locationService.tripPhase == .idle else {
+            return
+        }
+
+        locationService.stopMonitoring()
     }
 }

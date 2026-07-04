@@ -142,9 +142,22 @@
   - Objectif : résoudre l'absence de données visibles sur iPhone après autorisation de localisation.
   - Cause confirmée : l'autorisation position ne démarre plus le suivi GPS continu par défaut, `LocationService` garde les trajets terminés en mémoire uniquement, et aucune couche `TripManager`/CoreData n'alimente l'Accueil ou Votre conduite.
   - Périmètre : persistance locale offline-first des trajets terminés, compteur de calibration local, résumé du jour et contrôle explicite de suivi.
-  - Implémenté : modèle CoreData programmatique `Trip`/`TripEvent`/`DailySummary`, `TripStore`, `TripManager`, résumé du jour dynamique, trajets récents persistés, compteur de calibration local et bouton Démarrer/Mettre en pause le suivi.
+  - Implémenté : modèle CoreData programmatique `Trip`/`TripEvent`/`DailySummary`, `TripStore`, `TripManager`, résumé du jour dynamique, trajets récents persistés et compteur de calibration local. Le contrôle manuel initial a été supersédé par la détection automatique `CoreMotion`.
   - ADR : [2026-07-03-coredata-modele-programmatique](../decisions/2026-07-03-coredata-modele-programmatique.md).
   - Tests : `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
+
+## Phase 1 — Détection automatique sans bouton de suivi
+- Démarré le : 2026-07-03
+- Terminé le : 2026-07-03
+- Par : Codex builder
+- Référence : [architecture/sensor-algorithms.md](../architecture/sensor-algorithms.md), [features/onglet-1-accueil.md](../features/onglet-1-accueil.md), [decisions/2026-07-03-localisation-discrete-ios.md](../decisions/2026-07-03-localisation-discrete-ios.md)
+- Notes d'avancement :
+  - Objectif : réduire la friction en supprimant le bouton manuel de démarrage du suivi.
+  - Décision produit : Viim doit détecter le mouvement du téléphone et lancer la collecte pertinente automatiquement, tout en évitant le GPS permanent quand l'utilisateur est immobile.
+  - Périmètre : amorce `CoreMotion` basse friction, démarrage automatique du GPS uniquement quand un déplacement probable est détecté, et Accueil centré sur les données des trajets d'aujourd'hui.
+  - Implémenté : `MotionActivityService`, démarrage automatique de `LocationService` sur mouvement probable, arrêt du GPS quand le téléphone est immobile sans trajet actif, suppression du bouton manuel et liste Accueil filtrée sur les trajets d'aujourd'hui.
+  - ADR : [2026-07-03-detection-mouvement-sans-bouton](../decisions/2026-07-03-detection-mouvement-sans-bouton.md).
+  - Tests : `MotionActivityServiceTests` et `TripStoreTests` mis à jour ; `xcodebuild test` simulateur OK ; build signé iPhone réel OK ; installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
 
 
 Format d'entrée :

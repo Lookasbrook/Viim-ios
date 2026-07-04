@@ -68,6 +68,35 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(try store.completedTripsCount(), 1)
     }
 
+    func testRecentTripsCanBeFilteredFromStartOfDay() throws {
+        let store = makeStore()
+        let todayTrip = completedTrip(index: 1)
+        let oldTrip = CompletedDetectedTrip(
+            id: UUID(),
+            startedAt: todayTrip.startedAt.addingTimeInterval(-86_400),
+            endedAt: todayTrip.endedAt.addingTimeInterval(-86_400),
+            distanceMeters: 900,
+            sampleCount: 2
+        )
+
+        try store.insertCompletedTrip(
+            oldTrip,
+            samples: samples(start: oldTrip.startedAt),
+            vehicleType: .moto,
+            isCalibration: true
+        )
+        try store.insertCompletedTrip(
+            todayTrip,
+            samples: samples(start: todayTrip.startedAt),
+            vehicleType: .moto,
+            isCalibration: true
+        )
+
+        let todaysTrips = try store.fetchRecentTrips(limit: 3, since: todayTrip.startedAt)
+
+        XCTAssertEqual(todaysTrips.map(\.id), [todayTrip.id])
+    }
+
     private func makeStore() -> TripStore {
         let persistenceController = PersistenceController(inMemory: true)
         return TripStore(context: persistenceController.container.viewContext)
