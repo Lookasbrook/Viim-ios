@@ -2,6 +2,10 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-07-04
+
+- **[QA]** Déploiement Coolify vérifié sur `cf47617` : `/health` public OK et `POST /v1/alerts/test` ne retourne plus 404 ; payload invalide rejeté correctement en HTTP 422 `invalid_contact`.
+
 ## 2026-07-03
 
 - **[iOS]** Ajout du parcours d'inscription 3 étapes au premier lancement : identité, moyen de déplacement adaptatif, sécurité.

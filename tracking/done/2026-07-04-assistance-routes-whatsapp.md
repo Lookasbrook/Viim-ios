@@ -38,9 +38,10 @@ Le premier lot Assistance rend les boutons visibles exploitables et ajoute les e
 - Build signé iPhone réel : OK.
 - Installation iPhone réel : OK.
 - Lancement `com.yamstack.viim` sur l'iPhone de Guy : OK.
+- Production Coolify redéployée sur `cf47617` : `/health` public OK.
+- `POST /v1/alerts/test` public avec téléphone invalide : HTTP 422 `invalid_contact`, donc la route n'est plus en 404.
 
 ## Reste
 
-- Déployer sur Coolify puis vérifier que les routes publiques ne retournent plus 404.
 - Faire un vrai test WhatsApp avec un contact consenti.
 - Implémenter la cascade contact 1 → contact 2 → contact 3 et le fallback SMS (`ASSIST-003`).
