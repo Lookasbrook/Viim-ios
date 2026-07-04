@@ -31,6 +31,8 @@
 		400000000000000000000002 /* MotionActivityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000102 /* MotionActivityServiceTests.swift */; };
 		500000000000000000000001 /* ViimDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500000000000000000000101 /* ViimDiagnostics.swift */; };
 		600000000000000000000001 /* LocationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600000000000000000000101 /* LocationServiceTests.swift */; };
+		700000000000000000000001 /* BackendAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700000000000000000000101 /* BackendAPIClient.swift */; };
+		700000000000000000000002 /* MedicalVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700000000000000000000102 /* MedicalVault.swift */; };
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
@@ -80,6 +82,8 @@
 		300000000000000000000103 /* TripStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStoreTests.swift; sourceTree = "<group>"; };
 		400000000000000000000102 /* MotionActivityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionActivityServiceTests.swift; sourceTree = "<group>"; };
 		600000000000000000000101 /* LocationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationServiceTests.swift; sourceTree = "<group>"; };
+		700000000000000000000101 /* BackendAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BackendAPIClient.swift; sourceTree = "<group>"; };
+		700000000000000000000102 /* MedicalVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/MedicalVault.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,6 +119,8 @@
 				300000000000000000000102 /* TripManager.swift */,
 				400000000000000000000101 /* MotionActivityService.swift */,
 				500000000000000000000101 /* ViimDiagnostics.swift */,
+				700000000000000000000101 /* BackendAPIClient.swift */,
+				700000000000000000000102 /* MedicalVault.swift */,
 				10000000000000000000010B /* SensorFiltering.swift */,
 				10000000000000000000010C /* LocationService.swift */,
 				10000000000000000000010D /* PersistenceController.swift */,
@@ -294,6 +300,8 @@
 				300000000000000000000002 /* TripManager.swift in Sources */,
 				400000000000000000000001 /* MotionActivityService.swift in Sources */,
 				500000000000000000000001 /* ViimDiagnostics.swift in Sources */,
+				700000000000000000000001 /* BackendAPIClient.swift in Sources */,
+				700000000000000000000002 /* MedicalVault.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

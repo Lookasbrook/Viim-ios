@@ -46,7 +46,9 @@ struct ConduiteView: View {
                         tint: ViimColors.gold
                     )
 
-                    Button(action: {}) {
+                    NavigationLink {
+                        DrivingStyleDetailView(summary: tripManager.last30DaysSummary)
+                    } label: {
                         Text("driving.action.style")
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(.white)
@@ -55,7 +57,6 @@ struct ConduiteView: View {
                             .background(ViimColors.blue)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
-                    .buttonStyle(.plain)
 
                     SectionTitle(titleKey: "driving.portrait.title", systemImage: "gauge.medium", tint: ViimColors.blue)
 
@@ -103,6 +104,57 @@ struct ConduiteView: View {
             .background(ViimColors.background.ignoresSafeArea())
             .navigationTitle("driving.title")
         }
+    }
+}
+
+private struct DrivingStyleDetailView: View {
+    let summary: DrivingSummary
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                DrivingHeroCard(summary: summary)
+                ViimCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("driving.portrait.title")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(ViimColors.text)
+                        Text("driving.advice.detail")
+                            .font(.body)
+                            .foregroundStyle(ViimColors.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                DrivingCriterionCard(
+                    icon: "speedometer",
+                    titleKey: "driving.criteria.speed",
+                    valueKey: "driving.criteria.speed.value",
+                    detailKey: "driving.criteria.speed.detail",
+                    progress: 0,
+                    color: ViimColors.success
+                )
+                DrivingCriterionCard(
+                    icon: "waveform.path.ecg",
+                    titleKey: "driving.criteria.smoothness",
+                    valueKey: "driving.criteria.smoothness.value",
+                    detailKey: "driving.criteria.smoothness.detail",
+                    progress: 0,
+                    color: ViimColors.warning
+                )
+                DrivingCriterionCard(
+                    icon: "iphone.slash",
+                    titleKey: "driving.criteria.vigilance",
+                    valueKey: "driving.criteria.vigilance.value",
+                    detailKey: "driving.criteria.vigilance.detail",
+                    progress: 0,
+                    color: ViimColors.success
+                )
+            }
+            .padding(14)
+        }
+        .background(ViimColors.background.ignoresSafeArea())
+        .navigationTitle("driving.portrait.title")
     }
 }
 

@@ -174,6 +174,21 @@
   - Implémenté : `ViimDiagnostics`, réveils passifs `startMonitoringSignificantLocationChanges`, promotion vers GPS continu seulement si vitesse/déplacement réel, finalisation de trajet actif après immobilité et affichage `Réveil automatique actif` dans l'Accueil.
   - Vérifié : `xcodebuild test` simulateur OK ; build signé iPhone réel OK ; installation OK ; logs iPhone finaux : `location.authorization state=authorizedAlways`, `location.passiveWakeups.start`, `location.passiveWakeup.ignored count=1`, `motion.phase stationary`, sans `location.start active` à l'arrêt.
 
+## Phase 3 — Assistance fonctionnelle et routes WhatsApp
+- Démarré le : 2026-07-04
+- Terminé le : 2026-07-04
+- Par : Codex builder
+- Référence : [features/onglet-3-assistance.md](../features/onglet-3-assistance.md), [architecture/api-endpoints.md](../architecture/api-endpoints.md), [qa/known-issues.md](../qa/known-issues.md)
+- Notes d'avancement :
+  - Objectif : résoudre `ASSIST-001` et démarrer `ASSIST-002` en branchant les actions visibles de l'onglet Assistance et les endpoints backend WhatsApp minimum.
+  - Périmètre initial : `/v1/alerts/test`, `/v1/alerts/location-share`, `/v1/alerts/collision`, bouton test WhatsApp, appels `18`/`17`, localisation MapKit, contacts d'urgence Keychain, fiche médicale Keychain.
+  - Contraintes : aucun token NEwAGENT dans le repo, aucune donnée médicale/contacts hors Keychain côté iOS, payload médical envoyé uniquement sur collision confirmée.
+  - Implémenté backend : routes `/v1/alerts/test`, `/v1/alerts/location-share`, `/v1/alerts/collision`, validation téléphone `+226`, validation localisation, client NEwAGENT POST sans log de token.
+  - Implémenté iOS : Assistance sans actions vides, appels `18`/`17`, écran MapKit, partage de position, gestion contact d'urgence Keychain, fiche médicale Keychain, bouton test WhatsApp, statut Alerte famille dans l'Accueil.
+  - Implémenté Conduite : le bouton `Voir mon style de conduite` ouvre un écran de portrait détaillé.
+  - Tests : `npm test` OK hors sandbox, `npm run check` OK, `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement sur l'iPhone de Guy OK.
+  - Reste : vérifier les routes après déploiement public Coolify et effectuer un vrai test WhatsApp avec un contact consenti ; cascade 3 contacts et fallback SMS consignés dans `ASSIST-003`.
+
 
 Format d'entrée :
 

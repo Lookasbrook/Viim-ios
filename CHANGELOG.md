@@ -31,6 +31,10 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 - **[Design]** Accueil : statut `Réveil automatique actif` quand Viim est prêt à démarrer automatiquement un trajet sans suivi GPS continu.
 - **[QA]** Diagnostic iPhone réel `TRIP-003` : autorisation `authorizedAlways` confirmée, base appareil vide (`ZTRIP=0`, `ZTRIPEVENT=0`, `ZDAILYSUMMARY=0`), tests simulateur OK, build signé et installation iPhone OK, logs finaux sans démarrage GPS continu à l'arrêt.
 - **[ADR]** Décision `2026-07-03-reveils-passifs-localisation` : écoute légère par changements significatifs et impossibilité de reconstruire rétroactivement un trajet non collecté.
+- **[Backend]** Ajout des routes Assistance `/v1/alerts/test`, `/v1/alerts/location-share` et `/v1/alerts/collision` avec validation téléphone Burkina, payload position et client NEwAGENT WhatsApp.
+- **[iOS]** Onglet Assistance branché : appels `18`/`17`, écran MapKit de localisation, partage de position, contacts d'urgence Keychain, fiche médicale Keychain et bouton test WhatsApp.
+- **[iOS]** Suppression du dernier bouton vide dans Votre conduite : `Voir mon style de conduite` ouvre maintenant un écran de portrait détaillé.
+- **[QA]** Tests backend Node `alerts.test.js` OK, `npm run check` OK, `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement iPhone OK.
 
 ## 2026-07-02
 

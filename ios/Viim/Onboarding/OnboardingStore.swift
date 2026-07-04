@@ -104,6 +104,28 @@ final class SecureEmergencyContactStore {
         }
     }
 
+    func load() throws -> EmergencyContact? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status == errSecItemNotFound {
+            return nil
+        }
+        guard status == errSecSuccess,
+              let data = item as? Data else {
+            throw KeychainError.unhandledStatus(status)
+        }
+
+        return try JSONDecoder().decode(EmergencyContact.self, from: data)
+    }
+
     private func deleteIgnoringMissing() -> OSStatus {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

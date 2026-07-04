@@ -5,6 +5,7 @@ struct AccueilView: View {
     @EnvironmentObject private var locationService: LocationService
     @EnvironmentObject private var motionActivityService: MotionActivityService
     @EnvironmentObject private var tripManager: TripManager
+    @State private var emergencyContact: EmergencyContact?
 
     var body: some View {
         ScrollView {
@@ -57,8 +58,8 @@ struct AccueilView: View {
                         HomeStatusRow(
                             icon: "person.2.fill",
                             titleKey: "home.status.familyAlert",
-                            detailKey: "home.status.familyAlert.empty",
-                            tint: ViimColors.blue
+                            detailKey: emergencyContact == nil ? "home.status.familyAlert.empty" : "status.enabled",
+                            tint: emergencyContact == nil ? ViimColors.blue : ViimColors.success
                         )
                         HomeStatusRow(
                             icon: "wifi",
@@ -91,6 +92,9 @@ struct AccueilView: View {
             .padding(.bottom, 18)
         }
         .background(ViimColors.background.ignoresSafeArea())
+        .task {
+            emergencyContact = try? SecureEmergencyContactStore.shared.load()
+        }
     }
 
     private var tripDetectionDetailKey: LocalizedStringKey {
