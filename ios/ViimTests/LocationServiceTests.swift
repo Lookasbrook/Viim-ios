@@ -1,3 +1,4 @@
+import CoreLocation
 import XCTest
 @testable import Viim
 
@@ -50,6 +51,36 @@ final class LocationServiceTests: XCTestCase {
                 isMonitoring: true,
                 authorizationState: .authorizedAlways
             )
+        )
+    }
+
+    func testSustainedVehicleSpeedBeginsActiveTrip() {
+        let service = LocationService()
+        let start = Date().addingTimeInterval(-30)
+
+        service.ingestSimulatedLocation(location(latitude: 45.5017, longitude: -73.5673, speed: 9, timestamp: start))
+        service.ingestSimulatedLocation(location(latitude: 45.5032, longitude: -73.5657, speed: 9, timestamp: start.addingTimeInterval(8)))
+        service.ingestSimulatedLocation(location(latitude: 45.5050, longitude: -73.5639, speed: 9, timestamp: start.addingTimeInterval(16)))
+
+        XCTAssertEqual(service.tripPhase, .active)
+        XCTAssertNotNil(service.activeTrip)
+        XCTAssertGreaterThan(service.activeTrip?.distanceMeters ?? 0, 0)
+    }
+
+    private func location(
+        latitude: Double,
+        longitude: Double,
+        speed: CLLocationSpeed,
+        timestamp: Date
+    ) -> CLLocation {
+        CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            altitude: 20,
+            horizontalAccuracy: 8,
+            verticalAccuracy: 8,
+            course: 0,
+            speed: speed,
+            timestamp: timestamp
         )
     }
 }

@@ -49,6 +49,12 @@ struct TripStore {
         }
     }
 
+    func isCalibrationTrip(id: UUID) -> Bool? {
+        context.performAndWait {
+            Self.tripObject(id: id, in: context)?.value(forKey: "isCalibration") as? Bool
+        }
+    }
+
     func completedTripsCount() throws -> Int {
         try context.performAndWait {
             let request = NSFetchRequest<NSFetchRequestResult>(entityName: "Trip")
@@ -73,36 +79,44 @@ struct TripStore {
         isCalibration: Bool
     ) throws {
         try context.performAndWait {
-            if Self.tripExists(id: completedTrip.id, in: context) {
-                return
-            }
+            let object = Self.tripObject(id: completedTrip.id, in: context)
+                ?? NSManagedObject(entity: TripStore.entity(named: "Trip", in: context), insertInto: context)
 
-            let object = NSManagedObject(entity: TripStore.entity(named: "Trip", in: context), insertInto: context)
-            let distanceKm = completedTrip.distanceMeters / 1_000
-            let durationSec = max(0, Int(completedTrip.duration.rounded()))
-            let avgSpeedKmh = durationSec > 0 ? distanceKm / (Double(durationSec) / 3_600) : 0
-            let maxSpeedKmh = samples.map(\.speedKmh).max() ?? avgSpeedKmh
+            Self.applyTripValues(
+                object,
+                id: completedTrip.id,
+                startedAt: completedTrip.startedAt,
+                endedAt: completedTrip.endedAt,
+                distanceMeters: completedTrip.distanceMeters,
+                samples: samples,
+                vehicleType: vehicleType,
+                isCalibration: isCalibration
+            )
 
-            object.setValue(completedTrip.id, forKey: "id")
-            object.setValue(completedTrip.startedAt, forKey: "startDate")
-            object.setValue(completedTrip.endedAt, forKey: "endDate")
-            object.setValue(distanceKm, forKey: "distanceKm")
-            object.setValue(Int64(durationSec), forKey: "durationSec")
-            object.setValue(avgSpeedKmh, forKey: "avgSpeedKmh")
-            object.setValue(maxSpeedKmh, forKey: "maxSpeedKmh")
-            object.setValue(nil, forKey: "score")
-            object.setValue(nil, forKey: "scoreVitesse")
-            object.setValue(nil, forKey: "scoreFluidite")
-            object.setValue(nil, forKey: "scoreVigilance")
-            object.setValue(nil, forKey: "scoreEco")
-            object.setValue(nil, forKey: "fuelLiters")
-            object.setValue(nil, forKey: "fuelFCFA")
-            object.setValue(Self.encodedPolyline(from: samples), forKey: "polyline")
-            object.setValue(isCalibration, forKey: "isCalibration")
-            object.setValue(vehicleType.rawValue, forKey: "vehicleType")
-            object.setValue("conducteur", forKey: "role")
-            object.setValue(false, forKey: "synced")
-            object.setValue(Date(), forKey: "createdAt")
+            try context.save()
+        }
+    }
+
+    func upsertActiveTripSnapshot(
+        _ activeTrip: ActiveDetectedTrip,
+        samples: [LocationSample],
+        vehicleType: VehicleType,
+        isCalibration: Bool
+    ) throws {
+        try context.performAndWait {
+            let object = Self.tripObject(id: activeTrip.id, in: context)
+                ?? NSManagedObject(entity: TripStore.entity(named: "Trip", in: context), insertInto: context)
+
+            Self.applyTripValues(
+                object,
+                id: activeTrip.id,
+                startedAt: activeTrip.startedAt,
+                endedAt: activeTrip.lastUpdatedAt,
+                distanceMeters: activeTrip.distanceMeters,
+                samples: samples,
+                vehicleType: vehicleType,
+                isCalibration: isCalibration
+            )
 
             try context.save()
         }
@@ -150,15 +164,59 @@ struct TripStore {
     }
 
     private static func tripExists(id: UUID, in context: NSManagedObjectContext) -> Bool {
+        tripObject(id: id, in: context) != nil
+    }
+
+    private static func tripObject(id: UUID, in context: NSManagedObjectContext) -> NSManagedObject? {
         let request = NSFetchRequest<NSFetchRequestResult>(entityName: "Trip")
-        request.resultType = .countResultType
+        request.resultType = .managedObjectResultType
         request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         request.fetchLimit = 1
 
         do {
-            return (try context.count(for: request)) > 0
+            return try context.fetch(request).first as? NSManagedObject
         } catch {
-            return false
+            return nil
+        }
+    }
+
+    private static func applyTripValues(
+        _ object: NSManagedObject,
+        id: UUID,
+        startedAt: Date,
+        endedAt: Date,
+        distanceMeters: CLLocationDistance,
+        samples: [LocationSample],
+        vehicleType: VehicleType,
+        isCalibration: Bool
+    ) {
+        let distanceKm = distanceMeters / 1_000
+        let durationSec = max(0, Int(endedAt.timeIntervalSince(startedAt).rounded()))
+        let avgSpeedKmh = durationSec > 0 ? distanceKm / (Double(durationSec) / 3_600) : 0
+        let maxSpeedKmh = samples.map(\.speedKmh).max() ?? avgSpeedKmh
+
+        object.setValue(id, forKey: "id")
+        object.setValue(startedAt, forKey: "startDate")
+        object.setValue(endedAt, forKey: "endDate")
+        object.setValue(distanceKm, forKey: "distanceKm")
+        object.setValue(Int64(durationSec), forKey: "durationSec")
+        object.setValue(avgSpeedKmh, forKey: "avgSpeedKmh")
+        object.setValue(maxSpeedKmh, forKey: "maxSpeedKmh")
+        object.setValue(nil, forKey: "score")
+        object.setValue(nil, forKey: "scoreVitesse")
+        object.setValue(nil, forKey: "scoreFluidite")
+        object.setValue(nil, forKey: "scoreVigilance")
+        object.setValue(nil, forKey: "scoreEco")
+        object.setValue(nil, forKey: "fuelLiters")
+        object.setValue(nil, forKey: "fuelFCFA")
+        object.setValue(Self.encodedPolyline(from: samples), forKey: "polyline")
+        object.setValue(isCalibration, forKey: "isCalibration")
+        object.setValue(vehicleType.rawValue, forKey: "vehicleType")
+        object.setValue("conducteur", forKey: "role")
+        object.setValue(false, forKey: "synced")
+
+        if object.value(forKey: "createdAt") == nil {
+            object.setValue(Date(), forKey: "createdAt")
         }
     }
 

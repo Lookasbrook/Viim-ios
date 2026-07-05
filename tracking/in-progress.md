@@ -213,6 +213,22 @@
   - Implémenté : demande GPS ponctuelle foreground, états localisés de recherche/permission/refus, bouton `Actualiser ma position`, action `Configurer un contact` au lieu d'un bouton test grisé.
   - Tests : `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation et lancement de `com.yamstack.viim` confirmés sur l'iPhone de Guy.
 
+## Investigation — WhatsApp et trajets absents après roulage Québec
+- Démarré le : 2026-07-04
+- Par : Codex builder
+- Référence : [features/onglet-1-accueil.md](../features/onglet-1-accueil.md), [features/onglet-3-assistance.md](../features/onglet-3-assistance.md), [architecture/sensor-algorithms.md](../architecture/sensor-algorithms.md), [architecture/api-endpoints.md](../architecture/api-endpoints.md)
+- Notes d'avancement :
+  - Objectif : investiguer pourquoi l'alerte WhatsApp ne fonctionne pas et pourquoi aucun trajet du jour n'apparaît après plusieurs trajets réels au Québec.
+  - Question produit : vérifier si la configuration Burkina bloque les tests au Québec ou si le problème vient du pipeline iOS/backend.
+  - Contraintes : ne pas exposer les secrets NEwAGENT, ne pas envoyer de WhatsApp réel vers un numéro non consenti, ne pas contourner la collecte Keychain/CoreData.
+  - 2026-07-04 : base CoreData copiée depuis l'iPhone réel ; `ZTRIP=0`, `ZTRIPEVENT=0`, `ZDAILYSUMMARY=0`, donc les trajets du jour n'ont pas été persistés.
+  - 2026-07-04 : console iPhone au lancement : `authorizedAlways`, wakeups passifs démarrés, `vehicleType=voiture`, puis `location.passiveWakeup.ignored` et `motion.phase stationary`; aucun `trip.begin`, `trip.end` ou `trip.persisted`.
+  - 2026-07-04 : `/health` public API OK avec `whatsapp:"ok"`, mais un test API avec numéro Québec fictif `+1` retourne `HTTP 422 {"error":"invalid_contact"}`.
+  - Conclusion provisoire : le Québec bloque les tests WhatsApp si le contact n'est pas en `+226XXXXXXXX`; il ne doit pas bloquer les trajets. Le défaut trajets est dans la détection/promotion GPS/finalisation/persistance automatique.
+  - 2026-07-04 : inspection complète du conteneur app iPhone : `Documents` vide ; pas de fichier de trajets hors `Library/Application Support/Viim.sqlite`; les trajets passés non collectés ne sont pas reconstructibles depuis l'app.
+  - 2026-07-04 : correctif iOS implémenté et installé sur iPhone réel : fenêtre GPS de confirmation sur réveil passif, départ confirmé à 8 km/h pendant 15 s, persistance CoreData des snapshots de trajet actif, mise à jour du même enregistrement à la fin.
+  - 2026-07-04 : tests ajoutés pour démarrage GPS simulé, snapshot actif inclus dans le résumé du jour, et mise à jour du snapshot par trajet terminé ; `xcodebuild test` simulateur OK, build signé iPhone réel OK, installation OK.
+
 
 Format d'entrée :
 

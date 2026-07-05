@@ -54,6 +54,9 @@ private struct AppLaunchView: View {
                 .onChange(of: motionActivityService.phase) { _ in
                     reconcileAutomaticTracking()
                 }
+                .onChange(of: locationService.activeTrip?.sampleCount) { _ in
+                    persistActiveTripSnapshotIfNeeded()
+                }
                 .onChange(of: locationService.lastCompletedTrip?.id) { _ in
                     persistLastCompletedTripIfNeeded()
                 }
@@ -70,6 +73,19 @@ private struct AppLaunchView: View {
 
         tripManager.persistCompletedTrip(
             completedTrip,
+            samples: locationService.routeSamples,
+            vehicleType: profile.vehicleType
+        )
+    }
+
+    private func persistActiveTripSnapshotIfNeeded() {
+        guard let profile = onboardingStore.profile,
+              let activeTrip = locationService.activeTrip else {
+            return
+        }
+
+        tripManager.persistActiveTripSnapshot(
+            activeTrip,
             samples: locationService.routeSamples,
             vehicleType: profile.vehicleType
         )

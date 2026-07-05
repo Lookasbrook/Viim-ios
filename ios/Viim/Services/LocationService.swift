@@ -85,14 +85,14 @@ final class LocationService: NSObject, ObservableObject {
         static let economyDistanceFilterMeters: CLLocationDistance = 25
         static let maximumHorizontalAccuracyMeters: CLLocationAccuracy = 100
         static let maximumLocationAge: TimeInterval = 120
-        static let startSpeedThresholdKmh = 10.0
-        static let startSustainedDuration: TimeInterval = 30
+        static let startSpeedThresholdKmh = 8.0
+        static let startSustainedDuration: TimeInterval = 15
         static let stopSpeedThresholdKmh = 3.0
         static let stopSustainedDuration: TimeInterval = 5 * 60
         static let candidateWindow: TimeInterval = 120
         static let minimumPersistedTripDistanceMeters: CLLocationDistance = 80
         static let minimumPersistedTripDuration: TimeInterval = 60
-        static let passiveWakeupDistanceThresholdMeters: CLLocationDistance = 250
+        static let passiveConfirmationDuration: TimeInterval = 3 * 60
     }
 
     private let manager = CLLocationManager()
@@ -105,6 +105,8 @@ final class LocationService: NSObject, ObservableObject {
     private var lastAcceptedLocation: CLLocation?
     private var lastRouteLocation: CLLocation?
     private var shouldRequestCurrentLocationAfterAuthorization = false
+    private var passiveConfirmationGeneration = 0
+    private var isPassiveConfirmationMonitoring = false
 
     @Published private(set) var authorizationState: LocationAuthorizationState = .notDetermined
     @Published private(set) var isMonitoring = false
@@ -165,7 +167,15 @@ final class LocationService: NSObject, ObservableObject {
         requestCurrentLocationIfAllowed()
     }
 
+    #if DEBUG
+    func ingestSimulatedLocation(_ location: CLLocation) {
+        ingest(location)
+    }
+    #endif
+
     func startMonitoring() {
+        passiveConfirmationGeneration += 1
+        isPassiveConfirmationMonitoring = false
         shouldMonitorAfterAuthorization = true
 
         guard authorizationState.canTrackLocation else {
@@ -186,6 +196,8 @@ final class LocationService: NSObject, ObservableObject {
     }
 
     func stopMonitoring(keepPassiveWakeups: Bool = true) {
+        passiveConfirmationGeneration += 1
+        isPassiveConfirmationMonitoring = false
         shouldMonitorAfterAuthorization = false
         manager.stopUpdatingLocation()
         isMonitoring = false
@@ -266,19 +278,43 @@ final class LocationService: NSObject, ObservableObject {
         manager.requestLocation()
     }
 
-    private func shouldPromotePassiveWakeupToContinuousMonitoring(_ locations: [CLLocation]) -> Bool {
-        for location in locations where isUsable(location) {
-            if resolvedSpeedKmh(for: location) >= Constants.startSpeedThresholdKmh {
-                return true
-            }
+    private func startPassiveConfirmationMonitoring(locationsCount: Int) {
+        passiveConfirmationGeneration += 1
+        let generation = passiveConfirmationGeneration
+        isPassiveConfirmationMonitoring = true
+        shouldMonitorAfterAuthorization = true
 
-            if let lastAcceptedLocation,
-               location.distance(from: lastAcceptedLocation) >= Constants.passiveWakeupDistanceThresholdMeters {
-                return true
-            }
+        guard authorizationState.canTrackLocation else {
+            isMonitoring = false
+            ViimDiagnostics.log("location.passiveWakeup.requestAuthorization state=\(authorizationState)")
+            requestAuthorization()
+            return
         }
 
-        return false
+        configureManager()
+        manager.startUpdatingLocation()
+        if authorizationState == .authorizedAlways {
+            manager.startMonitoringSignificantLocationChanges()
+            isPassiveWakeupMonitoring = true
+        }
+        isMonitoring = true
+        ViimDiagnostics.log("location.passiveWakeup.confirmation count=\(locationsCount)")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.passiveConfirmationDuration) { [weak self] in
+            self?.finishPassiveConfirmationIfIdle(generation: generation)
+        }
+    }
+
+    private func finishPassiveConfirmationIfIdle(generation: Int) {
+        guard passiveConfirmationGeneration == generation,
+              isPassiveConfirmationMonitoring,
+              activeTrip == nil,
+              tripPhase != .active else {
+            return
+        }
+
+        ViimDiagnostics.log("location.passiveWakeup.confirmationStop phase=\(tripPhase)")
+        stopMonitoring()
     }
 
     private func ingest(_ location: CLLocation) {
@@ -391,6 +427,8 @@ final class LocationService: NSObject, ObservableObject {
         routeSamples = candidateSamples
         activeTrip = trip
         lastRouteLocation = currentLocation
+        passiveConfirmationGeneration += 1
+        isPassiveConfirmationMonitoring = false
         resetStartCandidate()
         belowStopSpeedSince = nil
         tripPhase = .active
@@ -499,9 +537,8 @@ extension LocationService: CLLocationManagerDelegate {
             isMonitoring: isMonitoring,
             authorizationState: authorizationState
         ) {
-            if shouldPromotePassiveWakeupToContinuousMonitoring(locations) {
-                ViimDiagnostics.log("location.passiveWakeup.promote count=\(locations.count)")
-                startMonitoring()
+            if locations.contains(where: isUsable) {
+                startPassiveConfirmationMonitoring(locationsCount: locations.count)
             } else {
                 ViimDiagnostics.log("location.passiveWakeup.ignored count=\(locations.count)")
             }

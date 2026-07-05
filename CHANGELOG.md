@@ -4,6 +4,10 @@ Toutes les modifications notables du projet, par date (plus récent en haut).
 
 ## 2026-07-04
 
+- **[iOS]** Correction du résumé de trajets absent sur iPhone : Viim persiste maintenant les snapshots de trajet actif dans CoreData, afin que les kilomètres du jour apparaissent sans attendre une fin de trajet parfaite.
+- **[iOS]** Détection automatique renforcée : un réveil localisation passif ouvre une fenêtre GPS de confirmation, et le départ trajet est confirmé à partir de 8 km/h pendant 15 secondes.
+- **[QA]** Inspection du conteneur iPhone : aucun trajet récupérable hors `Viim.sqlite`; tests ajoutés pour snapshots actifs, finalisation et démarrage GPS simulé ; `xcodebuild test` OK, build signé et installation iPhone réel OK.
+- **[ADR]** Décision `2026-07-04-confirmation-gps-snapshots-actifs` : confirmation GPS courte après réveil passif et persistance de snapshots actifs.
 - **[iOS]** Déblocage des actions Assistance : `Envoyer un test WhatsApp` n'est plus grisé sans explication et ouvre la configuration du contact si aucun contact valide n'est disponible.
 - **[iOS]** `Voir ma localisation` demande maintenant une position GPS ponctuelle foreground, avec états localisés de recherche, permission et refus, sans relancer le suivi GPS continu.
 - **[QA]** Ajout d'un test de non-promotion GPS continue après demande ponctuelle ; build signé, installation et lancement iPhone réel OK.

@@ -36,12 +36,9 @@ final class TripManager: ObservableObject {
         vehicleType: VehicleType
     ) {
         do {
-            guard !store.tripExists(id: completedTrip.id) else {
-                refresh()
-                return
-            }
-
-            let isCalibration = try store.completedTripsCount() < 5
+            let isCalibration = store.tripExists(id: completedTrip.id)
+                ? (store.isCalibrationTrip(id: completedTrip.id) ?? true)
+                : try store.completedTripsCount() < 5
             try store.insertCompletedTrip(
                 completedTrip,
                 samples: samples,
@@ -53,6 +50,29 @@ final class TripManager: ObservableObject {
         } catch {
             hasPersistenceError = true
             ViimDiagnostics.log("trip.persist.failed")
+        }
+    }
+
+    func persistActiveTripSnapshot(
+        _ activeTrip: ActiveDetectedTrip,
+        samples: [LocationSample],
+        vehicleType: VehicleType
+    ) {
+        do {
+            let isCalibration = store.tripExists(id: activeTrip.id)
+                ? (store.isCalibrationTrip(id: activeTrip.id) ?? true)
+                : try store.completedTripsCount() < 5
+            try store.upsertActiveTripSnapshot(
+                activeTrip,
+                samples: samples,
+                vehicleType: vehicleType,
+                isCalibration: isCalibration
+            )
+            ViimDiagnostics.log("trip.snapshot.persisted distanceMeters=\(Int(activeTrip.distanceMeters)) samples=\(activeTrip.sampleCount)")
+            refresh()
+        } catch {
+            hasPersistenceError = true
+            ViimDiagnostics.log("trip.snapshot.persist.failed")
         }
     }
 }

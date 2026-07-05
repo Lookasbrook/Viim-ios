@@ -68,6 +68,75 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(try store.completedTripsCount(), 1)
     }
 
+    func testActiveTripSnapshotIsIncludedInTodaySummary() throws {
+        let store = makeStore()
+        let start = Date()
+        let activeTrip = ActiveDetectedTrip(
+            id: UUID(),
+            startedAt: start,
+            lastUpdatedAt: start.addingTimeInterval(120),
+            distanceMeters: 850,
+            sampleCount: 3
+        )
+
+        try store.upsertActiveTripSnapshot(
+            activeTrip,
+            samples: samples(start: start),
+            vehicleType: .voiture,
+            isCalibration: true
+        )
+
+        let summary = try store.fetchTodaySummary()
+        let trip = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+
+        XCTAssertEqual(summary.tripsCount, 1)
+        XCTAssertEqual(summary.totalKm, 0.85, accuracy: 0.001)
+        XCTAssertEqual(trip.distanceKm, 0.85, accuracy: 0.001)
+        XCTAssertEqual(trip.durationSec, 120)
+        XCTAssertEqual(trip.vehicleType, .voiture)
+    }
+
+    func testCompletedTripUpdatesExistingActiveSnapshot() throws {
+        let store = makeStore()
+        let start = Date()
+        let id = UUID()
+        let activeTrip = ActiveDetectedTrip(
+            id: id,
+            startedAt: start,
+            lastUpdatedAt: start.addingTimeInterval(120),
+            distanceMeters: 850,
+            sampleCount: 3
+        )
+        let completedTrip = CompletedDetectedTrip(
+            id: id,
+            startedAt: start,
+            endedAt: start.addingTimeInterval(300),
+            distanceMeters: 1_900,
+            sampleCount: 5
+        )
+
+        try store.upsertActiveTripSnapshot(
+            activeTrip,
+            samples: samples(start: start),
+            vehicleType: .voiture,
+            isCalibration: true
+        )
+        try store.insertCompletedTrip(
+            completedTrip,
+            samples: samples(start: start),
+            vehicleType: .voiture,
+            isCalibration: true
+        )
+
+        let summary = try store.fetchTodaySummary()
+        let trip = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+
+        XCTAssertEqual(try store.completedTripsCount(), 1)
+        XCTAssertEqual(summary.totalKm, 1.9, accuracy: 0.001)
+        XCTAssertEqual(trip.distanceKm, 1.9, accuracy: 0.001)
+        XCTAssertEqual(trip.durationSec, 300)
+    }
+
     func testRecentTripsCanBeFilteredFromStartOfDay() throws {
         let store = makeStore()
         let todayTrip = completedTrip(index: 1)
