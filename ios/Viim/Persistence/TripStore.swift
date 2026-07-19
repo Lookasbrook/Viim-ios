@@ -328,6 +328,27 @@ struct TripStore {
                 object.setValue(estimate.liters, forKey: "fuelLiters")
                 object.setValue(nil, forKey: "fuelFCFA")
                 object.setValue(VehicleFuelCatalog.formulaVersion, forKey: "fuelFormulaVersion")
+
+                // La meme dynamique alimente les scores manquants des trajets
+                // historiques : fluidite et eco sont derives du trace, le
+                // score vitesse stocke (calcule avec la logique de pics
+                // soutenus au moment du trajet) reste inchange, et le score
+                // global redevient la moyenne des criteres disponibles.
+                if let dynamics {
+                    let dynamicScores = ScoreEngine.scores(
+                        maxSpeedKmh: 0,
+                        vehicleType: vehicleType,
+                        dynamics: dynamics
+                    )
+                    let storedSpeedScore = Self.optionalInt(object.value(forKey: "scoreVitesse"))
+                    let components = [storedSpeedScore, dynamicScores.scoreFluidite, dynamicScores.scoreEco].compactMap { $0 }
+                    Self.setOptionalInt(dynamicScores.scoreFluidite, forKey: "scoreFluidite", on: object)
+                    Self.setOptionalInt(dynamicScores.scoreEco, forKey: "scoreEco", on: object)
+                    if !components.isEmpty {
+                        let average = Int((Double(components.reduce(0, +)) / Double(components.count)).rounded())
+                        Self.setOptionalInt(average, forKey: "score", on: object)
+                    }
+                }
                 object.setValue(false, forKey: "synced")
                 updatedCount += 1
             }

@@ -24,7 +24,7 @@ struct VehicleCatalogSuggestion: Equatable, Identifiable {
 }
 
 enum VehicleFuelCatalog {
-    static let formulaVersion = "vehicle-fuel-catalog-v5-dynamics"
+    static let formulaVersion = "vehicle-fuel-catalog-v6-dynamics-scores"
 
     private static let entries: [VehicleFuelEntry] = [
         car("Toyota", "Corolla", ["corolla", "corollaaltis", "altis"], 6.8, rank: 10),

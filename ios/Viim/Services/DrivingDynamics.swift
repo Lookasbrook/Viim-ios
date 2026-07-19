@@ -50,10 +50,16 @@ enum DrivingDynamicsAnalyzer {
         dynamics(
             points: samples.map { ($0.timestamp, $0.speedKmh, $0.horizontalAccuracy, $0.speedAccuracy) },
             vehicleType: vehicleType,
-            distanceKm: distanceKm
+            distanceKm: distanceKm,
+            allowUnknownSpeedAccuracy: false
         )
     }
 
+    /// Variante pour les trajets deja stockes : leurs points de trace ont
+    /// deja passe le filtre qualite a l'enregistrement, mais les anciens
+    /// encodages ne persistaient pas `speedAccuracy` (-1 au decodage). On
+    /// l'accepte donc comme « inconnue » pour ne pas priver l'historique
+    /// des scores de fluidite et de la consommation dynamique.
     static func dynamics(
         routePoints: [TripRoutePoint],
         vehicleType: VehicleType,
@@ -62,19 +68,22 @@ enum DrivingDynamicsAnalyzer {
         dynamics(
             points: routePoints.map { ($0.timestamp, $0.speedKmh, $0.horizontalAccuracy, $0.speedAccuracy) },
             vehicleType: vehicleType,
-            distanceKm: distanceKm
+            distanceKm: distanceKm,
+            allowUnknownSpeedAccuracy: true
         )
     }
 
     private static func dynamics(
         points: [(timestamp: Date, speedKmh: Double, horizontalAccuracy: Double, speedAccuracy: Double)],
         vehicleType: VehicleType,
-        distanceKm: Double
+        distanceKm: Double,
+        allowUnknownSpeedAccuracy: Bool
     ) -> DrivingDynamics? {
         let validPoints = points
             .filter { point in
                 TripReliabilityRules.isValidSpeedAccuracy(point.horizontalAccuracy) &&
-                    TripReliabilityRules.isValidReportedSpeedAccuracy(point.speedAccuracy) &&
+                    (TripReliabilityRules.isValidReportedSpeedAccuracy(point.speedAccuracy) ||
+                        (allowUnknownSpeedAccuracy && point.speedAccuracy < 0)) &&
                     point.speedKmh.isFinite &&
                     point.speedKmh >= 0 &&
                     point.speedKmh <= TripReliabilityRules.maximumReasonableSpeedKmh(for: vehicleType)

@@ -2,6 +2,14 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-07-19 (soir — build 16, retours terrain sur le build 15)
+
+- **[Scores]** Les trajets historiques reçoivent enfin Fluidité et Éco : la passe de recalcul (formule `v6-dynamics-scores`) dérive la dynamique depuis les tracés stockés et remplit `scoreFluidite`/`scoreEco` + le score global moyenné, sans toucher au score vitesse d'origine (calculé avec la logique de pics soutenus au moment du trajet). Les anciens tracés sans `speedAccuracy` persistée (-1) sont acceptés — ils avaient déjà passé le filtre qualité à l'enregistrement. Les cartes Conduite s'allument donc dès l'installation, plus besoin d'attendre un nouveau trajet.
+- **[Prévention]** Entretien réellement renseignable sur place : saisie de l'odomètre directement dans la carte Entretien (plus besoin d'aller le chercher dans Profil), et fiche par tâche (toucher une ligne) pour déclarer le kilométrage du dernier entretien et ajuster l'intervalle — bouton « Fait aujourd'hui (odomètre actuel) » inclus. Tout est stocké localement, zéro réseau requis.
+- **[Prévention]** Zones à risque du Canada embarquées (classification par boîte englobante, hors ligne) : glace noire, faune sur routes rurales, chantiers, zones scolaires + conseil conduite hivernale. Le cas « autre région » reste honnête en attendant des données locales. Tests : Québec/Montréal/Toronto → Canada, Paris → hors régions couvertes.
+- **[UI]** Carte « Vigilance — À venir » retirée de Conduite (aucune source de données : on n'affiche que du réel).
+- **[QA]** Suite iOS complète verte (nouveaux tests : tracés legacy sans speedAccuracy, régions Canada). Build `0.1.0 (16)` signé, installé et vérifié sur l'iPhone de Guy.
+
 ## 2026-07-19 (polissage fonctionnel)
 
 - **[Données]** Coût carburant sensible au style de conduite : nouveau `DrivingDynamicsAnalyzer` (accélérations franches, freinages brusques, ralenti, vitesse moyenne dérivés des vitesses GPS horodatées) qui module la consommation constructeur dans des bornes crédibles [0,85 ; 1,5] — stop-and-go urbain agressif consomme plus, croisière souple légèrement moins. Formule `vehicle-fuel-catalog-v5-dynamics` ; les trajets historiques sont recalculés automatiquement au lancement à partir de leur tracé enregistré.

@@ -912,9 +912,21 @@ final class PreventionRegionTests: XCTestCase {
         XCTAssertEqual(PreventionRegion.classify(location: ouagadougou), .burkina)
     }
 
-    func testQuebecCoordinateIsClassifiedOutsideBurkina() {
+    func testQuebecCoordinateIsClassifiedAsCanada() {
         let quebec = CLLocation(latitude: 46.8139, longitude: -71.2080)
-        XCTAssertEqual(PreventionRegion.classify(location: quebec), .outsideBurkina)
+        XCTAssertEqual(PreventionRegion.classify(location: quebec), .canada)
+    }
+
+    func testMontrealAndTorontoAreClassifiedAsCanada() {
+        let montreal = CLLocation(latitude: 45.5019, longitude: -73.5674)
+        let toronto = CLLocation(latitude: 43.6532, longitude: -79.3832)
+        XCTAssertEqual(PreventionRegion.classify(location: montreal), .canada)
+        XCTAssertEqual(PreventionRegion.classify(location: toronto), .canada)
+    }
+
+    func testParisCoordinateIsClassifiedOutsideKnownRegions() {
+        let paris = CLLocation(latitude: 48.8566, longitude: 2.3522)
+        XCTAssertEqual(PreventionRegion.classify(location: paris), .outsideKnownRegions)
     }
 
     func testBoboDioulassoCoordinateIsClassifiedAsBurkina() {

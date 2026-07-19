@@ -79,6 +79,44 @@ final class DrivingDynamicsTests: XCTestCase {
         )
     }
 
+    func testLegacyRoutePointsWithoutSpeedAccuracyStillProduceDynamics() throws {
+        // Les anciens encodages de trace ne persistaient pas speedAccuracy
+        // (-1 au decodage) : ces points ont deja passe le filtre qualite a
+        // l'enregistrement et doivent alimenter le recalcul historique.
+        let start = Date(timeIntervalSince1970: 1_783_000_000)
+        let routePoints = (0...120).map { index in
+            TripRoutePoint(
+                timestamp: start.addingTimeInterval(Double(index) * 2),
+                latitude: 12.3714,
+                longitude: -1.5197,
+                speedKmh: 50,
+                horizontalAccuracy: 5,
+                speedAccuracy: -1
+            )
+        }
+
+        let dynamics = try XCTUnwrap(
+            DrivingDynamicsAnalyzer.dynamics(routePoints: routePoints, vehicleType: .voiture, distanceKm: 3)
+        )
+        XCTAssertEqual(dynamics.meanMovingSpeedKmh, 50, accuracy: 0.5)
+
+        // Le flux temps reel, lui, reste strict : sans precision de vitesse
+        // rapportee, pas de dynamique.
+        let liveSamples = (0...120).map { index in
+            LocationSample(
+                timestamp: start.addingTimeInterval(Double(index) * 2),
+                latitude: 12.3714,
+                longitude: -1.5197,
+                speedKmh: 50,
+                horizontalAccuracy: 5,
+                speedAccuracy: -1
+            )
+        }
+        XCTAssertNil(
+            DrivingDynamicsAnalyzer.dynamics(samples: liveSamples, vehicleType: .voiture, distanceKm: 3)
+        )
+    }
+
     func testRoutePointsProduceSameShapeOfDynamics() throws {
         let start = Date(timeIntervalSince1970: 1_783_000_000)
         let routePoints = (0...120).map { index in

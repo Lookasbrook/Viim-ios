@@ -1,29 +1,36 @@
 import CoreLocation
 import SwiftUI
 
-/// Region de prevention deduite de la derniere position GPS connue. La liste
-/// des zones a risque ONASER ne concerne que Ouagadougou : hors du Burkina,
-/// l'app le dit au lieu d'afficher des rues d'une autre ville.
+/// Region de prevention deduite de la derniere position GPS connue, sans
+/// aucun appel reseau (boites englobantes embarquees) : les zones a risque
+/// s'adaptent au pays reel meme hors connexion. La liste ONASER ne concerne
+/// que Ouagadougou ; le Canada a ses propres reperes embarques ; ailleurs,
+/// l'app l'explique au lieu d'afficher des rues d'une autre ville.
 enum PreventionRegion: Equatable {
     case burkina
-    case outsideBurkina
+    case canada
+    case outsideKnownRegions
     case unknown
 
-    // Boite englobante approximative du Burkina Faso, volontairement large :
-    // mieux vaut montrer les reperes ONASER a un utilisateur frontalier que
-    // les masquer a un utilisateur de Ouagadougou.
-    private static let latitudeRange = 9.0...15.5
-    private static let longitudeRange = (-6.0)...2.5
+    // Boites englobantes volontairement larges : mieux vaut montrer les
+    // reperes regionaux a un utilisateur frontalier que les masquer.
+    private static let burkinaLatitudeRange = 9.0...15.5
+    private static let burkinaLongitudeRange = (-6.0)...2.5
+    private static let canadaLatitudeRange = 41.5...84.0
+    private static let canadaLongitudeRange = (-141.0)...(-52.0)
 
     static func classify(location: CLLocation?) -> PreventionRegion {
         guard let location, location.horizontalAccuracy >= 0 else {
             return .unknown
         }
         let coordinate = location.coordinate
-        if latitudeRange.contains(coordinate.latitude), longitudeRange.contains(coordinate.longitude) {
+        if burkinaLatitudeRange.contains(coordinate.latitude), burkinaLongitudeRange.contains(coordinate.longitude) {
             return .burkina
         }
-        return .outsideBurkina
+        if canadaLatitudeRange.contains(coordinate.latitude), canadaLongitudeRange.contains(coordinate.longitude) {
+            return .canada
+        }
+        return .outsideKnownRegions
     }
 }
 
@@ -71,7 +78,30 @@ struct PreventionView: View {
                                     .padding(.top, 2)
                             }
                         }
-                    case .outsideBurkina:
+                    case .canada:
+                        ViimCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Label("prevention.dangerZones.canada.title", systemImage: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(ViimColors.text)
+                                    Spacer()
+                                    ViimChip(titleKey: "prevention.dangerZones.referenceChip", style: .neutral)
+                                }
+                                Text("prevention.dangerZones.canada.source")
+                                    .font(.caption)
+                                    .foregroundStyle(ViimColors.muted)
+                                DangerZoneRow(titleKey: "prevention.zone.canada.blackIce", detailKey: "prevention.zone.canada.blackIce.season", tint: ViimColors.red)
+                                DangerZoneRow(titleKey: "prevention.zone.canada.wildlife", detailKey: "prevention.zone.canada.wildlife.season", tint: ViimColors.red)
+                                DangerZoneRow(titleKey: "prevention.zone.canada.construction", detailKey: "prevention.zone.canada.construction.season", tint: ViimColors.warning)
+                                DangerZoneRow(titleKey: "prevention.zone.canada.school", detailKey: "prevention.zone.canada.school.season", tint: ViimColors.warning)
+                                Text("prevention.dangerZones.canada.upcoming")
+                                    .font(.caption2)
+                                    .foregroundStyle(ViimColors.muted)
+                                    .padding(.top, 2)
+                            }
+                        }
+                    case .outsideKnownRegions:
                         ViimCard {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -113,7 +143,10 @@ struct PreventionView: View {
                     MaintenanceCard(
                         vehicleName: vehicleName,
                         currentOdometerKm: currentOdometerKm,
-                        maintenanceStore: maintenanceStore
+                        maintenanceStore: maintenanceStore,
+                        onDeclareOdometer: { value in
+                            (try? onboardingStore.updateOdometer(baselineKm: value)) != nil
+                        }
                     )
                     .staggeredAppear(hasAppeared, index: 3)
 
@@ -182,6 +215,9 @@ struct PreventionView: View {
                 if region == .burkina {
                     PreventionListRow(icon: "wind", titleKey: "prevention.weather.harmattan", detailKey: "prevention.weather.harmattan.advice", tint: ViimColors.warning)
                 }
+                if region == .canada {
+                    PreventionListRow(icon: "snowflake", titleKey: "prevention.weather.winter", detailKey: "prevention.weather.winter.advice", tint: ViimColors.blue)
+                }
                 PreventionListRow(icon: "moon.fill", titleKey: "prevention.weather.night", detailKey: "prevention.weather.night.advice", tint: ViimColors.navy, showsDivider: false)
             }
         }
@@ -212,6 +248,10 @@ private struct MaintenanceCard: View {
     let vehicleName: String
     let currentOdometerKm: Double?
     @ObservedObject var maintenanceStore: MaintenanceStore
+    let onDeclareOdometer: (Double) -> Bool
+    @State private var odometerText = ""
+    @State private var odometerEntryFailed = false
+    @State private var editedTask: MaintenanceTaskState?
 
     var body: some View {
         ViimCard {
@@ -237,25 +277,90 @@ private struct MaintenanceCard: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(ViimColors.text)
                 } else {
+                    // Saisie directe : sans odometre, aucun rappel ne peut
+                    // demarrer, autant le demander ici plutot que renvoyer
+                    // l'utilisateur chercher la section dans Profil.
                     Text("prevention.maintenance.needsOdometer")
                         .font(.caption)
                         .foregroundStyle(ViimColors.warning)
                         .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        TextField("prevention.maintenance.odometer.placeholder", text: $odometerText)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption)
+                        Button {
+                            declareOdometer()
+                        } label: {
+                            Text("prevention.maintenance.odometer.save")
+                                .font(.caption.weight(.bold))
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .tint(ViimColors.green)
+                        .disabled(parsedOdometer == nil)
+                    }
+                    if odometerEntryFailed {
+                        Text("profile.odometer.invalid")
+                            .font(.caption2)
+                            .foregroundStyle(ViimColors.danger)
+                    }
                 }
 
                 ForEach(maintenanceStore.tasks) { task in
                     MaintenanceTaskRow(
                         task: task,
                         status: MaintenanceStatus.compute(task: task, currentOdometerKm: currentOdometerKm),
-                        canMarkDone: currentOdometerKm != nil
-                    ) {
-                        if let currentOdometerKm {
-                            maintenanceStore.markServiced(kind: task.kind, atOdometerKm: currentOdometerKm)
+                        canMarkDone: currentOdometerKm != nil,
+                        onMarkDone: {
+                            if let currentOdometerKm {
+                                maintenanceStore.markServiced(kind: task.kind, atOdometerKm: currentOdometerKm)
+                            }
+                        },
+                        onEdit: {
+                            editedTask = task
                         }
-                    }
+                    )
                 }
+
+                Text("prevention.maintenance.editHint")
+                    .font(.caption2)
+                    .foregroundStyle(ViimColors.muted)
+                    .padding(.top, 2)
             }
         }
+        .sheet(item: $editedTask) { task in
+            MaintenanceTaskEditorSheet(
+                task: task,
+                currentOdometerKm: currentOdometerKm,
+                maintenanceStore: maintenanceStore
+            )
+            .presentationDetents([.medium])
+        }
+    }
+
+    private var parsedOdometer: Double? {
+        Self.parseKilometers(odometerText)
+    }
+
+    private func declareOdometer() {
+        guard let value = parsedOdometer, onDeclareOdometer(value) else {
+            odometerEntryFailed = true
+            return
+        }
+        odometerEntryFailed = false
+        odometerText = ""
+    }
+
+    static func parseKilometers(_ text: String) -> Double? {
+        let cleaned = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(cleaned), value.isFinite, value >= 0, value < 3_000_000 else {
+            return nil
+        }
+        return value
     }
 
     private func odometerText(_ kilometers: Double) -> String {
@@ -266,29 +371,141 @@ private struct MaintenanceCard: View {
     }
 }
 
+/// Fiche d'une tache d'entretien : l'utilisateur renseigne le kilometrage du
+/// dernier entretien et ajuste l'intervalle. Tout est stocke localement,
+/// aucun reseau requis.
+private struct MaintenanceTaskEditorSheet: View {
+    let task: MaintenanceTaskState
+    let currentOdometerKm: Double?
+    @ObservedObject var maintenanceStore: MaintenanceStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var intervalText = ""
+    @State private var lastServiceText = ""
+    @State private var entryFailed = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        TextField("prevention.maintenance.editor.interval.placeholder", text: $intervalText)
+                            .keyboardType(.numberPad)
+                        Text(verbatim: "km")
+                            .foregroundStyle(ViimColors.muted)
+                    }
+                } header: {
+                    Text("prevention.maintenance.editor.interval")
+                } footer: {
+                    Text("prevention.maintenance.editor.interval.help")
+                }
+
+                Section {
+                    HStack {
+                        TextField("prevention.maintenance.editor.lastService.placeholder", text: $lastServiceText)
+                            .keyboardType(.numberPad)
+                        Text(verbatim: "km")
+                            .foregroundStyle(ViimColors.muted)
+                    }
+
+                    if let currentOdometerKm {
+                        Button("prevention.maintenance.editor.doneNow") {
+                            lastServiceText = String(Int(currentOdometerKm.rounded()))
+                        }
+                    }
+                } header: {
+                    Text("prevention.maintenance.editor.lastService")
+                } footer: {
+                    Text("prevention.maintenance.editor.lastService.help")
+                }
+
+                if entryFailed {
+                    Text("profile.odometer.invalid")
+                        .foregroundStyle(ViimColors.danger)
+                        .font(.footnote)
+                }
+
+                Section {
+                    Button("prevention.maintenance.editor.save") {
+                        save()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            .navigationTitle(task.kind.titleKey)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("common.cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                intervalText = String(Int(task.intervalKm.rounded()))
+                if let lastServiceOdometerKm = task.lastServiceOdometerKm {
+                    lastServiceText = String(Int(lastServiceOdometerKm.rounded()))
+                }
+            }
+        }
+    }
+
+    private func save() {
+        guard let interval = MaintenanceCard.parseKilometers(intervalText), interval >= 100 else {
+            entryFailed = true
+            return
+        }
+
+        let lastService = lastServiceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? nil
+            : MaintenanceCard.parseKilometers(lastServiceText)
+        if !lastServiceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, lastService == nil {
+            entryFailed = true
+            return
+        }
+
+        maintenanceStore.updateInterval(kind: task.kind, intervalKm: interval)
+        if let lastService {
+            maintenanceStore.markServiced(kind: task.kind, atOdometerKm: lastService)
+        }
+        dismiss()
+    }
+}
+
 private struct MaintenanceTaskRow: View {
     let task: MaintenanceTaskState
     let status: MaintenanceStatus
     let canMarkDone: Bool
     let onMarkDone: () -> Void
+    let onEdit: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: task.kind.symbolName)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(statusTint)
-                .frame(width: 24, height: 24)
-                .background(statusTint.opacity(0.12))
-                .clipShape(Circle())
+            Button {
+                onEdit()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: task.kind.symbolName)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(statusTint)
+                        .frame(width: 24, height: 24)
+                        .background(statusTint.opacity(0.12))
+                        .clipShape(Circle())
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(task.kind.titleKey)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(ViimColors.text)
-                Text(statusText)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(statusTint)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(task.kind.titleKey)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(ViimColors.text)
+                        Text(statusText)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(statusTint)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(ViimColors.muted.opacity(0.7))
+                }
             }
+            .buttonStyle(.plain)
 
             Spacer(minLength: 8)
 

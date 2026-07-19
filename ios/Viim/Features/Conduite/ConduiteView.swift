@@ -109,11 +109,6 @@ struct ConduiteView: View {
                             animate: hasAppeared
                         )
                     }
-                    UpcomingCriterionCard(
-                        icon: "iphone.slash",
-                        titleKey: "driving.criteria.vigilance",
-                        detailKey: "driving.criteria.vigilance.detail"
-                    )
 
                     AdviceCard(
                         titleKey: "driving.advice.title",
@@ -221,11 +216,6 @@ private struct DrivingStyleDetailView: View {
                         animate: hasAppeared
                     )
                 }
-                UpcomingCriterionCard(
-                    icon: "iphone.slash",
-                    titleKey: "driving.criteria.vigilance",
-                    detailKey: "driving.criteria.vigilance.detail"
-                )
             }
             .padding(14)
         }
