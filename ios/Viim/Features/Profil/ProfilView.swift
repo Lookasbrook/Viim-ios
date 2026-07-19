@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ProfilView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
@@ -69,6 +70,10 @@ struct ProfilView: View {
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("profile.fuel.help")
+                    if onboardingStore.fuelSettings.source != .userProvided {
+                        Text("profile.fuel.unverified")
+                            .foregroundStyle(ViimColors.warning)
+                    }
                     if let feedbackKey {
                         Text(feedbackKey)
                             .foregroundStyle(feedbackIsError ? Color.red : ViimColors.success)
@@ -76,6 +81,7 @@ struct ProfilView: View {
                 }
             }
         }
+        .viimKeyboardDismissal()
         .navigationTitle("profile.title")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: loadFuelSettings)
@@ -83,7 +89,7 @@ struct ProfilView: View {
             guard newCurrency != onboardingStore.fuelSettings.currency else {
                 return
             }
-            fuelPriceText = Self.priceText(newCurrency.defaultFuelPricePerLiter)
+            fuelPriceText = ""
             feedbackKey = nil
         }
     }
@@ -91,10 +97,13 @@ struct ProfilView: View {
     private func loadFuelSettings() {
         let settings = onboardingStore.fuelSettings
         selectedCurrency = settings.currency
-        fuelPriceText = Self.priceText(settings.pricePerLiter)
+        fuelPriceText = settings.source == .userProvided
+            ? Self.priceText(settings.pricePerLiter)
+            : ""
     }
 
     private func saveFuelSettings() {
+        dismissKeyboard()
         let normalizedPrice = fuelPriceText
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: ",", with: ".")
@@ -107,7 +116,12 @@ struct ProfilView: View {
 
         do {
             try onboardingStore.updateFuelSettings(
-                FuelSettings(currency: selectedCurrency, pricePerLiter: price)
+                FuelSettings(
+                    currency: selectedCurrency,
+                    pricePerLiter: price,
+                    source: .userProvided,
+                    capturedAt: Date()
+                )
             )
             feedbackIsError = false
             feedbackKey = "profile.fuel.saved"
@@ -118,6 +132,7 @@ struct ProfilView: View {
     }
 
     private func saveOdometer() {
+        dismissKeyboard()
         let cleaned = odometerText
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: " ", with: "")
@@ -149,5 +164,14 @@ struct ProfilView: View {
 
     private static func priceText(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0...2)).locale(.current))
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
     }
 }

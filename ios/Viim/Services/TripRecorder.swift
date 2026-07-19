@@ -11,15 +11,17 @@ final class TripRecorder: ObservableObject {
     private var processedTripIDs = Set<UUID>()
     private var vehicleType: VehicleType = .moto
     private var fuelProfile: VehicleFuelProfile?
+    private var fuelSettings: FuelSettings?
 
     init(journal: ActiveTripJournal, tripManager: TripManager) {
         self.journal = journal
         self.tripManager = tripManager
     }
 
-    func configure(profile: UserProfile) {
+    func configure(profile: UserProfile, fuelSettings: FuelSettings? = nil) {
         vehicleType = profile.vehicleType
         fuelProfile = VehicleFuelCatalog.profile(for: profile)
+        self.fuelSettings = fuelSettings
     }
 
     func observe(locationService: LocationService) {
@@ -60,7 +62,8 @@ final class TripRecorder: ObservableObject {
             completedTrip,
             samples: samples,
             vehicleType: vehicleType,
-            fuelProfile: fuelProfile
+            fuelProfile: fuelProfile,
+            fuelSettings: fuelSettings
         )
         handle(outcome: outcome, tripId: completedTrip.id, sampleCount: samples.count, source: "live")
     }
@@ -107,7 +110,8 @@ final class TripRecorder: ObservableObject {
             completedTrip,
             samples: samples,
             vehicleType: draft.vehicleType,
-            fuelProfile: fuelProfile
+            fuelProfile: fuelProfile,
+            fuelSettings: fuelSettings
         )
         handle(outcome: outcome, tripId: draft.id, sampleCount: samples.count, source: "recovered")
         if outcome.shouldDeleteJournal {

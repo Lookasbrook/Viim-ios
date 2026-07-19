@@ -98,35 +98,13 @@ final class TripManager: ObservableObject {
         return baselineKm + (summary?.totalKm ?? 0)
     }
 
-    func recalculateFuelEstimates(profile: UserProfile) {
-        guard let fuelProfile = VehicleFuelCatalog.profile(for: profile) else {
-            ViimDiagnostics.log("trip.fuel.recalculation.skipped reason=unknownVehicle")
-            return
-        }
-
-        do {
-            let updatedCount = try store.recalculateFuelEstimates(
-                fuelProfile: fuelProfile,
-                vehicleType: profile.vehicleType
-            )
-            if updatedCount > 0 {
-                ViimDiagnostics.log(
-                    "trip.fuel.recalculated count=\(updatedCount) formula=\(VehicleFuelCatalog.formulaVersion)"
-                )
-                refresh()
-            }
-        } catch {
-            hasPersistenceError = true
-            ViimDiagnostics.log("trip.fuel.recalculation.failed")
-        }
-    }
-
     @discardableResult
     func persistCompletedTrip(
         _ completedTrip: CompletedDetectedTrip,
         samples: [LocationSample],
         vehicleType: VehicleType,
-        fuelProfile: VehicleFuelProfile? = nil
+        fuelProfile: VehicleFuelProfile? = nil,
+        fuelSettings: FuelSettings? = nil
     ) -> TripPersistenceOutcome {
         do {
             guard !store.tripExists(id: completedTrip.id) else {
@@ -191,6 +169,7 @@ final class TripManager: ObservableObject {
                 isCalibration: false,
                 scores: scores,
                 fuelProfile: fuelProfile,
+                fuelSettings: fuelSettings,
                 qualityReport: qualityReport
             )
             ViimDiagnostics.log("trip.persisted distanceMeters=\(Int(completedTrip.distanceMeters)) samples=\(completedTrip.sampleCount) score=\(scores.score ?? -1) quality=\(qualityReport.score)")

@@ -18,6 +18,7 @@ enum MetricReasonCode: String, Equatable {
     case gpsAccuracyTooLow
     case impossibleSpeed
     case tripTooShort
+    case tripNeedsReview
     case scoreUnavailable
     case syncEngineMissing
 
@@ -39,6 +40,8 @@ enum MetricReasonCode: String, Equatable {
             return "metric.reason.impossibleSpeed.short"
         case .tripTooShort:
             return "metric.reason.tripTooShort.short"
+        case .tripNeedsReview:
+            return "metric.reason.tripNeedsReview.short"
         case .scoreUnavailable:
             return "metric.reason.scoreUnavailable.short"
         case .syncEngineMissing:
@@ -64,6 +67,8 @@ enum MetricReasonCode: String, Equatable {
             return "metric.reason.impossibleSpeed.detail"
         case .tripTooShort:
             return "metric.reason.tripTooShort.detail"
+        case .tripNeedsReview:
+            return "metric.reason.tripNeedsReview.detail"
         case .scoreUnavailable:
             return "metric.reason.scoreUnavailable.detail"
         case .syncEngineMissing:
@@ -352,7 +357,7 @@ enum TripMetricsCalculator {
     }
 
     static func maxSpeedMetric(samples: [LocationSample], vehicleType: VehicleType) -> ReliableMetric<Double> {
-        maxSpeedMetric(
+        return maxSpeedMetric(
             speeds: samples.map { ($0.speedKmh, $0.horizontalAccuracy, $0.speedAccuracy) },
             vehicleType: vehicleType,
             source: "LocationService.samples"
@@ -360,7 +365,15 @@ enum TripMetricsCalculator {
     }
 
     static func maxSpeedMetric(for trip: TripRecord) -> ReliableMetric<Double> {
-        maxSpeedMetric(
+        guard trip.isTrustedForDisplay else {
+            return .missing(
+                confidence: .needsReview,
+                reasonCode: .tripNeedsReview,
+                source: "TripStore.quality",
+                formulaVersion: trip.qualityFormulaVersion
+            )
+        }
+        return maxSpeedMetric(
             speeds: trip.routePoints.map { ($0.speedKmh, $0.horizontalAccuracy, $0.speedAccuracy) },
             vehicleType: trip.vehicleType,
             source: "TripStore.polyline"
@@ -368,6 +381,14 @@ enum TripMetricsCalculator {
     }
 
     static func scoreMetric(for trip: TripRecord) -> ReliableMetric<Int> {
+        guard trip.isTrustedForDisplay else {
+            return .missing(
+                confidence: .needsReview,
+                reasonCode: .tripNeedsReview,
+                source: "TripStore.quality",
+                formulaVersion: trip.qualityFormulaVersion
+            )
+        }
         guard let score = trip.score else {
             return .missing(
                 confidence: .unavailable,
@@ -380,7 +401,6 @@ enum TripMetricsCalculator {
         let subScores = [
             trip.scoreVitesse,
             trip.scoreFluidite,
-            trip.scoreVigilance,
             trip.scoreEco
         ]
         let availableSubScoreCount = subScores.compactMap { $0 }.count
@@ -412,6 +432,18 @@ enum TripMetricsCalculator {
             )
         }
 
+        let availableCriteria = [
+            summary.avgScoreVitesse,
+            summary.avgScoreFluidite,
+            summary.avgScoreEco
+        ].compactMap { $0 }.count
+        if availableCriteria == 3 {
+            return .reliable(
+                score,
+                source: "TripStore.summary",
+                formulaVersion: ScoreEngine.version
+            )
+        }
         return ReliableMetric(
             value: score,
             confidence: .partial,
@@ -421,79 +453,74 @@ enum TripMetricsCalculator {
         )
     }
 
+    static func summarySpeedScoreMetric(_ summary: DrivingSummary) -> ReliableMetric<Int> {
+        guard let score = summary.avgScoreVitesse else {
+            return .missing(
+                confidence: .unavailable,
+                reasonCode: .scoreUnavailable,
+                source: "TripStore.summary.scoreVitesse",
+                formulaVersion: ScoreEngine.version
+            )
+        }
+        return ReliableMetric(
+            value: score,
+            confidence: .partial,
+            reasonCode: .partialSpeedOnly,
+            source: "TripStore.summary.scoreVitesse",
+            formulaVersion: ScoreEngine.version
+        )
+    }
+
     static func fuelCostMetric(for trip: TripRecord) -> ReliableMetric<Int> {
-        guard let amount = trip.fuelFCFA else {
+        guard trip.isTrustedForDisplay else {
             return .missing(
-                confidence: .needsInput,
-                reasonCode: .fuelInputMissing,
-                source: "TripStore.fuelFCFA",
-                formulaVersion: formulaVersion
+                confidence: .needsReview,
+                reasonCode: .tripNeedsReview,
+                source: "TripStore.quality",
+                formulaVersion: trip.qualityFormulaVersion
             )
         }
-
-        if trip.vehicleType == .velo {
-            return .reliable(
-                amount,
-                source: "TripStore.fuelFCFA",
-                formulaVersion: formulaVersion
-            )
-        }
-
-        return ReliableMetric(
-            value: amount,
-            confidence: .partial,
-            reasonCode: .fuelEstimated,
-            source: "VehicleFuelCatalog",
-            formulaVersion: VehicleFuelCatalog.formulaVersion
-        )
-    }
-
-    static func fuelCostMetric(_ amount: Int?) -> ReliableMetric<Int> {
-        guard let amount else {
-            return .missing(
-                confidence: .needsInput,
-                reasonCode: .fuelInputMissing,
-                source: "TripStore.summary",
-                formulaVersion: formulaVersion
-            )
-        }
-
-        return ReliableMetric(
-            value: amount,
-            confidence: .partial,
-            reasonCode: .fuelEstimated,
-            source: "VehicleFuelCatalog",
-            formulaVersion: VehicleFuelCatalog.formulaVersion
-        )
-    }
-
-    static func fuelCostMetric(
-        liters: Double?,
-        settings: FuelSettings,
-        vehicleType: VehicleType? = nil
-    ) -> ReliableMetric<Int> {
-        guard let amount = settings.costMinorUnits(for: liters) else {
-            return .missing(
-                confidence: .needsInput,
-                reasonCode: .fuelInputMissing,
-                source: "TripStore.fuelLiters+FuelSettings",
+        if let amount = trip.fuelCostMinorUnits,
+           trip.fuelCurrency != nil {
+            if trip.vehicleType == .velo {
+                return .reliable(
+                    amount,
+                    source: "TripStore.fuelCostSnapshot",
+                    formulaVersion: trip.qualityFormulaVersion
+                )
+            }
+            return ReliableMetric(
+                value: amount,
+                confidence: .partial,
+                reasonCode: .fuelEstimated,
+                source: "TripStore.fuelCostSnapshot",
                 formulaVersion: VehicleFuelCatalog.formulaVersion
             )
         }
 
-        if vehicleType == .velo {
-            return .reliable(
-                amount,
-                source: "TripStore.fuelLiters+FuelSettings",
+        return .missing(
+            confidence: .needsInput,
+            reasonCode: .fuelInputMissing,
+            source: "TripStore.fuelCostSnapshot",
+            formulaVersion: trip.fuelFormulaVersion
+        )
+    }
+
+    static func summaryFuelCostMetric(_ summary: DrivingSummary) -> ReliableMetric<Int> {
+        guard let amount = summary.fuelCostMinorUnits,
+              summary.fuelCurrency != nil else {
+            return .missing(
+                confidence: .needsInput,
+                reasonCode: .fuelInputMissing,
+                source: "TripStore.summary.fuelCostSnapshots",
                 formulaVersion: VehicleFuelCatalog.formulaVersion
             )
         }
-
         return ReliableMetric(
             value: amount,
             confidence: .partial,
             reasonCode: .fuelEstimated,
-            source: "TripStore.fuelLiters+FuelSettings",
+            source: "TripStore.summary.fuelCostSnapshots",
             formulaVersion: VehicleFuelCatalog.formulaVersion
         )
     }

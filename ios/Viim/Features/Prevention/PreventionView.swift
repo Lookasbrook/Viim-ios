@@ -1,5 +1,6 @@
 import CoreLocation
 import SwiftUI
+import UIKit
 
 /// Region de prevention deduite de la derniere position GPS connue, sans
 /// aucun appel reseau (boites englobantes embarquees) : les zones a risque
@@ -18,9 +19,14 @@ enum PreventionRegion: Equatable {
     private static let burkinaLongitudeRange = (-6.0)...2.5
     private static let canadaLatitudeRange = 41.5...84.0
     private static let canadaLongitudeRange = (-141.0)...(-52.0)
+    private static let maximumRegionAccuracyMeters: CLLocationAccuracy = 10_000
+    private static let maximumLocationAge: TimeInterval = 15 * 60
 
-    static func classify(location: CLLocation?) -> PreventionRegion {
-        guard let location, location.horizontalAccuracy >= 0 else {
+    static func classify(location: CLLocation?, now: Date = Date()) -> PreventionRegion {
+        guard let location,
+              location.horizontalAccuracy >= 0,
+              location.horizontalAccuracy <= maximumRegionAccuracyMeters,
+              abs(now.timeIntervalSince(location.timestamp)) <= maximumLocationAge else {
             return .unknown
         }
         let coordinate = location.coordinate
@@ -239,7 +245,7 @@ struct PreventionView: View {
     private var challengeCompletedCount: Int {
         tripManager.recentTrips
             .prefix(5)
-            .filter { ($0.scoreVitesse ?? 0) >= 90 }
+            .filter { $0.isTrustedForDisplay && ($0.scoreVitesse ?? 0) >= 90 }
             .count
     }
 }
@@ -329,6 +335,7 @@ private struct MaintenanceCard: View {
                     .padding(.top, 2)
             }
         }
+        .viimKeyboardDismissal()
         .sheet(item: $editedTask) { task in
             MaintenanceTaskEditorSheet(
                 task: task,
@@ -344,6 +351,12 @@ private struct MaintenanceCard: View {
     }
 
     private func declareOdometer() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
         guard let value = parsedOdometer, onDeclareOdometer(value) else {
             odometerEntryFailed = true
             return
@@ -431,6 +444,7 @@ private struct MaintenanceTaskEditorSheet: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
+            .viimKeyboardDismissal()
             .navigationTitle(task.kind.titleKey)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

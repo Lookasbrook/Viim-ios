@@ -78,6 +78,29 @@ final class ScoreEngineTests: XCTestCase {
         XCTAssertEqual(scores.score, scores.scoreVitesse)
     }
 
+    func testLargeGpsGapDoesNotCreateFalseSustainedOverspeed() {
+        let start = Date(timeIntervalSince1970: 1_783_000_000)
+        let trip = CompletedDetectedTrip(
+            id: UUID(),
+            startedAt: start,
+            endedAt: start.addingTimeInterval(600),
+            distanceMeters: 1_200,
+            sampleCount: 3
+        )
+
+        let scores = ScoreEngine.scores(
+            for: trip,
+            samples: [
+                sample(speedKmh: 130, timestamp: start),
+                sample(speedKmh: 132, timestamp: start.addingTimeInterval(300)),
+                sample(speedKmh: 80, timestamp: start.addingTimeInterval(600))
+            ],
+            vehicleType: .voiture
+        )
+
+        XCTAssertEqual(scores.scoreVitesse, 100)
+    }
+
     private func sample(speedKmh: Double, timestamp: Date) -> LocationSample {
         LocationSample(
             timestamp: timestamp,

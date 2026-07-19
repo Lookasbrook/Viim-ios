@@ -1,9 +1,11 @@
 import Foundation
 
 struct VehicleFuelProfile: Equatable {
+    let vehicleType: VehicleType
     let canonicalName: String
     let litersPer100Km: Double
     let confidence: MetricConfidence
+    let sourceIdentifier: String
 }
 
 struct FuelConsumptionEstimate: Equatable {
@@ -24,7 +26,8 @@ struct VehicleCatalogSuggestion: Equatable, Identifiable {
 }
 
 enum VehicleFuelCatalog {
-    static let formulaVersion = "vehicle-fuel-catalog-v6-dynamics-scores"
+    static let formulaVersion = "vehicle-fuel-catalog-v7-static-base"
+    static let sourceIdentifier = "ViimCatalog.indicative.v7"
 
     private static let entries: [VehicleFuelEntry] = [
         car("Toyota", "Corolla", ["corolla", "corollaaltis", "altis"], 6.8, rank: 10),
@@ -182,9 +185,11 @@ enum VehicleFuelCatalog {
     static func profile(vehicleType: VehicleType, brand: String, model: String) -> VehicleFuelProfile? {
         guard vehicleType != .velo else {
             return VehicleFuelProfile(
+                vehicleType: vehicleType,
                 canonicalName: String(localized: "vehicle.type.velo"),
                 litersPer100Km: 0,
-                confidence: .reliable
+                confidence: .reliable,
+                sourceIdentifier: sourceIdentifier
             )
         }
 
@@ -193,9 +198,11 @@ enum VehicleFuelCatalog {
         }
 
         return VehicleFuelProfile(
+            vehicleType: vehicleType,
             canonicalName: entry.canonicalName,
             litersPer100Km: entry.litersPer100Km,
-            confidence: .partial
+            confidence: .partial,
+            sourceIdentifier: sourceIdentifier
         )
     }
 
@@ -238,15 +245,14 @@ enum VehicleFuelCatalog {
             return nil
         }
 
-        // Base : distance GPS validee x fiche technique (cycle mixte).
-        // Quand la dynamique du trajet est mesurable (accelerations,
-        // freinages, ralenti, profil de vitesse), elle module la valeur
-        // constructeur dans des bornes credibles [0.85, 1.5].
+        // La valeur financiere reste strictement la distance GPS validee x
+        // consommation indicative du catalogue. La dynamique GPS n'est pas
+        // une mesure de carburant et ne doit pas modifier un montant tant
+        // qu'elle n'a pas ete calibree contre des pleins ou un capteur moteur.
         let baseLiters = distanceKm * fuelProfile.litersPer100Km / 100
-        let multiplier = dynamics?.fuelConsumptionMultiplier ?? 1.0
 
         return FuelConsumptionEstimate(
-            liters: baseLiters * multiplier,
+            liters: baseLiters,
             confidence: fuelProfile.confidence
         )
     }
@@ -259,20 +265,10 @@ enum VehicleFuelCatalog {
             return nil
         }
 
-        if let exactEntry = entries.first(where: { entry in
+        return entries.first(where: { entry in
             entry.vehicleType == vehicleType &&
                 entry.matches(brand: normalizedBrand, model: normalizedModel, combined: combined)
-        }) {
-            return exactEntry
-        }
-
-        guard hasEnoughModelSignal(brand: brand, model: model),
-              let bestMatch = rankedEntries(vehicleType: vehicleType, brand: brand, model: model).first,
-              bestMatch.score <= 90 else {
-            return nil
-        }
-
-        return bestMatch.entry
+        })
     }
 
     private static func rankedEntries(vehicleType: VehicleType, brand: String, model: String) -> [(entry: VehicleFuelEntry, score: Int)] {

@@ -23,7 +23,7 @@ final class VehicleFuelCatalogTests: XCTestCase {
         XCTAssertEqual(cadSettings.costMinorUnits(for: estimate?.liters), 139)
     }
 
-    func testAggressiveDynamicsIncreaseConsumptionEstimate() throws {
+    func testGpsDynamicsDoNotChangeFinancialConsumptionEstimate() throws {
         let profile = try XCTUnwrap(
             VehicleFuelCatalog.profile(
                 vehicleType: .voiture,
@@ -72,12 +72,8 @@ final class VehicleFuelCatalogTests: XCTestCase {
             )
         )
 
-        // Conduite souple sur route : legerement sous le cycle mixte.
-        XCTAssertLessThan(smooth.liters, baseline.liters)
-        // Conduite urbaine agressive : nettement au-dessus, mais bornee a +50 %.
-        XCTAssertGreaterThan(aggressive.liters, baseline.liters)
-        XCTAssertLessThanOrEqual(aggressive.liters, baseline.liters * 1.5 + 0.0001)
-        XCTAssertGreaterThanOrEqual(smooth.liters, baseline.liters * 0.85 - 0.0001)
+        XCTAssertEqual(smooth.liters, baseline.liters, accuracy: 0.000_001)
+        XCTAssertEqual(aggressive.liters, baseline.liters, accuracy: 0.000_001)
     }
 
     func testDynamicsMultiplierStaysWithinCredibleBounds() {
@@ -115,19 +111,22 @@ final class VehicleFuelCatalogTests: XCTestCase {
 	        XCTAssertNil(VehicleFuelCatalog.estimateConsumption(distanceKm: 12, fuelProfile: profile))
 	    }
 
-	    func testCatalogCanonicalizesCommonUserTypos() {
-	        let suggestion = VehicleFuelCatalog.canonicalSuggestion(
+	    func testCatalogSuggestsButDoesNotSilentlyCanonicalizeUserTypos() {
+	        let canonicalSuggestion = VehicleFuelCatalog.canonicalSuggestion(
 	            vehicleType: .voiture,
 	            brand: "toyota",
 	            model: "coral"
 	        )
+            let suggestions = VehicleFuelCatalog.suggestions(
+                vehicleType: .voiture,
+                query: "toyota coral",
+                limit: 3
+            )
 
-	        XCTAssertEqual(suggestion?.brand, "Toyota")
-	        XCTAssertEqual(suggestion?.model, "Corolla")
-	        XCTAssertEqual(
-	            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "toyota", model: "coral")?.canonicalName,
-	            "Toyota Corolla"
-	        )
+            XCTAssertNil(canonicalSuggestion)
+            XCTAssertNil(VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "toyota", model: "coral"))
+	        XCTAssertEqual(suggestions.first?.brand, "Toyota")
+	        XCTAssertEqual(suggestions.first?.model, "Corolla")
 	    }
 
 	    func testWestAfricanCommonCarsAreCovered() {
@@ -201,5 +200,53 @@ final class VehicleFuelCatalogTests: XCTestCase {
             locale: Locale(identifier: "fr_BF")
         )
         XCTAssertEqual(relaunchedStore.fuelSettings, FuelSettings(currency: .cad, pricePerLiter: 1.67))
+    }
+
+    func testDefaultFuelPriceIsExplicitlyUnverified() {
+        let settings = FuelSettings.defaults(for: Locale(identifier: "fr_CA"))
+
+        XCTAssertEqual(settings.currency, .cad)
+        XCTAssertEqual(settings.source, .unverifiedDefault)
+        XCTAssertFalse(settings.canSnapshotCost)
+        XCTAssertNil(settings.costMinorUnits(for: 1.25))
+    }
+
+    func testEmergencyNumbersAreCountrySpecificAndUnknownCountryDoesNotGuess() {
+        XCTAssertEqual(
+            EmergencyNumberCatalog.numbers(for: .burkinaFaso),
+            EmergencyNumbers(firefighters: "18", police: "17", sourceIdentifier: "police.gov.bf")
+        )
+        XCTAssertEqual(
+            EmergencyNumberCatalog.numbers(for: .canada),
+            EmergencyNumbers(firefighters: "911", police: "911", sourceIdentifier: "canada.ca")
+        )
+        XCTAssertNil(EmergencyNumberCatalog.numbers(for: .other).firefighters)
+        XCTAssertNil(EmergencyNumberCatalog.numbers(for: .other).police)
+    }
+
+    func testCountryAndPhoneCallingCodeMustStayConsistent() {
+        XCTAssertTrue(SupportedCountry.burkinaFaso.matches(phoneNumber: "+22670000000"))
+        XCTAssertTrue(SupportedCountry.canada.matches(phoneNumber: "+14185550123"))
+        XCTAssertTrue(SupportedCountry.other.matches(phoneNumber: "+33612345678"))
+        XCTAssertFalse(SupportedCountry.canada.matches(phoneNumber: "+22670000000"))
+        XCTAssertFalse(SupportedCountry.other.matches(phoneNumber: "+14185550123"))
+    }
+
+    func testLegacyProfileCountryFallbackNeverTreatsUnknownCallingCodeAsBurkinaFaso() {
+        func profile(phoneNumber: String) -> UserProfile {
+            UserProfile(
+                firstName: "Awa",
+                phoneNumber: phoneNumber,
+                vehicleType: .moto,
+                vehicleBrand: "Bajaj",
+                vehicleModel: "Boxer",
+                vehicleYear: "2024",
+                synced: false
+            )
+        }
+
+        XCTAssertEqual(profile(phoneNumber: "+22670000000").country, .burkinaFaso)
+        XCTAssertEqual(profile(phoneNumber: "+14185550123").country, .canada)
+        XCTAssertEqual(profile(phoneNumber: "+33612345678").country, .other)
     }
 }

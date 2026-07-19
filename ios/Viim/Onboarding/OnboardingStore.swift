@@ -1,7 +1,84 @@
 import Foundation
 import Security
 
-enum SupportedCurrency: String, CaseIterable, Codable, Identifiable {
+enum SupportedCountry: String, CaseIterable, Codable, Hashable, Identifiable {
+    case burkinaFaso = "BF"
+    case canada = "CA"
+    case other = "OTHER"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .burkinaFaso:
+            return String(localized: "country.burkinaFaso")
+        case .canada:
+            return String(localized: "country.canada")
+        case .other:
+            return String(localized: "country.other")
+        }
+    }
+
+    var phonePrefix: String {
+        switch self {
+        case .burkinaFaso: "+226 "
+        case .canada: "+1 "
+        case .other: "+"
+        }
+    }
+
+    static func preferred(for locale: Locale = .current) -> SupportedCountry {
+        switch locale.region?.identifier {
+        case "BF": .burkinaFaso
+        case "CA": .canada
+        default: .other
+        }
+    }
+
+    func matches(phoneNumber: String) -> Bool {
+        switch self {
+        case .burkinaFaso:
+            return phoneNumber.hasPrefix("+226")
+        case .canada:
+            return phoneNumber.hasPrefix("+1")
+        case .other:
+            return !phoneNumber.hasPrefix("+226") && !phoneNumber.hasPrefix("+1")
+        }
+    }
+}
+
+struct EmergencyNumbers: Equatable {
+    let firefighters: String?
+    let police: String?
+    let sourceIdentifier: String
+}
+
+enum EmergencyNumberCatalog {
+    static func numbers(for country: SupportedCountry) -> EmergencyNumbers {
+        switch country {
+        case .burkinaFaso:
+            return EmergencyNumbers(
+                firefighters: "18",
+                police: "17",
+                sourceIdentifier: "police.gov.bf"
+            )
+        case .canada:
+            return EmergencyNumbers(
+                firefighters: "911",
+                police: "911",
+                sourceIdentifier: "canada.ca"
+            )
+        case .other:
+            return EmergencyNumbers(
+                firefighters: nil,
+                police: nil,
+                sourceIdentifier: "unavailable"
+            )
+        }
+    }
+}
+
+enum SupportedCurrency: String, CaseIterable, Codable, Hashable, Identifiable {
     case xof = "XOF"
     case cad = "CAD"
     case usd = "USD"
@@ -37,25 +114,45 @@ enum SupportedCurrency: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-struct FuelSettings: Codable, Equatable {
+enum FuelPriceSource: String, Codable, Hashable {
+    case userProvided
+    case unverifiedDefault
+}
+
+struct FuelSettings: Codable, Equatable, Hashable {
     let currency: SupportedCurrency
     let pricePerLiter: Double
+    let source: FuelPriceSource?
+    let capturedAt: Date?
 
-    init(currency: SupportedCurrency, pricePerLiter: Double) {
+    init(
+        currency: SupportedCurrency,
+        pricePerLiter: Double,
+        source: FuelPriceSource = .userProvided,
+        capturedAt: Date? = nil
+    ) {
         self.currency = currency
         self.pricePerLiter = pricePerLiter
+        self.source = source
+        self.capturedAt = capturedAt
     }
 
     static func defaults(for locale: Locale = .current) -> FuelSettings {
         let currency = SupportedCurrency.preferred(for: locale)
         return FuelSettings(
             currency: currency,
-            pricePerLiter: currency.defaultFuelPricePerLiter
+            pricePerLiter: currency.defaultFuelPricePerLiter,
+            source: .unverifiedDefault
         )
     }
 
+    var canSnapshotCost: Bool {
+        source == .userProvided
+    }
+
     func costMinorUnits(for liters: Double?) -> Int? {
-        guard let liters,
+        guard canSnapshotCost,
+              let liters,
               liters.isFinite,
               liters >= 0,
               pricePerLiter.isFinite,
@@ -80,12 +177,27 @@ struct UserProfile: Codable, Equatable {
     // date ; il progresse donc automatiquement avec la conduite.
     var odometerBaselineKm: Double? = nil
     var odometerBaselineDate: Date? = nil
+    var countryCode: String? = nil
 
     var vehicleDisplayName: String {
         let parts = [vehicleBrand, vehicleModel, vehicleYear]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         return parts.isEmpty ? vehicleType.fallbackDisplayName : parts.joined(separator: " ")
+    }
+
+    var country: SupportedCountry {
+        if let countryCode,
+           let country = SupportedCountry(rawValue: countryCode) {
+            return country
+        }
+        if phoneNumber.hasPrefix("+226") {
+            return .burkinaFaso
+        }
+        if phoneNumber.hasPrefix("+1") {
+            return .canada
+        }
+        return .other
     }
 }
 

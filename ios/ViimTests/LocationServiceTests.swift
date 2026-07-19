@@ -948,4 +948,25 @@ final class PreventionRegionTests: XCTestCase {
         )
         XCTAssertEqual(PreventionRegion.classify(location: invalid), .unknown)
     }
+
+    func testStaleOrVeryCoarseLocationIsClassifiedAsUnknown() {
+        let now = Date(timeIntervalSince1970: 1_783_000_000)
+        let stale = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 12.3714, longitude: -1.5197),
+            altitude: 0,
+            horizontalAccuracy: 25,
+            verticalAccuracy: 25,
+            timestamp: now.addingTimeInterval(-901)
+        )
+        let coarse = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 46.8139, longitude: -71.2080),
+            altitude: 0,
+            horizontalAccuracy: 20_000,
+            verticalAccuracy: 25,
+            timestamp: now
+        )
+
+        XCTAssertEqual(PreventionRegion.classify(location: stale, now: now), .unknown)
+        XCTAssertEqual(PreventionRegion.classify(location: coarse, now: now), .unknown)
+    }
 }

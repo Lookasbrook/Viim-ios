@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ViimCard<Content: View>: View {
     private let content: Content
@@ -40,6 +41,27 @@ private struct StaggeredAppearModifier: ViewModifier {
 extension View {
     func staggeredAppear(_ visible: Bool, index: Int) -> some View {
         modifier(StaggeredAppearModifier(visible: visible, index: index))
+    }
+
+    /// Les claviers numeriques et telephoniques iOS n'affichent pas de touche
+    /// Retour. Ce bouton commun garantit que chaque formulaire Viim reste
+    /// quittable, y compris sur les petits ecrans.
+    func viimKeyboardDismissal() -> some View {
+        self
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("common.done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil,
+                            from: nil,
+                            for: nil
+                        )
+                    }
+                }
+            }
     }
 }
 

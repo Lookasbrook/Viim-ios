@@ -192,6 +192,15 @@ final class TripReliabilityTests: XCTestCase {
             scoreEco: nil,
             fuelLiters: nil,
             fuelFCFA: nil,
+            fuelCostMinorUnits: nil,
+            fuelCurrency: nil,
+            fuelPricePerLiter: nil,
+            fuelPriceCapturedAt: nil,
+            fuelPriceSource: nil,
+            fuelProfileName: nil,
+            fuelProfileLitersPer100Km: nil,
+            fuelProfileSource: nil,
+            fuelFormulaVersion: "legacy",
             routePoints: [
                 routePoint(timestamp: start, speedKmh: 12),
                 routePoint(timestamp: start.addingTimeInterval(30), speedKmh: 18)

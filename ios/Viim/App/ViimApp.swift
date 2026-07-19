@@ -31,7 +31,10 @@ struct ViimApp: App {
         // pose de son delegate peut livrer immediatement un reveil passif et
         // creer un nouveau candidat pendant le lancement.
         if let profile = onboardingStore.profile {
-            tripRecorder.configure(profile: profile)
+            tripRecorder.configure(
+                profile: profile,
+                fuelSettings: onboardingStore.fuelSettings
+            )
         }
         tripRecorder.recoverActiveTrips()
 
@@ -48,7 +51,6 @@ struct ViimApp: App {
         // trajets journalises et l'observation des trajets termines doivent
         // donc etre branchees ici, pas dans une vue.
         if let profile = onboardingStore.profile {
-            tripManager.recalculateFuelEstimates(profile: profile)
             locationService.configure(vehicleType: profile.vehicleType)
         }
         tripRecorder.observe(locationService: locationService)
@@ -95,16 +97,32 @@ private struct AppLaunchView: View {
     var body: some View {
         if onboardingStore.isCompleted {
             RootTabView()
-                .task(id: onboardingStore.profile?.vehicleType.rawValue) {
+                .task(id: recordingConfigurationID) {
                     guard let profile = onboardingStore.profile else {
                         tripDetectionCoordinator.stop()
                         return
                     }
-                    tripDetectionCoordinator.configure(profile: profile)
+                    tripDetectionCoordinator.configure(
+                        profile: profile,
+                        fuelSettings: onboardingStore.fuelSettings
+                    )
                 }
         } else {
             OnboardingView()
         }
+    }
+
+    private var recordingConfigurationID: String {
+        guard let profile = onboardingStore.profile else {
+            return "none"
+        }
+        let settings = onboardingStore.fuelSettings
+        return [
+            profile.vehicleType.rawValue,
+            settings.currency.rawValue,
+            String(settings.pricePerLiter),
+            settings.source?.rawValue ?? "legacy"
+        ].joined(separator: "|")
     }
 
 }
@@ -136,8 +154,8 @@ final class TripDetectionCoordinator: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func configure(profile: UserProfile) {
-        tripRecorder.configure(profile: profile)
+    func configure(profile: UserProfile, fuelSettings: FuelSettings) {
+        tripRecorder.configure(profile: profile, fuelSettings: fuelSettings)
         tripRecorder.observe(locationService: locationService)
         locationService.configure(vehicleType: profile.vehicleType)
         locationService.prepareForForegroundUse()

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct OnboardingView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
@@ -41,6 +42,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 14)
             .padding(.bottom, 18)
         }
+        .viimKeyboardDismissal()
         .background(ViimColors.background.ignoresSafeArea())
     }
 
@@ -75,6 +77,20 @@ struct OnboardingView: View {
             .textContentType(.telephoneNumber)
             .keyboardType(.phonePad)
 
+            VStack(alignment: .leading, spacing: 4) {
+                Text("onboarding.identity.country.label")
+                    .fieldLabelStyle()
+                Picker("onboarding.identity.country.label", selection: $draft.country) {
+                    ForEach(SupportedCountry.allCases) { country in
+                        Text(country.displayName).tag(country)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: draft.country) { country in
+                    draft.selectCountry(country)
+                }
+            }
+
             Text("onboarding.identity.consent")
                 .font(.footnote)
                 .foregroundStyle(ViimColors.muted)
@@ -95,7 +111,7 @@ struct OnboardingView: View {
                     ForEach(VehicleType.allCases) { type in
                         VehicleTypeButton(
                             type: type,
-                            isSelected: draft.vehicleType == type
+                            isSelected: draft.hasSelectedVehicleType && draft.vehicleType == type
                         ) {
                             draft.selectVehicleType(type)
                         }
@@ -232,6 +248,7 @@ struct OnboardingView: View {
 
     private func advance() {
         errorKey = nil
+        dismissKeyboard()
 
         guard step.isValid(draft: draft) else {
             errorKey = step.errorKey
@@ -258,7 +275,8 @@ struct OnboardingView: View {
             vehicleYear: draft.vehicleYear.trimmingCharacters(in: .whitespacesAndNewlines),
             synced: false,
             odometerBaselineKm: draft.normalizedOdometerKm,
-            odometerBaselineDate: draft.normalizedOdometerKm != nil ? Date() : nil
+            odometerBaselineDate: draft.normalizedOdometerKm != nil ? Date() : nil,
+            countryCode: draft.country.rawValue
         )
 
         let emergencyContact = draft.emergencyContact
@@ -269,18 +287,35 @@ struct OnboardingView: View {
             errorKey = "onboarding.error.save"
         }
     }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
 }
 
 private struct OnboardingDraft {
     var firstName = ""
-    var phoneNumber = "+226 "
+    var country: SupportedCountry
+    var phoneNumber: String
     var vehicleType: VehicleType = .moto
+    var hasSelectedVehicleType = false
     var vehicleBrand = ""
     var vehicleModel = ""
     var vehicleYear = ""
     var odometerKm = ""
     var emergencyContactName = ""
     var emergencyContactPhone = ""
+
+    init(locale: Locale = .current) {
+        let preferredCountry = SupportedCountry.preferred(for: locale)
+        country = preferredCountry
+        phoneNumber = preferredCountry.phonePrefix
+    }
 
     var normalizedOdometerKm: Double? {
         let cleaned = odometerKm
@@ -302,10 +337,15 @@ private struct OnboardingDraft {
     }
 
     var normalizedPhoneNumber: String? {
-        BurkinaPhoneNumber.normalize(phoneNumber)
+        guard let normalized = BurkinaPhoneNumber.normalize(phoneNumber),
+              country.matches(phoneNumber: normalized) else {
+            return nil
+        }
+        return normalized
     }
 
     mutating func selectVehicleType(_ type: VehicleType) {
+        hasSelectedVehicleType = true
         guard vehicleType != type else {
             return
         }
@@ -316,7 +356,16 @@ private struct OnboardingDraft {
         }
     }
 
+    mutating func selectCountry(_ newCountry: SupportedCountry) {
+        let knownPrefixes = SupportedCountry.allCases.map(\.phonePrefix)
+        let isOnlyKnownPrefix = knownPrefixes.contains(phoneNumber)
+        if isOnlyKnownPrefix || phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            phoneNumber = newCountry.phonePrefix
+        }
+    }
+
     mutating func applyVehicleSuggestion(_ suggestion: VehicleCatalogSuggestion) {
+        hasSelectedVehicleType = true
         vehicleType = suggestion.vehicleType
         vehicleBrand = suggestion.brand
         vehicleModel = suggestion.model
@@ -329,6 +378,25 @@ private struct OnboardingDraft {
             return nil
         }
         return EmergencyContact(name: name, phoneNumber: phone)
+    }
+
+    var hasValidVehicleInformation: Bool {
+        guard hasSelectedVehicleType else {
+            return false
+        }
+        if vehicleType == .velo {
+            return odometerKm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                normalizedOdometerKm != nil
+        }
+
+        let brand = vehicleBrand.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = vehicleModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let year = Int(vehicleYear.trimmingCharacters(in: .whitespacesAndNewlines))
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let hasValidYear = year.map { (1950...(currentYear + 1)).contains($0) } == true
+        let hasValidOdometer = odometerKm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            normalizedOdometerKm != nil
+        return !brand.isEmpty && !model.isEmpty && hasValidYear && hasValidOdometer
     }
 }
 
@@ -383,7 +451,7 @@ private enum OnboardingStep: Int, CaseIterable {
             return !draft.firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
                 draft.normalizedPhoneNumber != nil
         case .vehicle:
-            return true
+            return draft.hasValidVehicleInformation
         case .safety:
             let hasName = !draft.emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             let hasPhone = !draft.emergencyContactPhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

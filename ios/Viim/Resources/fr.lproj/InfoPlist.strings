@@ -1,4 +1,4 @@
 "NSCameraUsageDescription" = "Viim utilise l'appareil photo pour ajouter une photo de votre véhicule ou de votre constat.";
-"NSLocationAlwaysAndWhenInUseUsageDescription" = "Viim utilise votre position pour détecter vos trajets, afficher vos cartes et partager votre localisation en cas d'accident confirmé.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Viim utilise votre position pour détecter vos trajets, afficher vos cartes et vous permettre de partager manuellement votre localisation.";
 "NSLocationWhenInUseUsageDescription" = "Viim utilise votre position pour afficher votre trajet et votre localisation actuelle.";
-"NSMotionUsageDescription" = "Viim utilise les capteurs de mouvement pour détecter les freinages brusques et les collisions.";
+"NSMotionUsageDescription" = "Viim utilise les capteurs de mouvement pour analyser les accélérations et les freinages pendant vos trajets.";

@@ -15,8 +15,9 @@
 "onboarding.identity.firstName.placeholder" = "Votre prénom";
 "onboarding.identity.phone.label" = "Téléphone";
 "onboarding.identity.phone.placeholder" = "+226 00 00 00 00";
-"onboarding.identity.consent" = "Viim demandera votre localisation ensuite pour détecter vos trajets et partager votre position uniquement en cas d'accident confirmé.";
-"onboarding.identity.error" = "Renseignez votre prénom et un numéro burkinabè valide.";
+"onboarding.identity.country.label" = "Pays";
+"onboarding.identity.consent" = "Viim demandera votre localisation ensuite pour détecter vos trajets. Le partage de position reste une action manuelle tant que la détection de collision n'est pas validée.";
+"onboarding.identity.error" = "Renseignez votre prénom, votre pays et un numéro valide au format international.";
 
 "onboarding.vehicle.title" = "Moyen de déplacement";
 "onboarding.vehicle.header" = "Votre moyen de déplacement";
@@ -35,7 +36,7 @@
 "onboarding.vehicle.odometer.label" = "Kilométrage actuel (odomètre)";
 "onboarding.vehicle.odometer.placeholder" = "Ex. 45000";
 "onboarding.vehicle.odometer.help" = "Le kilométrage augmentera automatiquement avec vos trajets et servira aux rappels d'entretien (vidange, freins, pneus).";
-"onboarding.vehicle.error" = "Choisissez votre moyen de déplacement.";
+"onboarding.vehicle.error" = "Choisissez votre moyen de déplacement. Pour un véhicule motorisé, renseignez la marque, le modèle et une année valide.";
 
 "onboarding.safety.title" = "Sécurité";
 "onboarding.safety.header" = "Préparez vos alertes";
@@ -48,7 +49,7 @@
 "onboarding.safety.keychain" = "Ce contact est stocké dans le trousseau de l'iPhone.";
 "onboarding.safety.medical.title" = "Fiche médicale";
 "onboarding.safety.medical.detail" = "La fiche médicale sera proposée ensuite et restera dans le trousseau.";
-"onboarding.safety.error" = "Complétez le nom et un numéro burkinabè valide, ou laissez les deux champs vides.";
+"onboarding.safety.error" = "Complétez le nom et un numéro international valide, ou laissez les deux champs vides.";
 "onboarding.error.save" = "L'inscription n'a pas pu être enregistrée sur cet iPhone.";
 "onboarding.action.back" = "Retour";
 "onboarding.action.next" = "Continuer";
@@ -60,6 +61,10 @@
 "status.offlineReady" = "Prêt hors ligne";
 "common.ok" = "OK";
 "common.cancel" = "Annuler";
+"common.done" = "Terminé";
+"country.burkinaFaso" = "Burkina Faso";
+"country.canada" = "Canada";
+"country.other" = "Autre";
 
 "home.title" = "Accueil";
 "home.greeting" = "Bonsoir";
@@ -111,6 +116,7 @@
 "home.recentTrips.empty.detail" = "Les trajets détectés apparaîtront ici après confirmation GPS.";
 "home.recentTrips.empty.status" = "En attente";
 "home.recentTrips.saved" = "Enregistré";
+"home.recentTrips.needsReview" = "À vérifier";
 "home.recentTrips.local" = "Sur ce téléphone";
 "home.capture.persisted.title" = "Dernier trajet enregistré";
 "home.capture.persisted.detail" = "Le trajet est disponible dans l'historique de ce téléphone.";
@@ -131,6 +137,16 @@
 "trip.route.unavailable.short" = "--";
 "trip.route.unavailable.title" = "Carte indisponible";
 "trip.route.unavailable.detail" = "La carte de ce trajet n'est pas disponible.";
+"trip.quality.needsReview.title" = "Trajet à vérifier";
+"trip.quality.needsReview.detail" = "Ce trajet est conservé pour diagnostic, mais ses valeurs et son tracé sont masqués et exclus des résumés.";
+"trip.fuelEvidence.title" = "Preuve de l'estimation";
+"trip.fuelEvidence.vehicle" = "Profil véhicule";
+"trip.fuelEvidence.consumption" = "Consommation retenue";
+"trip.fuelEvidence.consumptionFormat" = "%.1f L/100 km";
+"trip.fuelEvidence.price" = "Prix figé";
+"trip.fuelEvidence.priceMissing" = "Non renseigné au moment du trajet";
+"trip.fuelEvidence.formula" = "Version de calcul";
+"trip.fuelEvidence.disclaimer" = "Estimation indicative : distance GPS validée × consommation du profil. Aucune télémétrie moteur n'est utilisée.";
 
 "motion.status.unavailable" = "Mouvement indisponible";
 "motion.status.waiting" = "Détection en veille";
@@ -166,6 +182,8 @@
 "metric.reason.impossibleSpeed.detail" = "Donnée indisponible.";
 "metric.reason.tripTooShort.short" = "--";
 "metric.reason.tripTooShort.detail" = "Donnée indisponible.";
+"metric.reason.tripNeedsReview.short" = "À vérifier";
+"metric.reason.tripNeedsReview.detail" = "La qualité GPS de ce trajet ne permet pas d'afficher cette valeur comme fiable.";
 "metric.reason.scoreUnavailable.short" = "--";
 "metric.reason.scoreUnavailable.detail" = "Donnée indisponible.";
 "metric.reason.syncEngineMissing.short" = "--";
@@ -190,10 +208,12 @@
 "driving.performance.badges" = "Vos badges de conduite apparaîtront avec vos prochains trajets.";
 "driving.performance.cityAverage" = "Comparaison Ouagadougou disponible avec les données communautaires.";
 "driving.performance.basedOnTrips" = "Score moyen basé sur vos %d trajets des 30 derniers jours.";
-"driving.performance.detail" = "Score établi à partir de la vitesse GPS mesurée. Les critères capteurs affineront ce score.";
+"driving.performance.detail" = "Score global calculé séparément à partir des critères GPS disponibles : seuil technique de vitesse, fluidité et éco-conduite.";
 "driving.performance.empty" = "Votre score apparaîtra dès votre premier trajet enregistré.";
 "driving.performance.empty.detail" = "Roulez normalement : Viim détecte et note vos trajets automatiquement.";
-"driving.score.partialChip" = "Partiel — vitesse seule";
+"driving.score.partialChip" = "Critères partiels";
+"driving.score.gpsChip" = "Critères GPS";
+"driving.score.technicalThresholdChip" = "Seuil technique";
 "driving.hero.trips.value" = "0";
 "driving.hero.trips.label" = "Trajets";
 "driving.hero.distance.value" = "0";
@@ -211,8 +231,8 @@
 "driving.action.style" = "Voir mon style de conduite";
 "driving.criteria.speed" = "Vitesse";
 "driving.criteria.speed.value" = "--";
-"driving.criteria.speed.detail" = "Les excès de vitesse sont mesurés à partir du GPS dès votre premier trajet.";
-"driving.criteria.speed.detail.real" = "Score vitesse moyen de vos trajets des 30 derniers jours, mesuré par GPS.";
+"driving.criteria.speed.detail" = "Ce score compare la vitesse GPS à un seuil technique du type de véhicule, pas à la limitation réelle de la route.";
+"driving.criteria.speed.detail.real" = "Score moyen par rapport au seuil technique du véhicule. Il ne certifie pas le respect des panneaux routiers.";
 "driving.criteria.speed.unit" = "/100";
 "driving.criteria.comingSoon" = "À venir";
 "driving.criteria.smoothness" = "Fluidité";
@@ -233,7 +253,7 @@
 "assistance.title" = "Assistance";
 "assistance.hero.detail" = "Vos actions rapides en cas d'incident.";
 "assistance.realtime.title" = "Soutien en temps réel";
-"assistance.realtime.detail" = "Vos proches reçoivent un message WhatsApp dès qu'une collision est confirmée. Vous disposez de 60 secondes pour annuler.";
+"assistance.realtime.detail" = "La détection automatique de collision n'est pas encore active. Vous pouvez tester manuellement l'envoi WhatsApp ou partager votre position.";
 "assistance.location.title" = "Voir ma localisation";
 "assistance.location.coordinates" = "Coordonnées GPS";
 "assistance.location.copy" = "Copier les coordonnées";
@@ -279,7 +299,8 @@
 "assistance.medical.title" = "Fiche médicale";
 "assistance.medical.status" = "À compléter";
 "assistance.medical.complete" = "Complète";
-"assistance.medical.privacy" = "Ces données ne quittent jamais votre téléphone sauf en cas d'accident confirmé.";
+"assistance.medical.savedStatus" = "Enregistrée";
+"assistance.medical.privacy" = "Ces données restent dans le trousseau de cet iPhone. Elles ne sont pas envoyées automatiquement.";
 "assistance.medical.bloodType" = "Groupe sanguin";
 "assistance.medical.allergies" = "Allergies";
 "assistance.medical.conditions" = "Maladies chroniques";
@@ -302,6 +323,8 @@
 "assistance.firefighters.detail" = "Appeler le 18";
 "assistance.police.title" = "Police";
 "assistance.police.detail" = "Appeler le 17";
+"assistance.emergency.call" = "Appeler le %@";
+"assistance.emergency.unavailable" = "Numéro non vérifié";
 "assistance.hospitals.title" = "Hôpitaux proches";
 "assistance.hospitals.detail" = "À localiser";
 "assistance.hospitals.screen.detail" = "La recherche MapKit des hôpitaux proches sera branchée après validation terrain de la localisation.";
@@ -312,6 +335,8 @@
 "assistance.test.success.detail" = "Le contact d'urgence doit recevoir un message WhatsApp de test.";
 "assistance.test.error" = "Le test WhatsApp n'a pas abouti. Vérifiez le réseau et la configuration du serveur.";
 "assistance.test.missingContact" = "Ajoutez d'abord un contact d'urgence.";
+"assistance.send.partial.title" = "Envoi partiel";
+"assistance.send.partial.detail" = "Au moins un contact n'a pas reçu le message. Vérifiez chaque destinataire et réessayez.";
 "assistance.error.title" = "Action impossible";
 "assistance.error.invalidContact" = "Numéro refusé par le serveur. Utilisez le format international +indicatif (ex. +226XXXXXXXX, +1XXXXXXXXXX).";
 "assistance.error.whatsappUnavailable" = "Serveur WhatsApp indisponible. Réessayez ou utilisez SMS.";
@@ -321,14 +346,14 @@
 "prevention.title" = "Prévention";
 "prevention.hero.detail" = "Alertes route, entretien et défis sécurité.";
 "prevention.dangerZones.title" = "Zones à risque — Ouagadougou";
-"prevention.dangerZones.source" = "Liste de référence ONASER, à titre indicatif.";
+"prevention.dangerZones.source" = "Référence ONASER embarquée, sans mise à jour en temps réel. À vérifier avant le trajet.";
 "prevention.dangerZones.referenceChip" = "Référence";
 "prevention.dangerZones.upcoming" = "Les alertes automatiques à l'approche d'une zone arriveront avec le geofencing.";
 "prevention.dangerZones.outside.title" = "Zones à risque — votre région";
 "prevention.dangerZones.outside.chip" = "Autre région";
 "prevention.dangerZones.outside.detail" = "Votre position actuelle est hors des régions couvertes (Burkina Faso, Canada). Les repères locaux de votre région seront ajoutés dès que des données fiables seront disponibles.";
 "prevention.dangerZones.canada.title" = "Risques routiers — Canada";
-"prevention.dangerZones.canada.source" = "Repères généraux de sécurité routière au Canada, à titre indicatif.";
+"prevention.dangerZones.canada.source" = "Conseils généraux embarqués, sans données locales ni conditions en temps réel.";
 "prevention.dangerZones.canada.upcoming" = "Les zones à risque précises par ville arriveront avec les données locales.";
 "prevention.zone.canada.blackIce" = "Glace noire et chaussée glacée";
 "prevention.zone.canada.blackIce.season" = "nov. – avr.";
@@ -338,11 +363,11 @@
 "prevention.zone.canada.construction.season" = "mai – oct.";
 "prevention.zone.canada.school" = "Zones scolaires (30 km/h)";
 "prevention.zone.canada.school.season" = "jours de classe";
-"prevention.weather.winter" = "Conduite hivernale";
+"prevention.weather.winter" = "Conseil de conduite hivernale";
 "prevention.weather.winter.advice" = "Pneus d'hiver, distances doublées sur neige et attention à la glace noire aux ponts et viaducs.";
 "prevention.dangerZones.unknown.chip" = "Position ?";
 "prevention.dangerZones.unknown.detail" = "Position inconnue pour le moment. Les zones à risque s'adapteront à votre région dès qu'une position GPS sera disponible.";
-"prevention.weather.rainySeason.generic" = "Conduite sous la pluie";
+"prevention.weather.rainySeason.generic" = "Conseil en cas de pluie";
 "prevention.zone.jeunes" = "Boulevard de la Jeunesse";
 "prevention.zone.insurrection" = "Bd de l'Insurrection Populaire";
 "prevention.zone.bassawarga" = "Avenue Bassawarga";
@@ -353,9 +378,9 @@
 "prevention.road.placeholder" = "Les alertes saison des pluies, harmattan et travaux seront affichées ici.";
 "prevention.weather.rainySeason" = "Saison des pluies";
 "prevention.weather.rainySeason.advice" = "Adhérence réduite sous la pluie : allongez vos distances de freinage.";
-"prevention.weather.harmattan" = "Harmattan";
+"prevention.weather.harmattan" = "Conseil en période d'harmattan";
 "prevention.weather.harmattan.advice" = "Poussière et visibilité réduite en saison sèche : allumez vos feux.";
-"prevention.weather.night" = "Conduite de nuit (20 h – 6 h)";
+"prevention.weather.night" = "Conseil pour la conduite de nuit";
 "prevention.weather.night.advice" = "Risque accru la nuit : réduisez votre vitesse et restez visible.";
 "prevention.maintenance.title" = "Entretien véhicule";
 "prevention.maintenance.vehicleFallback" = "Véhicule à confirmer";
@@ -387,7 +412,7 @@
 "prevention.challenge.title" = "Défi de la semaine";
 "prevention.challenge.active" = "En cours";
 "prevention.challenge.done" = "Réussi !";
-"prevention.challenge.detail" = "5 trajets d'affilée sans excès de vitesse (score vitesse ≥ 90) → badge Bronze.";
+"prevention.challenge.detail" = "5 trajets d'affilée avec un score vitesse ≥ 90, calculé sur le seuil technique Viim → badge Bronze.";
 "prevention.challenge.progressFormat" = "%d/%d";
 
 "profile.title" = "Profil";
@@ -407,6 +432,7 @@
 "profile.currency" = "Devise";
 "profile.fuelPrice.placeholder" = "Prix par litre";
 "profile.fuel.save" = "Enregistrer";
-"profile.fuel.help" = "Le coût est recalculé à partir des litres estimés avec la distance GPS du trajet et ce prix par litre.";
+"profile.fuel.help" = "Chaque nouveau trajet conserve ce prix et cette devise. Les anciens coûts ne sont jamais réécrits.";
+"profile.fuel.unverified" = "Aucun prix vérifié n'est enregistré. Les coûts resteront indisponibles jusqu'à votre saisie.";
 "profile.fuel.saved" = "Devise et prix enregistrés.";
 "profile.fuel.invalid" = "Saisissez un prix par litre supérieur à zéro.";

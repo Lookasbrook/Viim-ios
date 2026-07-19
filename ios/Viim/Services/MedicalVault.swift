@@ -16,8 +16,9 @@ struct MedicalProfile: Codable, Equatable {
         cnib: ""
     )
 
-    var isComplete: Bool {
-        !bloodType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    var hasContent: Bool {
+        [bloodType, allergies, conditions, medications, cnib]
+            .contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 }
 

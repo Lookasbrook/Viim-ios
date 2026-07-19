@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ConduiteView: View {
     @EnvironmentObject private var tripManager: TripManager
-    @EnvironmentObject private var onboardingStore: OnboardingStore
     @State private var hasAppeared = false
 
     var body: some View {
@@ -27,13 +26,13 @@ struct ConduiteView: View {
                                         .font(.system(size: 14, weight: .bold))
                                         .foregroundStyle(ViimColors.text)
                                         .fixedSize(horizontal: false, vertical: true)
-                                    if scoreMetric.value != nil {
-                                        ViimChip(titleKey: "driving.score.partialChip", style: .neutral)
+                                    if globalScoreMetric.value != nil {
+                                        ViimChip(titleKey: "driving.score.gpsChip", style: .neutral)
                                     }
                                 }
                                 Spacer(minLength: 8)
                                 ScoreRing(
-                                    score: scoreMetric.value,
+                                    score: globalScoreMetric.value,
                                     text: displayedScoreText,
                                     color: displayedScoreColor,
                                     animate: hasAppeared
@@ -47,7 +46,7 @@ struct ConduiteView: View {
                         }
                     }
 
-                    EcoSummaryRow(summary: summary, settings: onboardingStore.fuelSettings)
+                    EcoSummaryRow(summary: summary)
                         .staggeredAppear(hasAppeared, index: 2)
 
                     CompactInfoRow(
@@ -60,7 +59,7 @@ struct ConduiteView: View {
                     NavigationLink {
                         DrivingStyleDetailView(
                             summary: summary,
-                            speedMetric: scoreMetric,
+                            speedMetric: speedMetric,
                             animate: true
                         )
                     } label: {
@@ -83,7 +82,7 @@ struct ConduiteView: View {
 
                     SectionTitle(titleKey: "driving.portrait.title", systemImage: "gauge.medium", tint: ViimColors.blue)
 
-                    SpeedCriterionCard(metric: scoreMetric, animate: hasAppeared)
+                    SpeedCriterionCard(metric: speedMetric, animate: hasAppeared)
 
                     if let fluidityScore = summary.avgScoreFluidite {
                         ScoreCriterionCard(
@@ -135,11 +134,11 @@ struct ConduiteView: View {
     }
 
     private var displayedScoreText: String {
-        DrivingValueFormatter.scoreText(scoreMetric)
+        DrivingValueFormatter.scoreText(globalScoreMetric)
     }
 
     private var displayedScoreColor: Color {
-        guard let score = scoreMetric.value else {
+        guard let score = globalScoreMetric.value else {
             return ViimColors.navy
         }
         if score >= 80 { return ViimColors.success }
@@ -148,7 +147,7 @@ struct ConduiteView: View {
     }
 
     private var performanceTitle: String {
-        guard scoreMetric.value != nil else {
+        guard globalScoreMetric.value != nil else {
             return String(localized: "driving.performance.empty")
         }
         return String.localizedStringWithFormat(
@@ -158,14 +157,18 @@ struct ConduiteView: View {
     }
 
     private var performanceDetail: String {
-        guard scoreMetric.value != nil else {
+        guard globalScoreMetric.value != nil else {
             return String(localized: "driving.performance.empty.detail")
         }
         return String(localized: "driving.performance.detail")
     }
 
-    private var scoreMetric: ReliableMetric<Int> {
+    private var globalScoreMetric: ReliableMetric<Int> {
         TripMetricsCalculator.summaryScoreMetric(summary)
+    }
+
+    private var speedMetric: ReliableMetric<Int> {
+        TripMetricsCalculator.summarySpeedScoreMetric(summary)
     }
 }
 
@@ -381,7 +384,6 @@ private struct ScoreRing: View {
 
 private struct EcoSummaryRow: View {
     let summary: DrivingSummary
-    let settings: FuelSettings?
 
     var body: some View {
         ViimCard {
@@ -425,15 +427,11 @@ private struct EcoSummaryRow: View {
             liters
         )
 
-        if let settings {
-            let costMetric = TripMetricsCalculator.fuelCostMetric(
-                liters: liters,
-                settings: settings
-            )
-            if costMetric.value != nil {
-                let costText = DrivingValueFormatter.moneyText(costMetric, currency: settings.currency)
-                return "\(litersText) · \(costText)"
-            }
+        let costMetric = TripMetricsCalculator.summaryFuelCostMetric(summary)
+        if costMetric.value != nil,
+           let currency = summary.fuelCurrency {
+            let costText = DrivingValueFormatter.moneyText(costMetric, currency: currency)
+            return "\(litersText) · \(costText)"
         }
 
         return litersText
@@ -481,7 +479,7 @@ private struct SpeedCriterionCard: View {
                         .foregroundStyle(ViimColors.text)
                     Spacer()
                     if metric.value != nil {
-                        ViimChip(titleKey: "driving.score.partialChip", style: .neutral)
+                        ViimChip(titleKey: "driving.score.technicalThresholdChip", style: .neutral)
                     }
                 }
 

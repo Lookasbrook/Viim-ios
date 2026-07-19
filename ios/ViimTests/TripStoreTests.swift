@@ -64,7 +64,6 @@ final class TripStoreTests: XCTestCase {
             scoreVigilance: nil,
             scoreEco: nil
         )
-
         try store.insertCompletedTrip(
             trip,
             samples: samples(start: trip.startedAt),
@@ -77,6 +76,7 @@ final class TripStoreTests: XCTestCase {
         let recentTrip = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
 
         XCTAssertEqual(summary.avgScore, 82)
+        XCTAssertEqual(summary.avgScoreVitesse, 82)
         XCTAssertEqual(recentTrip.score, 82)
         XCTAssertEqual(recentTrip.scoreVitesse, 82)
     }
@@ -112,55 +112,6 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(recentTrip.distanceKm, expectedDistanceMeters / 1_000, accuracy: 0.001)
         XCTAssertEqual(summary.totalKm, expectedDistanceMeters / 1_000, accuracy: 0.001)
         XCTAssertNotEqual(recentTrip.distanceKm, trip.distanceMeters / 1_000)
-    }
-
-    func testLegacyFuelEstimateIsRecalculatedOnceFromValidatedDistanceAndVehicleProfile() throws {
-        let persistenceController = PersistenceController(inMemory: true)
-        let context = persistenceController.container.viewContext
-        let store = TripStore(context: context)
-        let trip = completedTrip(index: 0)
-        let routeSamples = samples(start: trip.startedAt)
-        let profile = try XCTUnwrap(
-            VehicleFuelCatalog.profile(
-                vehicleType: .voiture,
-                brand: "Toyota",
-                model: "Corolla"
-            )
-        )
-
-        try store.insertCompletedTrip(
-            trip,
-            samples: routeSamples,
-            vehicleType: .voiture,
-            isCalibration: false,
-            scores: TripScores(
-                score: 95,
-                scoreVitesse: 95,
-                scoreFluidite: nil,
-                scoreVigilance: nil,
-                scoreEco: nil
-            ),
-            fuelProfile: profile
-        )
-
-        let request = NSFetchRequest<NSManagedObject>(entityName: "Trip")
-        let object = try XCTUnwrap(context.fetch(request).first)
-        object.setValue(99.0, forKey: "fuelLiters")
-        object.setValue("vehicle-fuel-catalog-v3", forKey: "fuelFormulaVersion")
-        try context.save()
-
-        XCTAssertEqual(
-            try store.recalculateFuelEstimates(fuelProfile: profile, vehicleType: .voiture),
-            1
-        )
-
-        let repaired = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
-        XCTAssertEqual(repaired.fuelLiters ?? -1, repaired.distanceKm * 6.8 / 100, accuracy: 0.000_001)
-        XCTAssertEqual(object.value(forKey: "fuelFormulaVersion") as? String, VehicleFuelCatalog.formulaVersion)
-        XCTAssertEqual(
-            try store.recalculateFuelEstimates(fuelProfile: profile, vehicleType: .voiture),
-            0
-        )
     }
 
     func testRejectedUnreliableTripDoesNotLeavePartialCoreDataObject() throws {
@@ -212,6 +163,11 @@ final class TripStoreTests: XCTestCase {
             scoreVigilance: nil,
             scoreEco: nil
         )
+        let fuelSettings = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.70,
+            capturedAt: trip.endedAt
+        )
 
         try store.insertCompletedTrip(
             trip,
@@ -219,17 +175,13 @@ final class TripStoreTests: XCTestCase {
             vehicleType: .voiture,
             isCalibration: false,
             scores: scores,
-            fuelProfile: fuelProfile
+            fuelProfile: fuelProfile,
+            fuelSettings: fuelSettings
         )
 
         let summary = try store.fetchSummary()
         let recentTrip = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
-        let fuelSettings = FuelSettings(currency: .cad, pricePerLiter: 1.70)
-        let fuelMetric = TripMetricsCalculator.fuelCostMetric(
-            liters: recentTrip.fuelLiters,
-            settings: fuelSettings,
-            vehicleType: recentTrip.vehicleType
-        )
+        let fuelMetric = TripMetricsCalculator.fuelCostMetric(for: recentTrip)
         let expectedFuelConsumption = try XCTUnwrap(
             VehicleFuelCatalog.estimateConsumption(
                 distanceKm: expectedDistanceMeters / 1_000,
@@ -248,8 +200,24 @@ final class TripStoreTests: XCTestCase {
         XCTAssertNil(recentTrip.fuelFCFA)
         XCTAssertNil(summary.fuelFCFA)
         XCTAssertEqual(fuelMetric.value, fuelSettings.costMinorUnits(for: expectedFuelConsumption.liters))
+        XCTAssertEqual(recentTrip.fuelCostMinorUnits, fuelMetric.value)
+        XCTAssertEqual(recentTrip.fuelCurrency, .cad)
+        XCTAssertEqual(recentTrip.fuelPricePerLiter, 1.70)
+        XCTAssertEqual(recentTrip.fuelPriceSource, .userProvided)
+        XCTAssertEqual(recentTrip.fuelProfileName, "Toyota Corolla")
+        XCTAssertEqual(recentTrip.fuelProfileLitersPer100Km, 6.8)
+        XCTAssertEqual(recentTrip.fuelProfileSource, VehicleFuelCatalog.sourceIdentifier)
+        XCTAssertEqual(summary.fuelCostMinorUnits, fuelMetric.value)
+        XCTAssertEqual(summary.fuelCurrency, .cad)
         XCTAssertEqual(fuelMetric.confidence, .partial)
         XCTAssertEqual(fuelMetric.reasonCode, .fuelEstimated)
+
+        let changedCurrentSettings = FuelSettings(currency: .xof, pricePerLiter: 2_000)
+        XCTAssertNotEqual(
+            changedCurrentSettings.costMinorUnits(for: recentTrip.fuelLiters),
+            recentTrip.fuelCostMinorUnits
+        )
+        XCTAssertEqual(TripMetricsCalculator.fuelCostMetric(for: recentTrip).value, recentTrip.fuelCostMinorUnits)
     }
 
     func testFetchTripsReturnsAllTripsFromStartOfDay() throws {
@@ -341,13 +309,135 @@ final class TripStoreTests: XCTestCase {
         XCTAssertNil(summary.fuelFCFA)
         XCTAssertEqual(recentTrip.fuelLiters, 0)
         XCTAssertNil(recentTrip.fuelFCFA)
-        let metric = TripMetricsCalculator.fuelCostMetric(
-            liters: recentTrip.fuelLiters,
-            settings: FuelSettings(currency: .cad, pricePerLiter: 1.70),
-            vehicleType: recentTrip.vehicleType
-        )
+        let metric = TripMetricsCalculator.fuelCostMetric(for: recentTrip)
         XCTAssertEqual(metric.value, 0)
         XCTAssertEqual(metric.confidence, .reliable)
+    }
+
+    func testSummaryCostIsUnavailableWhenAnyTripLacksAPriceSnapshot() throws {
+        let store = makeStore()
+        let profile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
+        )
+        let pricedTrip = completedTrip(index: 0)
+        let unpricedTrip = completedTrip(index: 1)
+
+        try store.insertCompletedTrip(
+            pricedTrip,
+            samples: samples(start: pricedTrip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            fuelProfile: profile,
+            fuelSettings: FuelSettings(currency: .cad, pricePerLiter: 1.70)
+        )
+        try store.insertCompletedTrip(
+            unpricedTrip,
+            samples: samples(start: unpricedTrip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            fuelProfile: profile
+        )
+
+        let summary = try store.fetchSummary()
+
+        XCTAssertNotNil(summary.fuelLiters)
+        XCTAssertNil(summary.fuelCostMinorUnits)
+        XCTAssertNil(summary.fuelCurrency)
+        XCTAssertNil(TripMetricsCalculator.summaryFuelCostMetric(summary).value)
+    }
+
+    func testSummaryFuelIsUnavailableWhenAnyTripLacksAVehicleProfile() throws {
+        let store = makeStore()
+        let profile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
+        )
+        let profiledTrip = completedTrip(index: 0)
+        let unknownTrip = completedTrip(index: 1)
+
+        try store.insertCompletedTrip(
+            profiledTrip,
+            samples: samples(start: profiledTrip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            fuelProfile: profile
+        )
+        try store.insertCompletedTrip(
+            unknownTrip,
+            samples: samples(start: unknownTrip.startedAt),
+            vehicleType: .moto,
+            isCalibration: false
+        )
+
+        let summary = try store.fetchSummary()
+
+        XCTAssertNil(summary.fuelLiters)
+        XCTAssertNil(summary.fuelCostMinorUnits)
+    }
+
+    func testMismatchedVehicleProfileDoesNotInventFuelEstimate() throws {
+        let store = makeStore()
+        let carProfile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
+        )
+        let trip = completedTrip(index: 0)
+
+        try store.insertCompletedTrip(
+            trip,
+            samples: samples(start: trip.startedAt),
+            vehicleType: .moto,
+            isCalibration: false,
+            fuelProfile: carProfile,
+            fuelSettings: FuelSettings(currency: .cad, pricePerLiter: 1.70)
+        )
+
+        let recentTrip = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+
+        XCTAssertNil(recentTrip.fuelLiters)
+        XCTAssertNil(recentTrip.fuelCostMinorUnits)
+        XCTAssertNil(recentTrip.fuelProfileName)
+    }
+
+    func testSummaryScoreStaysPartialWhenAnyTripLacksCriteria() throws {
+        let store = makeStore()
+        let completeTrip = completedTrip(index: 0)
+        let partialTrip = completedTrip(index: 1)
+
+        try store.insertCompletedTrip(
+            completeTrip,
+            samples: samples(start: completeTrip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            scores: TripScores(
+                score: 90,
+                scoreVitesse: 90,
+                scoreFluidite: 90,
+                scoreVigilance: nil,
+                scoreEco: 90
+            )
+        )
+        try store.insertCompletedTrip(
+            partialTrip,
+            samples: samples(start: partialTrip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            scores: TripScores(
+                score: 80,
+                scoreVitesse: 80,
+                scoreFluidite: nil,
+                scoreVigilance: nil,
+                scoreEco: nil
+            )
+        )
+
+        let summary = try store.fetchSummary()
+        let metric = TripMetricsCalculator.summaryScoreMetric(summary)
+
+        XCTAssertEqual(summary.avgScore, 85)
+        XCTAssertEqual(summary.avgScoreVitesse, 85)
+        XCTAssertNil(summary.avgScoreFluidite)
+        XCTAssertNil(summary.avgScoreEco)
+        XCTAssertEqual(metric.value, 85)
+        XCTAssertEqual(metric.confidence, .partial)
     }
 
     func testLegacyBicycleTripWithoutStoredFuelDoesNotInventZeroCost() throws {
@@ -389,7 +479,36 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(recentTrip.qualityConfidence, .needsReview)
         XCTAssertEqual(recentTrip.qualityReasonCodes, [.legacyUnverified])
         XCTAssertNil(TripMetricsCalculator.fuelCostMetric(for: recentTrip).value)
-        XCTAssertEqual(TripMetricsCalculator.fuelCostMetric(for: recentTrip).confidence, .needsInput)
+        XCTAssertEqual(TripMetricsCalculator.fuelCostMetric(for: recentTrip).confidence, .needsReview)
+        XCTAssertEqual(TripMetricsCalculator.fuelCostMetric(for: recentTrip).reasonCode, .tripNeedsReview)
+    }
+
+    func testLegacyMotorizedCostWithoutPriceSnapshotStaysUnavailable() throws {
+        let persistenceController = PersistenceController(inMemory: true)
+        let context = persistenceController.container.viewContext
+        let store = TripStore(context: context)
+        let start = Date(timeIntervalSince1970: 1_783_000_000)
+        let routeSamples = samples(start: start)
+
+        try insertLegacyTrip(
+            context: context,
+            start: start,
+            vehicleType: .moto,
+            distanceKm: 1.2,
+            routePoints: routePoints(from: routeSamples),
+            fuelFCFA: 12_345
+        )
+        _ = try store.recalculateLegacyQualityReports()
+
+        let recentTrip = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertTrue(recentTrip.isTrustedForDisplay)
+        XCTAssertEqual(recentTrip.fuelFCFA, 12_345)
+        XCTAssertNil(recentTrip.fuelCostMinorUnits)
+
+        let metric = TripMetricsCalculator.fuelCostMetric(for: recentTrip)
+        XCTAssertNil(metric.value)
+        XCTAssertEqual(metric.confidence, .needsInput)
+        XCTAssertEqual(metric.reasonCode, .fuelInputMissing)
     }
 
     func testRecalculatesLegacyQualityFromStoredPolylineAndCorrectsDistance() throws {
@@ -705,7 +824,8 @@ final class TripStoreTests: XCTestCase {
         start: Date,
         vehicleType: VehicleType,
         distanceKm: Double,
-        routePoints: [TripRoutePoint]
+        routePoints: [TripRoutePoint],
+        fuelFCFA: Int? = nil
     ) throws {
         let polyline = routePoints.isEmpty ? nil : try JSONEncoder().encode(routePoints)
         try insertLegacyTrip(
@@ -713,7 +833,8 @@ final class TripStoreTests: XCTestCase {
             start: start,
             vehicleType: vehicleType,
             distanceKm: distanceKm,
-            polylineData: polyline
+            polylineData: polyline,
+            fuelFCFA: fuelFCFA
         )
     }
 
@@ -722,7 +843,8 @@ final class TripStoreTests: XCTestCase {
         start: Date,
         vehicleType: VehicleType,
         distanceKm: Double,
-        polylineData: Data?
+        polylineData: Data?,
+        fuelFCFA: Int? = nil
     ) throws {
         let object = NSManagedObject(
             entity: try XCTUnwrap(NSEntityDescription.entity(forEntityName: "Trip", in: context)),
@@ -741,7 +863,7 @@ final class TripStoreTests: XCTestCase {
         object.setValue(nil, forKey: "scoreVigilance")
         object.setValue(nil, forKey: "scoreEco")
         object.setValue(nil, forKey: "fuelLiters")
-        object.setValue(nil, forKey: "fuelFCFA")
+        object.setValue(fuelFCFA.map { Int64($0) }, forKey: "fuelFCFA")
         object.setValue(polylineData, forKey: "polyline")
         object.setValue(Int64(0), forKey: "qualityScore")
         object.setValue(TripQualityConfidence.needsReview.rawValue, forKey: "qualityConfidence")

@@ -699,7 +699,7 @@ private struct DailySummaryCard: View {
                     SummaryMetricTile(
                         value: DrivingValueFormatter.moneyText(
                             costMetric,
-                            currency: fuelSettings.currency
+                            currency: summary.fuelCurrency ?? fuelSettings.currency
                         ),
                         labelKey: "home.metric.cost.label",
                         color: ViimColors.green
@@ -727,10 +727,7 @@ private struct DailySummaryCard: View {
     }
 
     private var costMetric: ReliableMetric<Int> {
-        TripMetricsCalculator.fuelCostMetric(
-            liters: summary.fuelLiters,
-            settings: fuelSettings
-        )
+        TripMetricsCalculator.summaryFuelCostMetric(summary)
     }
 }
 
@@ -852,12 +849,25 @@ private struct RecentTripCard: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                         Spacer(minLength: 6)
-                        ViimChip(titleKey: "home.recentTrips.saved", style: .success)
+                        ViimChip(
+                            titleKey: trip.isTrustedForDisplay ? "home.recentTrips.saved" : "home.recentTrips.needsReview",
+                            style: trip.isTrustedForDisplay ? .success : .warning
+                        )
                     }
 
                     HStack(spacing: 10) {
-                        Label(DrivingValueFormatter.distanceText(kilometers: trip.distanceKm), systemImage: "road.lanes")
-                        Label(DrivingValueFormatter.durationText(seconds: trip.durationSec), systemImage: "clock.fill")
+                        Label(
+                            trip.isTrustedForDisplay
+                                ? DrivingValueFormatter.distanceText(kilometers: trip.distanceKm)
+                                : String(localized: "format.score.empty"),
+                            systemImage: "road.lanes"
+                        )
+                        Label(
+                            trip.isTrustedForDisplay
+                                ? DrivingValueFormatter.durationText(seconds: trip.durationSec)
+                                : String(localized: "format.score.empty"),
+                            systemImage: "clock.fill"
+                        )
                         Label(DrivingValueFormatter.scoreText(scoreMetric), systemImage: "star.fill")
                     }
                     .font(.caption2.weight(.semibold))
@@ -865,7 +875,10 @@ private struct RecentTripCard: View {
 
                     HStack(spacing: 8) {
                         Label(
-                            DrivingValueFormatter.moneyText(fuelMetric, currency: fuelSettings.currency),
+                            DrivingValueFormatter.moneyText(
+                                fuelMetric,
+                                currency: trip.fuelCurrency ?? .xof
+                            ),
                             systemImage: "fuelpump.fill"
                         )
                         Spacer(minLength: 6)
@@ -883,11 +896,7 @@ private struct RecentTripCard: View {
     }
 
     private var fuelMetric: ReliableMetric<Int> {
-        TripMetricsCalculator.fuelCostMetric(
-            liters: trip.fuelLiters,
-            settings: fuelSettings,
-            vehicleType: trip.vehicleType
-        )
+        TripMetricsCalculator.fuelCostMetric(for: trip)
     }
 }
 
@@ -920,7 +929,10 @@ private struct TripRoutePreview: View {
     }
 
     private var validRoutePoints: [TripRoutePoint] {
-        TripMetricsCalculator.validRoutePoints(from: trip.routePoints)
+        guard trip.isTrustedForDisplay else {
+            return []
+        }
+        return TripMetricsCalculator.validRoutePoints(from: trip.routePoints)
     }
 }
 
@@ -973,20 +985,37 @@ private struct TripDetailView: View {
             VStack(spacing: 12) {
                 TripRouteMapSection(trip: trip)
 
+                if !trip.isTrustedForDisplay {
+                    ViimCard {
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("trip.quality.needsReview.title")
+                                    .font(.headline)
+                                Text("trip.quality.needsReview.detail")
+                                    .font(.caption)
+                                    .foregroundStyle(ViimColors.muted)
+                            }
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(ViimColors.warning)
+                        }
+                    }
+                }
+
                 ViimCard {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 12) {
                         SummaryMetricTile(
-                            value: DrivingValueFormatter.distanceText(kilometers: trip.distanceKm),
+                            value: trustedText(DrivingValueFormatter.distanceText(kilometers: trip.distanceKm)),
                             labelKey: "home.metric.distance.label",
                             color: ViimColors.blue
                         )
                         SummaryMetricTile(
-                            value: DrivingValueFormatter.durationText(seconds: trip.durationSec),
+                            value: trustedText(DrivingValueFormatter.durationText(seconds: trip.durationSec)),
                             labelKey: "home.metric.duration.label",
                             color: ViimColors.navy
                         )
                         SummaryMetricTile(
-                            value: DrivingValueFormatter.speedText(kmh: trip.avgSpeedKmh),
+                            value: trustedText(DrivingValueFormatter.speedText(kmh: trip.avgSpeedKmh)),
                             labelKey: "trip.detail.avgSpeed",
                             color: ViimColors.success
                         )
@@ -1003,12 +1032,16 @@ private struct TripDetailView: View {
                         SummaryMetricTile(
                             value: DrivingValueFormatter.moneyText(
                                 fuelMetric,
-                                currency: fuelSettings.currency
+                                currency: trip.fuelCurrency ?? .xof
                             ),
                             labelKey: "home.metric.cost.label",
                             color: ViimColors.green
                         )
                     }
+                }
+
+                if trip.isTrustedForDisplay, trip.fuelLiters != nil {
+                    TripFuelEvidenceCard(trip: trip)
                 }
 
                 TripNavigationDataCard(trip: trip)
@@ -1029,11 +1062,75 @@ private struct TripDetailView: View {
     }
 
     private var fuelMetric: ReliableMetric<Int> {
-        TripMetricsCalculator.fuelCostMetric(
-            liters: trip.fuelLiters,
-            settings: fuelSettings,
-            vehicleType: trip.vehicleType
+        TripMetricsCalculator.fuelCostMetric(for: trip)
+    }
+
+    private func trustedText(_ value: String) -> String {
+        trip.isTrustedForDisplay ? value : String(localized: "format.score.empty")
+    }
+}
+
+private struct TripFuelEvidenceCard: View {
+    let trip: TripRecord
+
+    var body: some View {
+        ViimCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("trip.fuelEvidence.title", systemImage: "checkmark.seal.fill")
+                        .font(.system(size: 14, weight: .bold))
+                    Spacer()
+                    ViimChip(titleKey: "driving.eco.estimatedTag", style: .neutral)
+                }
+
+                TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.vehicle",
+                    value: trip.fuelProfileName ?? String(localized: "format.score.empty")
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.consumption",
+                    value: consumptionText
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.price",
+                    value: priceText
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.formula",
+                    value: trip.fuelFormulaVersion
+                )
+
+                Text("trip.fuelEvidence.disclaimer")
+                    .font(.caption2)
+                    .foregroundStyle(ViimColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var consumptionText: String {
+        guard let value = trip.fuelProfileLitersPer100Km else {
+            return String(localized: "format.score.empty")
+        }
+        return String.localizedStringWithFormat(
+            String(localized: "trip.fuelEvidence.consumptionFormat"),
+            value
         )
+    }
+
+    private var priceText: String {
+        guard let price = trip.fuelPricePerLiter,
+              let currency = trip.fuelCurrency else {
+            return String(localized: "trip.fuelEvidence.priceMissing")
+        }
+        let priceValue = price.formatted(
+            .number.precision(.fractionLength(0...2)).locale(.current)
+        )
+        if let capturedAt = trip.fuelPriceCapturedAt {
+            let date = capturedAt.formatted(date: .abbreviated, time: .omitted)
+            return "\(priceValue) \(currency.rawValue)/L · \(date)"
+        }
+        return "\(priceValue) \(currency.rawValue)/L"
     }
 }
 
@@ -1065,7 +1162,10 @@ private struct TripRouteMapSection: View {
     }
 
     private var validRoutePoints: [TripRoutePoint] {
-        TripMetricsCalculator.validRoutePoints(from: trip.routePoints)
+        guard trip.isTrustedForDisplay else {
+            return []
+        }
+        return TripMetricsCalculator.validRoutePoints(from: trip.routePoints)
     }
 }
 
@@ -1176,7 +1276,10 @@ private struct TripNavigationDataCard: View {
     }
 
     private var validRoutePoints: [TripRoutePoint] {
-        TripMetricsCalculator.validRoutePoints(from: trip.routePoints)
+        guard trip.isTrustedForDisplay else {
+            return []
+        }
+        return TripMetricsCalculator.validRoutePoints(from: trip.routePoints)
     }
 
     private var routeMetric: ReliableMetric<Int> {

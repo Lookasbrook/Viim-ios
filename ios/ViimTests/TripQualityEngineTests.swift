@@ -59,6 +59,30 @@ final class TripQualityEngineTests: XCTestCase {
         XCTAssertTrue(report.shouldPersist)
     }
 
+    func testMissingGpsAtTripStartReducesCoverage() {
+        let start = Date(timeIntervalSince1970: 1_783_000_000)
+        let offsets: [TimeInterval] = [240, 330, 420, 510, 600]
+        let route = offsets.enumerated().map { index, offset in
+            sample(
+                latitude: 12.3714 + Double(index) * 0.001,
+                longitude: -1.5197 + Double(index) * 0.001,
+                speed: 8,
+                accuracy: 5,
+                timestamp: start.addingTimeInterval(offset)
+            )
+        }
+        let report = TripQualityEngine.report(
+            completedTrip: completedTrip(start: start),
+            samples: route,
+            vehicleType: .moto
+        )
+
+        XCTAssertEqual(report.maxSampleGapSec, 240)
+        XCTAssertLessThan(report.coverageRatio, 1)
+        XCTAssertTrue(report.reasonCodes.contains(.gpsCoverageIncomplete))
+        XCTAssertNotEqual(report.confidence, .reliable)
+    }
+
     func testRejectsTripWithTooFewGpsPoints() {
         let start = Date(timeIntervalSince1970: 1_783_000_000)
         let report = TripQualityEngine.report(

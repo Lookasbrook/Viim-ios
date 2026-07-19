@@ -65,7 +65,7 @@ struct AssistanceView: View {
                             NavigationLink {
                                 MedicalProfileView(onChange: reloadSecureData)
                             } label: {
-                                AssistanceListRow(icon: "cross.case.fill", titleKey: "assistance.medical.title", detailKey: medicalProfile?.isComplete == true ? "assistance.medical.complete" : "assistance.medical.status", tint: ViimColors.green)
+                                AssistanceListRow(icon: "cross.case.fill", titleKey: "assistance.medical.title", detailKey: medicalProfile?.hasContent == true ? "assistance.medical.savedStatus" : "assistance.medical.status", tint: ViimColors.green)
                             }
                             .buttonStyle(.plain)
 
@@ -88,8 +88,16 @@ struct AssistanceView: View {
                     SectionHeader(titleKey: "assistance.emergency.section")
 
                     HStack(spacing: 10) {
-                        EmergencyButton(titleKey: "assistance.firefighters.title", detailKey: "assistance.firefighters.detail", phoneNumber: "18", tint: ViimColors.red)
-                        EmergencyButton(titleKey: "assistance.police.title", detailKey: "assistance.police.detail", phoneNumber: "17", tint: ViimColors.navy)
+                        EmergencyButton(
+                            titleKey: "assistance.firefighters.title",
+                            phoneNumber: emergencyNumbers.firefighters,
+                            tint: ViimColors.red
+                        )
+                        EmergencyButton(
+                            titleKey: "assistance.police.title",
+                            phoneNumber: emergencyNumbers.police,
+                            tint: ViimColors.navy
+                        )
                     }
 
                     ViimCard {
@@ -137,6 +145,12 @@ struct AssistanceView: View {
         emergencyContacts = storedContacts.compactMap(BurkinaPhoneNumber.normalizedContact)
         hasInvalidEmergencyContact = !storedContacts.isEmpty && emergencyContacts.isEmpty
         medicalProfile = try? SecureMedicalProfileStore.shared.load()
+    }
+
+    private var emergencyNumbers: EmergencyNumbers {
+        EmergencyNumberCatalog.numbers(
+            for: onboardingStore.profile?.country ?? .other
+        )
     }
 
     private var emergencyContactStatusKey: LocalizedStringKey {
@@ -190,8 +204,13 @@ struct AssistanceView: View {
                 }
             }
 
-            if sentCount > 0 {
+            if sentCount == contacts.count {
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.test.success.title", detailKey: "assistance.test.success.detail")
+            } else if sentCount > 0 {
+                alertMessage = AssistanceAlertMessage(
+                    titleKey: "assistance.send.partial.title",
+                    detailKey: "assistance.send.partial.detail"
+                )
             } else if let firstError {
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: AssistanceAPIErrorPresenter.detailKey(for: firstError, fallbackKey: "assistance.test.error"))
             }
@@ -283,13 +302,13 @@ private struct SectionHeader: View {
 private struct EmergencyButton: View {
     @Environment(\.openURL) private var openURL
     let titleKey: LocalizedStringKey
-    let detailKey: LocalizedStringKey
-    let phoneNumber: String
+    let phoneNumber: String?
     let tint: Color
 
     var body: some View {
         Button {
-            if let url = URL(string: "tel://\(phoneNumber)") {
+            if let phoneNumber,
+               let url = URL(string: "tel://\(phoneNumber)") {
                 openURL(url)
             }
         } label: {
@@ -299,7 +318,12 @@ private struct EmergencyButton: View {
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                Text(detailKey)
+                Text(phoneNumber.map {
+                    String.localizedStringWithFormat(
+                        String(localized: "assistance.emergency.call"),
+                        $0
+                    )
+                } ?? String(localized: "assistance.emergency.unavailable"))
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.82))
                     .lineLimit(1)
@@ -311,6 +335,8 @@ private struct EmergencyButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
+        .disabled(phoneNumber == nil)
+        .opacity(phoneNumber == nil ? 0.65 : 1)
     }
 }
 
@@ -451,8 +477,13 @@ private struct AssistanceLocationView: View {
                 }
             }
 
-            if sentCount > 0 {
+            if sentCount == contacts.count {
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.location.shared.title", detailKey: "assistance.location.shared.detail")
+            } else if sentCount > 0 {
+                alertMessage = AssistanceAlertMessage(
+                    titleKey: "assistance.send.partial.title",
+                    detailKey: "assistance.send.partial.detail"
+                )
             } else if let firstError {
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: AssistanceAPIErrorPresenter.detailKey(for: firstError, fallbackKey: "assistance.location.shared.error"))
             }
@@ -517,6 +548,7 @@ private struct EmergencyContactsView: View {
                 }
             }
         }
+        .viimKeyboardDismissal()
         .navigationTitle("assistance.contacts.title")
         .task {
             loadContacts()
@@ -608,6 +640,7 @@ private struct MedicalProfileView: View {
                 }
             }
         }
+        .viimKeyboardDismissal()
         .navigationTitle("assistance.medical.title")
         .task {
             profile = (try? SecureMedicalProfileStore.shared.load()) ?? .empty

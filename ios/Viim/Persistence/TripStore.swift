@@ -17,6 +17,15 @@ struct TripRecord: Identifiable, Equatable {
     let scoreEco: Int?
     let fuelLiters: Double?
     let fuelFCFA: Int?
+    let fuelCostMinorUnits: Int?
+    let fuelCurrency: SupportedCurrency?
+    let fuelPricePerLiter: Double?
+    let fuelPriceCapturedAt: Date?
+    let fuelPriceSource: FuelPriceSource?
+    let fuelProfileName: String?
+    let fuelProfileLitersPer100Km: Double?
+    let fuelProfileSource: String?
+    let fuelFormulaVersion: String
     let routePoints: [TripRoutePoint]
     let qualityScore: Int
     let qualityConfidence: TripQualityConfidence
@@ -36,6 +45,10 @@ struct TripRecord: Identifiable, Equatable {
     let isCalibration: Bool
     let vehicleType: VehicleType
     let synced: Bool
+
+    var isTrustedForDisplay: Bool {
+        qualityConfidence == .reliable || qualityConfidence == .partial
+    }
 }
 
 struct TripRoutePoint: Codable, Equatable, Identifiable {
@@ -95,11 +108,14 @@ struct DrivingSummary: Equatable {
     var totalKm: Double
     var totalDurationSec: Int
     var avgScore: Int?
+    var avgScoreVitesse: Int?
     var avgScoreFluidite: Int?
     var avgScoreEco: Int?
     var fuelLiters: Double?
-    // Champ historique conserve pour migrer les anciennes donnees XOF. Les
-    // nouveaux affichages calculent le cout depuis fuelLiters et le prix choisi.
+    var fuelCostMinorUnits: Int?
+    var fuelCurrency: SupportedCurrency?
+    // Champ historique conserve uniquement pour la compatibilite du modele.
+    // Il n'alimente plus aucun affichage sans instantane prix/devise/source.
     var fuelFCFA: Int?
     var pendingSyncCount: Int
 
@@ -108,9 +124,12 @@ struct DrivingSummary: Equatable {
         totalKm: 0,
         totalDurationSec: 0,
         avgScore: nil,
+        avgScoreVitesse: nil,
         avgScoreFluidite: nil,
         avgScoreEco: nil,
         fuelLiters: nil,
+        fuelCostMinorUnits: nil,
+        fuelCurrency: nil,
         fuelFCFA: nil,
         pendingSyncCount: 0
     )
@@ -293,74 +312,6 @@ struct TripStore {
         }
     }
 
-    func recalculateFuelEstimates(
-        fuelProfile: VehicleFuelProfile,
-        vehicleType: VehicleType
-    ) throws -> Int {
-        try context.performAndWait {
-            let request = NSFetchRequest<NSManagedObject>(entityName: "Trip")
-            request.sortDescriptors = []
-            request.predicate = NSPredicate(
-                format: "vehicleType == %@ AND (fuelFormulaVersion == nil OR fuelFormulaVersion != %@)",
-                vehicleType.rawValue,
-                VehicleFuelCatalog.formulaVersion
-            )
-
-            let objects = try context.fetch(request)
-            var updatedCount = 0
-
-            for object in objects {
-                let distanceKm = object.value(forKey: "distanceKm") as? Double ?? 0
-                let routePoints = Self.decodedPolyline(from: object.value(forKey: "polyline") as? Data)
-                let dynamics = DrivingDynamicsAnalyzer.dynamics(
-                    routePoints: routePoints,
-                    vehicleType: vehicleType,
-                    distanceKm: distanceKm
-                )
-                guard let estimate = VehicleFuelCatalog.estimateConsumption(
-                    distanceKm: distanceKm,
-                    fuelProfile: fuelProfile,
-                    dynamics: dynamics
-                ) else {
-                    continue
-                }
-
-                object.setValue(estimate.liters, forKey: "fuelLiters")
-                object.setValue(nil, forKey: "fuelFCFA")
-                object.setValue(VehicleFuelCatalog.formulaVersion, forKey: "fuelFormulaVersion")
-
-                // La meme dynamique alimente les scores manquants des trajets
-                // historiques : fluidite et eco sont derives du trace, le
-                // score vitesse stocke (calcule avec la logique de pics
-                // soutenus au moment du trajet) reste inchange, et le score
-                // global redevient la moyenne des criteres disponibles.
-                if let dynamics {
-                    let dynamicScores = ScoreEngine.scores(
-                        maxSpeedKmh: 0,
-                        vehicleType: vehicleType,
-                        dynamics: dynamics
-                    )
-                    let storedSpeedScore = Self.optionalInt(object.value(forKey: "scoreVitesse"))
-                    let components = [storedSpeedScore, dynamicScores.scoreFluidite, dynamicScores.scoreEco].compactMap { $0 }
-                    Self.setOptionalInt(dynamicScores.scoreFluidite, forKey: "scoreFluidite", on: object)
-                    Self.setOptionalInt(dynamicScores.scoreEco, forKey: "scoreEco", on: object)
-                    if !components.isEmpty {
-                        let average = Int((Double(components.reduce(0, +)) / Double(components.count)).rounded())
-                        Self.setOptionalInt(average, forKey: "score", on: object)
-                    }
-                }
-                object.setValue(false, forKey: "synced")
-                updatedCount += 1
-            }
-
-            if context.hasChanges {
-                try context.save()
-            }
-
-            return updatedCount
-        }
-    }
-
     func insertCompletedTrip(
         _ completedTrip: CompletedDetectedTrip,
         samples: [LocationSample],
@@ -368,6 +319,7 @@ struct TripStore {
         isCalibration: Bool,
         scores: TripScores = .unavailable,
         fuelProfile: VehicleFuelProfile? = nil,
+        fuelSettings: FuelSettings? = nil,
         qualityReport providedQualityReport: TripQualityReport? = nil
     ) throws {
         try context.performAndWait {
@@ -417,7 +369,9 @@ struct TripStore {
                 vehicleType: vehicleType,
                 existingValue: nil
             )
-            let resolvedFuelProfile = fuelProfile ?? Self.defaultFuelProfile(for: vehicleType)
+            let resolvedFuelProfile = fuelProfile.flatMap { profile in
+                profile.vehicleType == vehicleType ? profile : nil
+            } ?? Self.defaultFuelProfile(for: vehicleType)
             let fuelEstimate = VehicleFuelCatalog.estimateConsumption(
                 distanceKm: distanceKm,
                 fuelProfile: resolvedFuelProfile,
@@ -444,9 +398,43 @@ struct TripStore {
             if let fuelEstimate {
                 object.setValue(fuelEstimate.liters, forKey: "fuelLiters")
                 object.setValue(nil, forKey: "fuelFCFA")
+                object.setValue(resolvedFuelProfile?.canonicalName, forKey: "fuelProfileName")
+                object.setValue(resolvedFuelProfile?.litersPer100Km, forKey: "fuelProfileLitersPer100Km")
+                object.setValue(resolvedFuelProfile?.sourceIdentifier, forKey: "fuelProfileSource")
+
+                if vehicleType == .velo {
+                    let currency = fuelSettings?.currency ?? .xof
+                    object.setValue(Int64(0), forKey: "fuelCostMinorUnits")
+                    object.setValue(currency.rawValue, forKey: "fuelCurrencyCode")
+                    object.setValue(0.0, forKey: "fuelPricePerLiter")
+                    object.setValue(completedTrip.endedAt, forKey: "fuelPriceCapturedAt")
+                    object.setValue(FuelPriceSource.userProvided.rawValue, forKey: "fuelPriceSource")
+                } else if let fuelSettings,
+                          fuelSettings.canSnapshotCost,
+                          let cost = fuelSettings.costMinorUnits(for: fuelEstimate.liters) {
+                    object.setValue(Int64(cost), forKey: "fuelCostMinorUnits")
+                    object.setValue(fuelSettings.currency.rawValue, forKey: "fuelCurrencyCode")
+                    object.setValue(fuelSettings.pricePerLiter, forKey: "fuelPricePerLiter")
+                    object.setValue(fuelSettings.capturedAt ?? completedTrip.endedAt, forKey: "fuelPriceCapturedAt")
+                    object.setValue(FuelPriceSource.userProvided.rawValue, forKey: "fuelPriceSource")
+                } else {
+                    object.setValue(nil, forKey: "fuelCostMinorUnits")
+                    object.setValue(nil, forKey: "fuelCurrencyCode")
+                    object.setValue(nil, forKey: "fuelPricePerLiter")
+                    object.setValue(nil, forKey: "fuelPriceCapturedAt")
+                    object.setValue(nil, forKey: "fuelPriceSource")
+                }
             } else {
                 object.setValue(nil, forKey: "fuelLiters")
                 object.setValue(nil, forKey: "fuelFCFA")
+                object.setValue(nil, forKey: "fuelCostMinorUnits")
+                object.setValue(nil, forKey: "fuelCurrencyCode")
+                object.setValue(nil, forKey: "fuelPricePerLiter")
+                object.setValue(nil, forKey: "fuelPriceCapturedAt")
+                object.setValue(nil, forKey: "fuelPriceSource")
+                object.setValue(nil, forKey: "fuelProfileName")
+                object.setValue(nil, forKey: "fuelProfileLitersPer100Km")
+                object.setValue(nil, forKey: "fuelProfileSource")
             }
             object.setValue(VehicleFuelCatalog.formulaVersion, forKey: "fuelFormulaVersion")
             object.setValue(Self.encodedPolyline(from: samples), forKey: "polyline")
@@ -562,6 +550,17 @@ struct TripStore {
             scoreEco: optionalInt(object.value(forKey: "scoreEco")),
             fuelLiters: object.value(forKey: "fuelLiters") as? Double,
             fuelFCFA: optionalInt(object.value(forKey: "fuelFCFA")),
+            fuelCostMinorUnits: optionalInt(object.value(forKey: "fuelCostMinorUnits")),
+            fuelCurrency: (object.value(forKey: "fuelCurrencyCode") as? String)
+                .flatMap(SupportedCurrency.init(rawValue:)),
+            fuelPricePerLiter: object.value(forKey: "fuelPricePerLiter") as? Double,
+            fuelPriceCapturedAt: object.value(forKey: "fuelPriceCapturedAt") as? Date,
+            fuelPriceSource: (object.value(forKey: "fuelPriceSource") as? String)
+                .flatMap(FuelPriceSource.init(rawValue:)),
+            fuelProfileName: object.value(forKey: "fuelProfileName") as? String,
+            fuelProfileLitersPer100Km: object.value(forKey: "fuelProfileLitersPer100Km") as? Double,
+            fuelProfileSource: object.value(forKey: "fuelProfileSource") as? String,
+            fuelFormulaVersion: object.value(forKey: "fuelFormulaVersion") as? String ?? "legacy",
             routePoints: decodedPolyline(from: object.value(forKey: "polyline") as? Data),
             qualityScore: optionalInt(object.value(forKey: "qualityScore")) ?? TripQualityReport.legacyUnverified.score,
             qualityConfidence: TripQualityConfidence(rawValue: object.value(forKey: "qualityConfidence") as? String ?? "") ?? .needsReview,
@@ -589,18 +588,38 @@ struct TripStore {
         learningProfile: TripQualityLearningProfile = .insufficientData
     ) -> DrivingSummary {
         let records = records.filter { $0.isReliableEnoughForSummary(learningProfile: learningProfile) }
-        let fuelLiters = records.compactMap(\.fuelLiters)
-        let fuelAmounts = records.compactMap(\.fuelFCFA)
+        let fuelLiters = records.map(\.fuelLiters)
+        let totalFuelLiters = records.isEmpty || fuelLiters.contains(where: { $0 == nil })
+            ? nil
+            : fuelLiters.compactMap { $0 }.reduce(0, +)
+        let costSnapshots = records.compactMap { record -> (amount: Int, currency: SupportedCurrency)? in
+            guard let amount = record.fuelCostMinorUnits,
+                  let currency = record.fuelCurrency else {
+                return nil
+            }
+            return (amount, currency)
+        }
+        let snapshotCurrencies = Set(costSnapshots.map(\.currency))
+        let hasCompleteCostCoverage = !records.isEmpty && costSnapshots.count == records.count
+        let summaryCurrency = hasCompleteCostCoverage && snapshotCurrencies.count == 1
+            ? snapshotCurrencies.first
+            : nil
+        let snapshotCost = summaryCurrency == nil
+            ? nil
+            : costSnapshots.reduce(0) { $0 + $1.amount }
 
         return DrivingSummary(
             tripsCount: records.count,
             totalKm: records.reduce(0) { $0 + $1.distanceKm },
             totalDurationSec: records.reduce(0) { $0 + $1.durationSec },
-            avgScore: averageScore(records.compactMap(\.score)),
-            avgScoreFluidite: averageScore(records.compactMap(\.scoreFluidite)),
-            avgScoreEco: averageScore(records.compactMap(\.scoreEco)),
-            fuelLiters: fuelLiters.isEmpty ? nil : fuelLiters.reduce(0, +),
-            fuelFCFA: fuelAmounts.isEmpty ? nil : fuelAmounts.reduce(0, +),
+            avgScore: completeAverageScore(records.map(\.score)),
+            avgScoreVitesse: completeAverageScore(records.map(\.scoreVitesse)),
+            avgScoreFluidite: completeAverageScore(records.map(\.scoreFluidite)),
+            avgScoreEco: completeAverageScore(records.map(\.scoreEco)),
+            fuelLiters: totalFuelLiters,
+            fuelCostMinorUnits: snapshotCost,
+            fuelCurrency: summaryCurrency,
+            fuelFCFA: nil,
             pendingSyncCount: records.filter { !$0.synced }.count
         )
     }
@@ -610,6 +629,13 @@ struct TripStore {
             return nil
         }
         return Int((Double(values.reduce(0, +)) / Double(values.count)).rounded())
+    }
+
+    private static func completeAverageScore(_ values: [Int?]) -> Int? {
+        guard !values.isEmpty, values.allSatisfy({ $0 != nil }) else {
+            return nil
+        }
+        return averageScore(values.compactMap { $0 })
     }
 
     private static func defaultFuelProfile(for vehicleType: VehicleType) -> VehicleFuelProfile? {

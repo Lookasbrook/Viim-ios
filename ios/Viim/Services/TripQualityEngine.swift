@@ -60,7 +60,7 @@ struct TripQualityReport: Equatable {
 }
 
 enum TripQualityEngine {
-    static let formulaVersion = "trip-quality-v3"
+    static let formulaVersion = "trip-quality-v4"
 
     private enum Constants {
         static let minimumQualityRoutePoints = 5
@@ -214,20 +214,36 @@ enum TripQualityEngine {
         }
 
         let activeEnd = startedAt.addingTimeInterval(activeDuration)
+        let firstReceiptDate = samples.map(\.receivedAt).min()
         let timestamps = samples
-            .map(\.timestamp)
+            .map { sample -> Date in
+                let gpsElapsed = sample.timestamp.timeIntervalSince(startedAt)
+                let receiptElapsed = firstReceiptDate.map {
+                    sample.receivedAt.timeIntervalSince($0)
+                } ?? gpsElapsed
+                return startedAt.addingTimeInterval(max(gpsElapsed, receiptElapsed))
+            }
             .filter { $0 >= startedAt && $0 <= activeEnd }
             .sorted()
-        guard timestamps.count >= 2,
-              let first = timestamps.first,
-              let last = timestamps.last else {
-            return CoverageMetrics(maxGap: 0, p95Gap: 0, ratio: 0, burstCount: timestamps.isEmpty ? 0 : 1)
+        guard !timestamps.isEmpty else {
+            return CoverageMetrics(
+                maxGap: activeDuration,
+                p95Gap: activeDuration,
+                ratio: 0,
+                burstCount: 0
+            )
         }
 
-        let gaps = zip(timestamps, timestamps.dropFirst())
+        let timeline = ([startedAt] + timestamps + [activeEnd])
+            .sorted()
+            .reduce(into: [Date]()) { result, timestamp in
+                if result.last != timestamp {
+                    result.append(timestamp)
+                }
+            }
+        let gaps = zip(timeline, timeline.dropFirst())
             .map { max(0, $1.timeIntervalSince($0)) }
-        let span = last.timeIntervalSince(first)
-        guard span > 0 else {
+        guard activeDuration > 0, !gaps.isEmpty else {
             return CoverageMetrics(maxGap: 0, p95Gap: 0, ratio: 0, burstCount: 1)
         }
 
@@ -237,7 +253,7 @@ enum TripQualityEngine {
         return CoverageMetrics(
             maxGap: gaps.max() ?? 0,
             p95Gap: percentile(gaps, percentile: 0.95) ?? 0,
-            ratio: max(0, min(1, coveredDuration / span)),
+            ratio: max(0, min(1, coveredDuration / activeDuration)),
             burstCount: 1 + gaps.filter { $0 > Constants.maximumContinuousSampleGap }.count
         )
     }
@@ -331,6 +347,8 @@ enum TripQualityEngine {
             return .impossibleSpeed
         case .tripTooShort:
             return .tripTooShort
+        case .tripNeedsReview:
+            return .legacyUnverified
         }
     }
 

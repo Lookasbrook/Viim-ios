@@ -17,11 +17,12 @@ struct TripScores: Equatable {
 }
 
 enum ScoreEngine {
-    static let version = "score-speed-fluidity-eco-v2"
+    static let version = "score-speed-fluidity-eco-v3"
 
     private static let speedToleranceKmh = 5.0
     private static let speedPenaltyPerKmh = 2.5
     private static let sustainedOverspeedDuration: TimeInterval = 10
+    private static let maximumOverspeedSampleGap: TimeInterval = 30
     private static let abruptEventPenaltyPer10Km = 8.0
 
     static func scores(
@@ -134,11 +135,17 @@ enum ScoreEngine {
 
         let threshold = speedLimitKmh(for: vehicleType) + speedToleranceKmh
         var overspeedStart: Date?
+        var previousOverspeedSampleDate: Date?
         var windowMaxSpeed = 0.0
         var sustainedMaxSpeed: Double?
 
         for sample in accurateSamples {
             if sample.speedKmh > threshold {
+                if let previousOverspeedSampleDate,
+                   sample.timestamp.timeIntervalSince(previousOverspeedSampleDate) > maximumOverspeedSampleGap {
+                    overspeedStart = nil
+                    windowMaxSpeed = 0
+                }
                 if overspeedStart == nil {
                     overspeedStart = sample.timestamp
                     windowMaxSpeed = sample.speedKmh
@@ -150,8 +157,10 @@ enum ScoreEngine {
                    sample.timestamp.timeIntervalSince(overspeedStart) >= sustainedOverspeedDuration {
                     sustainedMaxSpeed = max(sustainedMaxSpeed ?? windowMaxSpeed, windowMaxSpeed)
                 }
+                previousOverspeedSampleDate = sample.timestamp
             } else {
                 overspeedStart = nil
+                previousOverspeedSampleDate = nil
                 windowMaxSpeed = 0
             }
         }
