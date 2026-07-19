@@ -21,24 +21,47 @@ export async function sendWhatsAppMessage({ to, message, kind, metadata = {} }) 
     throw new Error("newagent_not_configured");
   }
 
+  const providerPayload = buildProviderPayload(config.newagentSendUrl, {
+    to,
+    message,
+    kind,
+    metadata
+  });
   const response = await fetch(config.newagentSendUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${config.newagentToken}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      source: "viim",
-      channel: "whatsapp",
-      kind,
-      to,
-      message,
-      metadata
-    }),
+    body: JSON.stringify(providerPayload),
     signal: AbortSignal.timeout(5000)
   });
 
   return parseProviderSendResponse(response);
+}
+
+export function buildProviderPayload(sendUrl, { to, message, kind, metadata = {} }) {
+  if (isMetaWhatsAppSendUrl(sendUrl)) {
+    return {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: to.replace(/^\+/, ""),
+      type: "text",
+      text: {
+        preview_url: false,
+        body: message
+      }
+    };
+  }
+
+  return {
+    source: "viim",
+    channel: "whatsapp",
+    kind,
+    to,
+    message,
+    metadata
+  };
 }
 
 export async function parseProviderSendResponse(response) {
@@ -92,10 +115,22 @@ function extractProviderMessageId(body) {
     body.id,
     body.data?.providerMessageId,
     body.data?.messageId,
-    body.data?.id
+    body.data?.id,
+    body.messages?.[0]?.id
   ];
   const messageId = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
   return messageId?.trim() ?? null;
+}
+
+function isMetaWhatsAppSendUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" &&
+      url.hostname === "graph.facebook.com" &&
+      url.pathname.endsWith("/messages");
+  } catch {
+    return false;
+  }
 }
 
 function bodySnippet(rawBody) {
