@@ -97,7 +97,7 @@ struct OnboardingView: View {
                             type: type,
                             isSelected: draft.vehicleType == type
                         ) {
-                            draft.vehicleType = type
+                            draft.selectVehicleType(type)
                         }
                     }
                 }
@@ -118,12 +118,32 @@ struct OnboardingView: View {
             )
             .textInputAutocapitalization(.words)
 
+            VehicleCatalogSuggestionPanel(
+                vehicleType: draft.vehicleType,
+                brand: draft.vehicleBrand,
+                model: draft.vehicleModel
+            ) { suggestion in
+                draft.applyVehicleSuggestion(suggestion)
+            }
+
             LabeledTextField(
                 labelKey: "onboarding.vehicle.year.label",
                 placeholderKey: "onboarding.vehicle.year.placeholder",
                 text: $draft.vehicleYear
             )
             .keyboardType(.numberPad)
+
+            LabeledTextField(
+                labelKey: "onboarding.vehicle.odometer.label",
+                placeholderKey: "onboarding.vehicle.odometer.placeholder",
+                text: $draft.odometerKm
+            )
+            .keyboardType(.numberPad)
+
+            Text("onboarding.vehicle.odometer.help")
+                .font(.footnote)
+                .foregroundStyle(ViimColors.muted)
+                .fixedSize(horizontal: false, vertical: true)
 
             VehiclePreviewCard(draft: draft)
         }
@@ -223,15 +243,22 @@ struct OnboardingView: View {
             return
         }
 
+        guard let normalizedUserPhoneNumber = draft.normalizedPhoneNumber else {
+            errorKey = OnboardingStep.identity.errorKey
+            return
+        }
+
+        let canonicalVehicle = draft.canonicalVehicleSuggestion
         let profile = UserProfile(
             firstName: draft.firstName.trimmingCharacters(in: .whitespacesAndNewlines),
-            phoneNumber: draft.phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines),
+            phoneNumber: normalizedUserPhoneNumber,
             vehicleType: draft.vehicleType,
-            vehicleBrand: draft.vehicleBrand.trimmingCharacters(in: .whitespacesAndNewlines),
-            vehicleModel: draft.vehicleModel.trimmingCharacters(in: .whitespacesAndNewlines),
+            vehicleBrand: canonicalVehicle?.brand ?? draft.vehicleBrand.trimmingCharacters(in: .whitespacesAndNewlines),
+            vehicleModel: canonicalVehicle?.model ?? draft.vehicleModel.trimmingCharacters(in: .whitespacesAndNewlines),
             vehicleYear: draft.vehicleYear.trimmingCharacters(in: .whitespacesAndNewlines),
-            calibrationTripCount: 0,
-            synced: false
+            synced: false,
+            odometerBaselineKm: draft.normalizedOdometerKm,
+            odometerBaselineDate: draft.normalizedOdometerKm != nil ? Date() : nil
         )
 
         let emergencyContact = draft.emergencyContact
@@ -251,13 +278,54 @@ private struct OnboardingDraft {
     var vehicleBrand = ""
     var vehicleModel = ""
     var vehicleYear = ""
+    var odometerKm = ""
     var emergencyContactName = ""
     var emergencyContactPhone = ""
 
+    var normalizedOdometerKm: Double? {
+        let cleaned = odometerKm
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(cleaned), value.isFinite, value >= 0, value < 3_000_000 else {
+            return nil
+        }
+        return value
+    }
+
+    var canonicalVehicleSuggestion: VehicleCatalogSuggestion? {
+        VehicleFuelCatalog.canonicalSuggestion(
+            vehicleType: vehicleType,
+            brand: vehicleBrand,
+            model: vehicleModel
+        )
+    }
+
+    var normalizedPhoneNumber: String? {
+        BurkinaPhoneNumber.normalize(phoneNumber)
+    }
+
+    mutating func selectVehicleType(_ type: VehicleType) {
+        guard vehicleType != type else {
+            return
+        }
+        vehicleType = type
+        if canonicalVehicleSuggestion == nil {
+            vehicleBrand = ""
+            vehicleModel = ""
+        }
+    }
+
+    mutating func applyVehicleSuggestion(_ suggestion: VehicleCatalogSuggestion) {
+        vehicleType = suggestion.vehicleType
+        vehicleBrand = suggestion.brand
+        vehicleModel = suggestion.model
+    }
+
     var emergencyContact: EmergencyContact? {
         let name = emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let phone = emergencyContactPhone.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty && !phone.isEmpty else {
+        guard !name.isEmpty,
+              let phone = BurkinaPhoneNumber.normalize(emergencyContactPhone) else {
             return nil
         }
         return EmergencyContact(name: name, phoneNumber: phone)
@@ -313,14 +381,19 @@ private enum OnboardingStep: Int, CaseIterable {
         switch self {
         case .identity:
             return !draft.firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                draft.phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("+226") &&
-                draft.phoneNumber.filter(\.isNumber).count >= 11
+                draft.normalizedPhoneNumber != nil
         case .vehicle:
             return true
         case .safety:
             let hasName = !draft.emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             let hasPhone = !draft.emergencyContactPhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            return hasName == hasPhone
+            if !hasName && !hasPhone {
+                return true
+            }
+            guard hasName && hasPhone else {
+                return false
+            }
+            return BurkinaPhoneNumber.normalize(draft.emergencyContactPhone) != nil
         }
     }
 }
@@ -412,6 +485,97 @@ private struct LabeledTextField: View {
             TextField(placeholderKey, text: $text)
                 .formFieldStyle()
         }
+	}
+}
+
+private struct VehicleCatalogSuggestionPanel: View {
+    let vehicleType: VehicleType
+    let brand: String
+    let model: String
+    let onSelect: (VehicleCatalogSuggestion) -> Void
+
+    private var suggestions: [VehicleCatalogSuggestion] {
+        VehicleFuelCatalog.suggestions(
+            vehicleType: vehicleType,
+            query: [brand, model]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " "),
+            limit: 5
+        )
+    }
+
+    private var selectedSuggestion: VehicleCatalogSuggestion? {
+        VehicleFuelCatalog.canonicalSuggestion(
+            vehicleType: vehicleType,
+            brand: brand,
+            model: model
+        )
+    }
+
+    var body: some View {
+        if !suggestions.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("onboarding.vehicle.suggestions.label")
+                    .fieldLabelStyle()
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(suggestions) { suggestion in
+                            Button {
+                                onSelect(suggestion)
+                            } label: {
+                                VehicleSuggestionChip(
+                                    suggestion: suggestion,
+                                    isSelected: selectedSuggestion?.id == suggestion.id
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 1)
+                }
+            }
+        }
+    }
+}
+
+private struct VehicleSuggestionChip: View {
+    let suggestion: VehicleCatalogSuggestion
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                Image(systemName: suggestion.vehicleType.symbolName)
+                    .font(.caption.weight(.bold))
+                Text(suggestion.canonicalName)
+                    .font(.caption.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+
+            Text(consumptionText)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isSelected ? ViimColors.blue : ViimColors.muted)
+                .lineLimit(1)
+        }
+        .foregroundStyle(isSelected ? ViimColors.blue : ViimColors.text)
+        .padding(.horizontal, 10)
+        .frame(width: 158, height: 58, alignment: .leading)
+        .background(isSelected ? Color(hex: 0xEDF5FC) : Color.white)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(isSelected ? ViimColors.blue : Color(hex: 0xD7E2EC), lineWidth: isSelected ? 2 : 1.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var consumptionText: String {
+        String(
+            format: String(localized: "onboarding.vehicle.suggestion.consumption"),
+            suggestion.litersPer100Km
+        )
     }
 }
 

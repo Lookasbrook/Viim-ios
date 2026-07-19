@@ -1,0 +1,186 @@
+2026-07-10T00:37:07Z location.authorization state=authorizedAlways
+2026-07-10T00:37:07Z location.passiveWakeups.start
+2026-07-10T00:37:07Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T00:37:07Z location.passiveWakeup.ignored count=1
+2026-07-10T00:37:15Z motion.phase stationary
+2026-07-10T00:43:06Z trip.maxSpeed.repaired count=6
+2026-07-10T00:43:06Z location.authorization state=authorizedAlways
+2026-07-10T00:43:06Z location.passiveWakeups.start
+2026-07-10T00:43:06Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T00:43:06Z location.passiveWakeup.ignored count=1
+2026-07-10T00:43:15Z motion.phase stationary
+2026-07-10T01:04:59Z motion.phase waitingForMovement
+2026-07-10T01:05:48Z motion.phase stationary
+2026-07-10T01:09:04Z motion.phase waitingForMovement
+2026-07-10T01:33:39Z location.authorization state=authorizedAlways
+2026-07-10T01:33:39Z location.passiveWakeups.start
+2026-07-10T01:33:39Z location.passiveWakeup.ignored count=1
+2026-07-10T01:33:39Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T01:33:39Z motion.phase waitingForMovement
+2026-07-10T01:33:40Z motion.phase movementDetected
+2026-07-10T01:33:40Z motion.triggerLocationMonitoring
+2026-07-10T01:33:40Z location.start active authorization=authorizedAlways
+2026-07-10T01:33:45Z motion.phase waitingForMovement
+2026-07-10T01:33:50Z motion.phase stationary
+2026-07-10T01:33:50Z motion.stationaryStopLocationMonitoring
+2026-07-10T01:33:50Z location.stop phase=idle
+2026-07-10T01:54:30Z motion.phase movementDetected
+2026-07-10T01:54:30Z motion.triggerLocationMonitoring
+2026-07-10T01:54:30Z location.start active authorization=authorizedAlways
+2026-07-10T01:54:39Z motion.phase waitingForMovement
+2026-07-10T01:54:40Z motion.phase movementDetected
+2026-07-10T01:54:40Z motion.phase waitingForMovement
+2026-07-10T01:54:40Z motion.phase movementDetected
+2026-07-10T01:54:42Z motion.phase waitingForMovement
+2026-07-10T01:54:45Z motion.phase movementDetected
+2026-07-10T01:54:46Z motion.phase waitingForMovement
+2026-07-10T23:08:04Z location.authorization state=authorizedAlways
+2026-07-10T23:08:04Z location.passiveWakeups.start
+2026-07-10T23:08:04Z location.passiveWakeup.promote count=1
+2026-07-10T23:08:04Z location.start active authorization=authorizedAlways
+2026-07-10T23:08:04Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T23:08:04Z motion.phase waitingForMovement
+2026-07-10T23:08:04Z motion.phase movementDetected
+2026-07-10T23:18:05Z motion.phase stationary
+2026-07-11T00:42:34Z location.idleFailsafe.stop phase=idle
+2026-07-11T00:42:34Z location.stop phase=idle
+2026-07-11T00:42:34Z location.passiveWakeup.promote count=1
+2026-07-11T00:42:34Z location.start active authorization=authorizedAlways
+2026-07-11T00:42:34Z motion.phase movementDetected
+2026-07-11T00:47:34Z motion.phase stationary
+2026-07-11T00:52:34Z location.idleFailsafe.stop phase=idle
+2026-07-11T00:52:34Z location.stop phase=idle
+2026-07-11T00:52:34Z motion.phase movementDetected
+2026-07-11T00:52:34Z motion.triggerLocationMonitoring
+2026-07-11T00:52:34Z location.start active authorization=authorizedAlways
+2026-07-11T00:52:40Z motion.phase waitingForMovement
+2026-07-11T00:52:42Z motion.phase movementDetected
+2026-07-11T01:14:50Z location.idleFailsafe.stop phase=idle
+2026-07-11T01:14:50Z location.stop phase=idle
+2026-07-11T01:14:50Z location.passiveWakeup.ignored count=1
+2026-07-11T01:14:50Z location.passiveWakeup.ignored count=1
+2026-07-11T01:14:55Z motion.phase waitingForMovement
+2026-07-11T01:14:56Z motion.phase movementDetected
+2026-07-11T01:14:56Z motion.triggerLocationMonitoring
+2026-07-11T01:14:56Z location.start active authorization=authorizedAlways
+2026-07-11T01:20:33Z location.idleFailsafe.stop phase=idle
+2026-07-11T01:20:33Z location.stop phase=idle
+2026-07-11T01:20:33Z location.passiveWakeup.ignored count=1
+2026-07-11T01:49:00Z motion.phase waitingForMovement
+2026-07-11T01:49:01Z motion.phase movementDetected
+2026-07-11T01:49:01Z motion.triggerLocationMonitoring
+2026-07-11T01:49:01Z location.start active authorization=authorizedAlways
+2026-07-11T01:52:21Z location.idleFailsafe.stop phase=idle
+2026-07-11T01:52:21Z location.stop phase=idle
+2026-07-11T01:52:21Z location.passiveWakeup.ignored count=1
+2026-07-11T01:52:21Z location.passiveWakeup.ignored count=1
+2026-07-11T01:52:21Z location.passiveWakeup.ignored count=1
+2026-07-11T03:21:32Z location.authorization state=authorizedAlways
+2026-07-11T03:21:32Z location.passiveWakeups.start
+2026-07-11T03:21:32Z location.passiveWakeup.promote count=1
+2026-07-11T03:21:32Z location.start active authorization=authorizedAlways
+2026-07-11T03:21:33Z motion.startAutoDetection vehicleType=voiture
+2026-07-11T03:21:33Z motion.phase waitingForMovement
+2026-07-11T14:08:23Z location.idleFailsafe.stop phase=idle
+2026-07-11T14:08:23Z location.stop phase=idle
+2026-07-11T14:08:23Z location.passiveWakeup.promote count=1
+2026-07-11T14:08:23Z location.start active authorization=authorizedAlways
+2026-07-11T14:08:23Z motion.phase stationary
+2026-07-11T14:08:23Z motion.phase movementDetected
+2026-07-11T14:08:31Z motion.phase waitingForMovement
+2026-07-11T14:11:04Z motion.phase movementDetected
+2026-07-11T14:11:04Z motion.phase waitingForMovement
+2026-07-11T14:13:24Z location.idleFailsafe.stop phase=idle
+2026-07-11T14:13:24Z location.stop phase=idle
+2026-07-11T14:13:24Z location.passiveWakeup.promote count=1
+2026-07-11T14:13:24Z location.start active authorization=authorizedAlways
+2026-07-11T14:13:24Z motion.phase movementDetected
+2026-07-11T14:18:25Z trip.begin.candidateRejected samples=1
+2026-07-11T14:23:25Z trip.begin.candidateRejected samples=1
+2026-07-11T14:28:26Z motion.phase waitingForMovement
+2026-07-11T14:28:26Z motion.phase movementDetected
+2026-07-11T14:28:27Z motion.phase waitingForMovement
+2026-07-11T14:28:28Z motion.phase movementDetected
+2026-07-11T14:28:28Z motion.phase waitingForMovement
+2026-07-11T14:28:28Z motion.phase movementDetected
+2026-07-11T14:28:31Z motion.phase waitingForMovement
+2026-07-11T14:28:31Z motion.phase movementDetected
+2026-07-11T14:28:32Z motion.phase waitingForMovement
+2026-07-11T14:28:33Z motion.phase movementDetected
+2026-07-11T14:28:33Z motion.phase waitingForMovement
+2026-07-11T14:28:34Z motion.phase movementDetected
+2026-07-11T23:03:28Z location.idleFailsafe.stop phase=idle
+2026-07-11T23:03:28Z location.stop phase=idle
+2026-07-11T23:03:28Z location.passiveWakeup.promote count=1
+2026-07-11T23:03:28Z location.start active authorization=authorizedAlways
+2026-07-11T23:08:28Z trip.begin.candidateRejected samples=1
+2026-07-11T23:13:28Z motion.phase stationary
+2026-07-11T23:13:28Z motion.stationaryStopLocationMonitoring
+2026-07-11T23:13:28Z location.stop phase=idle
+2026-07-11T23:13:31Z motion.phase movementDetected
+2026-07-11T23:13:31Z motion.triggerLocationMonitoring
+2026-07-11T23:13:31Z location.start active authorization=authorizedAlways
+2026-07-11T23:13:32Z motion.phase waitingForMovement
+2026-07-11T23:13:36Z motion.phase stationary
+2026-07-11T23:13:36Z motion.stationaryStopLocationMonitoring
+2026-07-11T23:13:36Z location.stop phase=idle
+2026-07-11T23:18:29Z motion.phase movementDetected
+2026-07-11T23:18:29Z motion.triggerLocationMonitoring
+2026-07-11T23:18:29Z location.start active authorization=authorizedAlways
+2026-07-11T23:23:29Z trip.begin.candidateRejected samples=1
+2026-07-11T23:28:35Z motion.phase waitingForMovement
+2026-07-11T23:28:36Z motion.phase movementDetected
+2026-07-11T23:28:39Z motion.phase waitingForMovement
+2026-07-12T00:05:36Z location.idleFailsafe.stop phase=idle
+2026-07-12T00:05:36Z location.stop phase=idle
+2026-07-12T00:05:36Z location.passiveWakeup.ignored count=1
+2026-07-12T00:05:36Z location.passiveWakeup.ignored count=1
+2026-07-12T00:05:36Z location.passiveWakeup.ignored count=1
+2026-07-12T00:05:36Z motion.phase movementDetected
+2026-07-12T00:05:36Z motion.triggerLocationMonitoring
+2026-07-12T00:05:36Z location.start active authorization=authorizedAlways
+2026-07-12T00:05:36Z motion.phase waitingForMovement
+2026-07-12T00:05:36Z motion.phase movementDetected
+2026-07-12T00:05:37Z motion.phase waitingForMovement
+2026-07-12T00:05:37Z motion.phase movementDetected
+2026-07-12T00:05:40Z motion.phase waitingForMovement
+2026-07-12T00:05:41Z motion.phase movementDetected
+2026-07-12T00:05:47Z motion.phase waitingForMovement
+2026-07-12T00:05:48Z motion.phase movementDetected
+2026-07-12T00:05:51Z motion.phase waitingForMovement
+2026-07-12T00:05:51Z motion.phase movementDetected
+2026-07-12T00:05:52Z motion.phase waitingForMovement
+2026-07-12T00:05:52Z motion.phase movementDetected
+2026-07-12T00:05:53Z motion.phase waitingForMovement
+2026-07-12T00:05:54Z motion.phase movementDetected
+2026-07-12T00:05:54Z motion.phase waitingForMovement
+2026-07-12T00:05:55Z motion.phase movementDetected
+2026-07-12T00:42:15Z location.authorization state=authorizedAlways
+2026-07-12T00:42:15Z location.passiveWakeups.start
+2026-07-12T00:42:15Z location.passiveWakeup.ignored count=1
+2026-07-12T00:42:15Z motion.startAutoDetection vehicleType=voiture
+2026-07-12T00:42:15Z motion.phase waitingForMovement
+2026-07-12T00:42:15Z motion.phase stationary
+2026-07-12T00:47:43Z motion.phase movementDetected
+2026-07-12T00:47:43Z motion.triggerLocationMonitoring
+2026-07-12T00:47:43Z location.start active authorization=authorizedAlways
+2026-07-12T00:47:43Z motion.phase waitingForMovement
+2026-07-12T00:47:48Z motion.phase stationary
+2026-07-12T00:47:48Z motion.stationaryStopLocationMonitoring
+2026-07-12T00:47:48Z location.stop phase=idle
+2026-07-12T00:49:48Z motion.phase movementDetected
+2026-07-12T00:49:48Z motion.triggerLocationMonitoring
+2026-07-12T00:49:48Z location.start active authorization=authorizedAlways
+2026-07-12T00:49:58Z motion.phase waitingForMovement
+2026-07-12T00:50:01Z motion.phase movementDetected
+2026-07-12T00:50:01Z motion.phase waitingForMovement
+2026-07-12T00:50:07Z motion.phase stationary
+2026-07-12T00:50:07Z motion.stationaryStopLocationMonitoring
+2026-07-12T00:50:07Z location.stop phase=idle
+2026-07-12T00:50:49Z motion.phase movementDetected
+2026-07-12T00:50:49Z motion.triggerLocationMonitoring
+2026-07-12T00:50:49Z location.start active authorization=authorizedAlways
+2026-07-12T00:50:52Z motion.phase waitingForMovement
+2026-07-12T00:50:55Z motion.phase stationary
+2026-07-12T00:50:55Z motion.stationaryStopLocationMonitoring
+2026-07-12T00:50:55Z location.stop phase=idle

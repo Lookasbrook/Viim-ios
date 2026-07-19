@@ -1,0 +1,205 @@
+import XCTest
+@testable import Viim
+
+final class VehicleFuelCatalogTests: XCTestCase {
+    func testToyotaCorollaGetsNavigationBasedFuelConsumptionEstimate() {
+        let profile = VehicleFuelCatalog.profile(
+            vehicleType: .voiture,
+            brand: "Toyota",
+            model: "Corolla"
+        )
+
+        let estimate = VehicleFuelCatalog.estimateConsumption(
+            distanceKm: 12,
+            fuelProfile: profile
+        )
+
+        XCTAssertEqual(profile?.canonicalName, "Toyota Corolla")
+        XCTAssertEqual(profile?.litersPer100Km, 6.8)
+        XCTAssertEqual(estimate?.confidence, .partial)
+        XCTAssertEqual(estimate?.liters ?? -1, 0.816, accuracy: 0.0001)
+
+        let cadSettings = FuelSettings(currency: .cad, pricePerLiter: 1.70)
+        XCTAssertEqual(cadSettings.costMinorUnits(for: estimate?.liters), 139)
+    }
+
+    func testAggressiveDynamicsIncreaseConsumptionEstimate() throws {
+        let profile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(
+                vehicleType: .voiture,
+                brand: "Toyota",
+                model: "Corolla"
+            )
+        )
+
+        let smoothDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 65,
+            idleRatio: 0.05,
+            hardAccelerationCount: 0,
+            hardBrakingCount: 0,
+            accelerationRms: 0.4,
+            analyzedDurationSec: 600,
+            distanceKm: 12
+        )
+        let aggressiveDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 18,
+            idleRatio: 0.35,
+            hardAccelerationCount: 6,
+            hardBrakingCount: 5,
+            accelerationRms: 1.4,
+            analyzedDurationSec: 600,
+            distanceKm: 12
+        )
+
+        let smooth = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12,
+                fuelProfile: profile,
+                dynamics: smoothDynamics
+            )
+        )
+        let aggressive = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12,
+                fuelProfile: profile,
+                dynamics: aggressiveDynamics
+            )
+        )
+        let baseline = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12,
+                fuelProfile: profile
+            )
+        )
+
+        // Conduite souple sur route : legerement sous le cycle mixte.
+        XCTAssertLessThan(smooth.liters, baseline.liters)
+        // Conduite urbaine agressive : nettement au-dessus, mais bornee a +50 %.
+        XCTAssertGreaterThan(aggressive.liters, baseline.liters)
+        XCTAssertLessThanOrEqual(aggressive.liters, baseline.liters * 1.5 + 0.0001)
+        XCTAssertGreaterThanOrEqual(smooth.liters, baseline.liters * 0.85 - 0.0001)
+    }
+
+    func testDynamicsMultiplierStaysWithinCredibleBounds() {
+        let extremeDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 10,
+            idleRatio: 0.9,
+            hardAccelerationCount: 50,
+            hardBrakingCount: 50,
+            accelerationRms: 5,
+            analyzedDurationSec: 600,
+            distanceKm: 5
+        )
+        let ghostDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 70,
+            idleRatio: 0,
+            hardAccelerationCount: 0,
+            hardBrakingCount: 0,
+            accelerationRms: 0,
+            analyzedDurationSec: 600,
+            distanceKm: 5
+        )
+
+        XCTAssertEqual(extremeDynamics.fuelConsumptionMultiplier, 1.5, accuracy: 0.0001)
+        XCTAssertGreaterThanOrEqual(ghostDynamics.fuelConsumptionMultiplier, 0.85)
+    }
+
+	    func testUnknownFuelProfileDoesNotInventCost() {
+	        let profile = VehicleFuelCatalog.profile(
+	            vehicleType: .voiture,
+	            brand: "Marque inconnue",
+	            model: "Modele inconnu"
+	        )
+
+	        XCTAssertNil(profile)
+	        XCTAssertNil(VehicleFuelCatalog.estimateConsumption(distanceKm: 12, fuelProfile: profile))
+	    }
+
+	    func testCatalogCanonicalizesCommonUserTypos() {
+	        let suggestion = VehicleFuelCatalog.canonicalSuggestion(
+	            vehicleType: .voiture,
+	            brand: "toyota",
+	            model: "coral"
+	        )
+
+	        XCTAssertEqual(suggestion?.brand, "Toyota")
+	        XCTAssertEqual(suggestion?.model, "Corolla")
+	        XCTAssertEqual(
+	            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "toyota", model: "coral")?.canonicalName,
+	            "Toyota Corolla"
+	        )
+	    }
+
+	    func testWestAfricanCommonCarsAreCovered() {
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Yaris")?.litersPer100Km, 5.8)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Hyundai", model: "Tucson")?.litersPer100Km, 8.0)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Kia", model: "Picanto")?.litersPer100Km, 5.3)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Nissan", model: "X-Trail")?.litersPer100Km, 8.0)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Renault", model: "Duster")?.litersPer100Km, 7.2)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Mercedes", model: "C200")?.canonicalName, "Mercedes-Benz Classe C")
+	    }
+
+	    func testBurkinaCommonMotorcyclesAreCovered() {
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .moto, brand: "Bajaj", model: "Boxer")?.litersPer100Km, 2.2)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .moto, brand: "TVS", model: "HLX 125")?.litersPer100Km, 2.0)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .moto, brand: "Haojue", model: "HJ125")?.litersPer100Km, 2.2)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .moto, brand: "Apsonic", model: "AP 150")?.litersPer100Km, 2.5)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .moto, brand: "Dayun", model: "DY 125")?.litersPer100Km, 2.2)
+	        XCTAssertEqual(VehicleFuelCatalog.profile(vehicleType: .moto, brand: "Honda", model: "Wave 110")?.litersPer100Km, 1.8)
+	    }
+
+	    func testAutocompleteReturnsCanonicalVehicleSuggestions() {
+	        let suggestions = VehicleFuelCatalog.suggestions(
+	            vehicleType: .moto,
+	            query: "boxer 150",
+	            limit: 3
+	        )
+
+	        XCTAssertEqual(suggestions.first?.brand, "Bajaj")
+	        XCTAssertEqual(suggestions.first?.model, "Boxer BM 150")
+	    }
+
+	    func testBicycleFuelEstimateIsExactZero() {
+	        let profile = VehicleFuelCatalog.profile(
+            vehicleType: .velo,
+            brand: "Trek",
+            model: "Marlin"
+        )
+
+        let estimate = VehicleFuelCatalog.estimateConsumption(
+            distanceKm: 12,
+            fuelProfile: profile
+        )
+
+        XCTAssertEqual(profile?.confidence, .reliable)
+        XCTAssertEqual(estimate?.liters, 0)
+        XCTAssertEqual(estimate?.confidence, .reliable)
+    }
+
+    func testSupportedCurrenciesConvertLitersIntoTheirOwnMinorUnits() {
+        XCTAssertEqual(FuelSettings(currency: .xof, pricePerLiter: 850).costMinorUnits(for: 1.25), 1_063)
+        XCTAssertEqual(FuelSettings(currency: .cad, pricePerLiter: 1.70).costMinorUnits(for: 1.25), 213)
+        XCTAssertEqual(FuelSettings(currency: .usd, pricePerLiter: 1.00).costMinorUnits(for: 1.25), 125)
+        XCTAssertEqual(FuelSettings(currency: .eur, pricePerLiter: 1.80).costMinorUnits(for: 1.25), 225)
+    }
+
+    func testSelectedCurrencyAndFuelPricePersistAcrossStoreRelaunch() throws {
+        let suiteName = "VehicleFuelCatalogTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = OnboardingStore(
+            userDefaults: defaults,
+            locale: Locale(identifier: "fr_BF")
+        )
+        try store.updateFuelSettings(
+            FuelSettings(currency: .cad, pricePerLiter: 1.67)
+        )
+
+        let relaunchedStore = OnboardingStore(
+            userDefaults: defaults,
+            locale: Locale(identifier: "fr_BF")
+        )
+        XCTAssertEqual(relaunchedStore.fuelSettings, FuelSettings(currency: .cad, pricePerLiter: 1.67))
+    }
+}

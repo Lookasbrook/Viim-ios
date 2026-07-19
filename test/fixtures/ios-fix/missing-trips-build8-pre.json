@@ -1,0 +1,45 @@
+{
+  "capturedAt": "2026-07-18T00:42:00Z",
+  "source": "physical-device-coredata-and-diagnostics",
+  "device": {
+    "name": "iPhone de Guy",
+    "model": "iPhone 16",
+    "coreDeviceId": "E21236A8-1735-5EB6-9A8D-E41C165B962E"
+  },
+  "build": {
+    "version": "0.1.0",
+    "number": "8",
+    "gitSHA": "cf47617821a4-dirty"
+  },
+  "observedState": {
+    "persistedTrips": 12,
+    "backgroundDeliveryCadenceSec": 290,
+    "backgroundActivitySessionStarted": false,
+    "rejectedMovedFragment": {
+      "startLocal": "2026-07-17T20:12:00-04:00",
+      "finalizedLocal": "2026-07-17T20:24:00-04:00",
+      "wallClockCaptureSec": 720,
+      "gpsSampleSpanSec": 10,
+      "rawMovementMeters": 2514,
+      "sampleCount": 11,
+      "terminalReason": "tripTooShort"
+    },
+    "stuckActiveDraft": {
+      "startLocal": "2026-07-17T20:24:41-04:00",
+      "lastGpsMovementLocal": "2026-07-17T20:29:41-04:00",
+      "lastStationaryGpsLocal": "2026-07-17T20:35:51-04:00",
+      "rawMovementMeters": 1284.1,
+      "sampleCount": 12,
+      "motionEventsCancelledGpsStationaryFinalization": true
+    },
+    "rejectedSamplesRetained": false
+  },
+  "expectedAfterFix": {
+    "backgroundLocationActivityIsRetainedWhileAutomaticTrackingRuns": true,
+    "captureDurationUsesReceiptTimelineWhenGpsTimestampsAreBatched": true,
+    "impossibleGpsJumpsAreExcludedFromDistance": true,
+    "gpsStationarityCannotBeCancelledByNoisyMotionEvents": true,
+    "recoveredDraftIsFinalizedDeterministically": true,
+    "terminalCaptureEvidenceIsRetainedForAudit": true
+  }
+}

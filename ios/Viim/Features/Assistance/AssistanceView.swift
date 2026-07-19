@@ -6,7 +6,8 @@ import UIKit
 struct AssistanceView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
-    @State private var emergencyContact: EmergencyContact?
+    @State private var emergencyContacts: [EmergencyContact] = []
+    @State private var hasInvalidEmergencyContact = false
     @State private var medicalProfile: MedicalProfile?
     @State private var isSendingTest = false
     @State private var alertMessage: AssistanceAlertMessage?
@@ -24,7 +25,7 @@ struct AssistanceView: View {
                                     .font(.system(size: 14, weight: .bold))
                                     .foregroundStyle(ViimColors.text)
                                 Spacer()
-                                ViimChip(titleKey: emergencyContact == nil ? "status.disabled" : "status.enabled", style: emergencyContact == nil ? .neutral : .success)
+                                ViimChip(titleKey: emergencyContactStatusKey, style: emergencyContactStatusStyle)
                             }
                             Text("assistance.realtime.detail")
                                 .font(.caption)
@@ -41,7 +42,7 @@ struct AssistanceView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(ViimColors.red)
-                            .disabled(emergencyContact == nil || isSendingTest)
+                            .disabled(emergencyContacts.isEmpty || isSendingTest)
                         }
                     }
 
@@ -57,7 +58,7 @@ struct AssistanceView: View {
                             NavigationLink {
                                 EmergencyContactsView(onChange: reloadSecureData)
                             } label: {
-                                AssistanceListRow(icon: "person.2.fill", titleKey: "assistance.contacts.title", detailKey: emergencyContact == nil ? "assistance.contacts.status" : "assistance.contacts.configured", tint: ViimColors.navy)
+                                AssistanceListRow(icon: "person.2.fill", titleKey: "assistance.contacts.title", detailKey: emergencyContactDetailKey, tint: ViimColors.navy)
                             }
                             .buttonStyle(.plain)
 
@@ -132,27 +133,67 @@ struct AssistanceView: View {
     }
 
     private func reloadSecureData() {
-        emergencyContact = try? SecureEmergencyContactStore.shared.load()
+        let storedContacts = (try? SecureEmergencyContactStore.shared.loadAll()) ?? []
+        emergencyContacts = storedContacts.compactMap(BurkinaPhoneNumber.normalizedContact)
+        hasInvalidEmergencyContact = !storedContacts.isEmpty && emergencyContacts.isEmpty
         medicalProfile = try? SecureMedicalProfileStore.shared.load()
     }
 
+    private var emergencyContactStatusKey: LocalizedStringKey {
+        if hasInvalidEmergencyContact {
+            return "assistance.contacts.needsCorrection"
+        }
+        return emergencyContacts.isEmpty ? "status.disabled" : "status.enabled"
+    }
+
+    private var emergencyContactDetailKey: LocalizedStringKey {
+        if hasInvalidEmergencyContact {
+            return "assistance.contacts.needsCorrection"
+        }
+        if emergencyContacts.isEmpty {
+            return "assistance.contacts.status"
+        }
+        return "assistance.contacts.configuredCount \(emergencyContacts.count)"
+    }
+
+    private var emergencyContactStatusStyle: ViimChip.Style {
+        if hasInvalidEmergencyContact {
+            return .danger
+        }
+        return emergencyContacts.isEmpty ? .neutral : .success
+    }
+
     private func sendTestWhatsApp() {
-        guard let emergencyContact else {
-            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.test.missingContact")
+        guard !emergencyContacts.isEmpty else {
+            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: hasInvalidEmergencyContact ? "assistance.contacts.correctRequired" : "assistance.test.missingContact")
             return
         }
 
         isSendingTest = true
+        let contacts = emergencyContacts
+        let driverName = onboardingStore.profile?.firstName
         Task { @MainActor in
             defer { isSendingTest = false }
-            do {
-                try await BackendAPIClient.shared.sendAlertTest(
-                    contact: emergencyContact,
-                    driverName: onboardingStore.profile?.firstName
-                )
+            var firstError: Error?
+            var sentCount = 0
+            for contact in contacts {
+                do {
+                    try await BackendAPIClient.shared.sendAlertTest(
+                        contact: contact,
+                        driverName: driverName
+                    )
+                    sentCount += 1
+                } catch {
+                    if firstError == nil {
+                        firstError = error
+                    }
+                }
+            }
+
+            if sentCount > 0 {
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.test.success.title", detailKey: "assistance.test.success.detail")
-            } catch {
-                alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.test.error")
+            } else if let firstError {
+                alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: AssistanceAPIErrorPresenter.detailKey(for: firstError, fallbackKey: "assistance.test.error"))
             }
         }
     }
@@ -276,14 +317,16 @@ private struct EmergencyButton: View {
 private struct AssistanceLocationView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
-    @State private var emergencyContact: EmergencyContact?
+    @State private var emergencyContacts: [EmergencyContact] = []
+    @State private var hasInvalidEmergencyContact = false
     @State private var isSharing = false
+    @State private var locationRequestState: AssistanceLocationRequestState = .searching
     @State private var alertMessage: AssistanceAlertMessage?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
-                if let location = locationService.latestLocation {
+                if let location = currentLocation {
                     Map(
                         coordinateRegion: .constant(
                             MKCoordinateRegion(
@@ -324,9 +367,14 @@ private struct AssistanceLocationView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(ViimColors.blue)
-                    .disabled(emergencyContact == nil || isSharing)
+                    .disabled(emergencyContacts.isEmpty || isSharing)
                 } else {
-                    AssistanceDetailView(icon: "location.slash.fill", titleKey: "assistance.location.waiting.title", detailKey: "assistance.location.waiting.detail", tint: ViimColors.warning)
+                    AssistanceDetailView(
+                        icon: locationRequestState.icon,
+                        titleKey: locationRequestState.titleKey(for: locationService.authorizationState),
+                        detailKey: locationRequestState.detailKey(for: locationService.authorizationState),
+                        tint: locationRequestState.tint
+                    )
                 }
             }
             .padding(14)
@@ -334,8 +382,18 @@ private struct AssistanceLocationView: View {
         .background(ViimColors.background.ignoresSafeArea())
         .navigationTitle("assistance.location.title")
         .task {
-            emergencyContact = try? SecureEmergencyContactStore.shared.load()
+            reloadContact()
             locationService.prepareForForegroundUse()
+            requestFreshLocation()
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+            if currentLocation == nil {
+                locationRequestState = .timedOut
+            }
+        }
+        .onChange(of: locationService.latestLocation) { _ in
+            if currentLocation != nil {
+                locationRequestState = .available
+            }
         }
         .alert(item: $alertMessage) { message in
             Alert(
@@ -346,24 +404,57 @@ private struct AssistanceLocationView: View {
         }
     }
 
+    private var currentLocation: CLLocation? {
+        guard let location = locationService.latestLocation,
+              abs(Date().timeIntervalSince(location.timestamp)) <= 120 else {
+            return nil
+        }
+        return location
+    }
+
+    private func reloadContact() {
+        let storedContacts = (try? SecureEmergencyContactStore.shared.loadAll()) ?? []
+        emergencyContacts = storedContacts.compactMap(BurkinaPhoneNumber.normalizedContact)
+        hasInvalidEmergencyContact = !storedContacts.isEmpty && emergencyContacts.isEmpty
+    }
+
+    private func requestFreshLocation() {
+        locationRequestState = .searching
+        locationService.requestCurrentLocation()
+    }
+
     private func shareLocation(_ location: CLLocation) {
-        guard let emergencyContact else {
-            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.test.missingContact")
+        guard !emergencyContacts.isEmpty else {
+            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: hasInvalidEmergencyContact ? "assistance.contacts.correctRequired" : "assistance.test.missingContact")
             return
         }
 
         isSharing = true
+        let contacts = emergencyContacts
+        let driverName = onboardingStore.profile?.firstName
         Task { @MainActor in
             defer { isSharing = false }
-            do {
-                try await BackendAPIClient.shared.shareLocation(
-                    contact: emergencyContact,
-                    driverName: onboardingStore.profile?.firstName,
-                    location: location
-                )
+            var firstError: Error?
+            var sentCount = 0
+            for contact in contacts {
+                do {
+                    try await BackendAPIClient.shared.shareLocation(
+                        contact: contact,
+                        driverName: driverName,
+                        location: location
+                    )
+                    sentCount += 1
+                } catch {
+                    if firstError == nil {
+                        firstError = error
+                    }
+                }
+            }
+
+            if sentCount > 0 {
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.location.shared.title", detailKey: "assistance.location.shared.detail")
-            } catch {
-                alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.location.shared.error")
+            } else if let firstError {
+                alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: AssistanceAPIErrorPresenter.detailKey(for: firstError, fallbackKey: "assistance.location.shared.error"))
             }
         }
     }
@@ -375,38 +466,60 @@ private struct AssistanceLocationView: View {
 
 private struct EmergencyContactsView: View {
     let onChange: () -> Void
+    @State private var contacts: [EmergencyContact] = []
     @State private var name = ""
     @State private var phoneNumber = ""
     @State private var alertMessage: AssistanceAlertMessage?
 
     var body: some View {
         Form {
-            Section {
-                TextField("assistance.contacts.name.placeholder", text: $name)
-                    .textContentType(.name)
-                TextField("assistance.contacts.phone.placeholder", text: $phoneNumber)
-                    .keyboardType(.phonePad)
-                    .textContentType(.telephoneNumber)
-            } header: {
-                Text("assistance.contacts.title")
-            } footer: {
-                Text("assistance.contacts.footer")
+            if !contacts.isEmpty {
+                Section {
+                    ForEach(Array(contacts.enumerated()), id: \.element.phoneNumber) { _, contact in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(contact.name)
+                                .font(.body.weight(.semibold))
+                            Text(contact.phoneNumber)
+                                .font(.caption)
+                                .foregroundStyle(ViimColors.muted)
+                        }
+                    }
+                    .onDelete(perform: deleteContacts)
+                } header: {
+                    Text("assistance.contacts.listHeader \(contacts.count) \(SecureEmergencyContactStore.maximumContacts)")
+                } footer: {
+                    Text("assistance.contacts.deleteHint")
+                }
             }
 
-            Section {
-                Button("assistance.contacts.save") {
-                    saveContact()
-                }
-                .disabled(!isValidContact)
+            if contacts.count < SecureEmergencyContactStore.maximumContacts {
+                Section {
+                    TextField("assistance.contacts.name.placeholder", text: $name)
+                        .textContentType(.name)
+                    TextField("assistance.contacts.phone.placeholder", text: $phoneNumber)
+                        .keyboardType(.phonePad)
+                        .textContentType(.telephoneNumber)
 
-                Button("assistance.contacts.delete", role: .destructive) {
-                    deleteContact()
+                    Button("assistance.contacts.add") {
+                        addContact()
+                    }
+                    .disabled(!isValidContact)
+                } header: {
+                    Text("assistance.contacts.addHeader")
+                } footer: {
+                    Text("assistance.contacts.footer")
+                }
+            } else {
+                Section {
+                    Text("assistance.contacts.maxReached")
+                        .font(.footnote)
+                        .foregroundStyle(ViimColors.muted)
                 }
             }
         }
         .navigationTitle("assistance.contacts.title")
         .task {
-            loadContact()
+            loadContacts()
         }
         .alert(item: $alertMessage) { message in
             Alert(
@@ -419,25 +532,32 @@ private struct EmergencyContactsView: View {
 
     private var isValidContact: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).range(of: #"^\+226\d{8}$"#, options: .regularExpression) != nil
+            BurkinaPhoneNumber.normalize(phoneNumber) != nil
     }
 
-    private func loadContact() {
-        guard let contact = try? SecureEmergencyContactStore.shared.load() else {
+    private func loadContacts() {
+        contacts = (try? SecureEmergencyContactStore.shared.loadAll()) ?? []
+    }
+
+    private func addContact() {
+        guard let normalizedPhoneNumber = BurkinaPhoneNumber.normalize(phoneNumber) else {
+            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.contacts.invalidPhone")
             return
         }
-        name = contact.name
-        phoneNumber = contact.phoneNumber
-    }
 
-    private func saveContact() {
-        do {
-            try SecureEmergencyContactStore.shared.save(
-                EmergencyContact(
-                    name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                    phoneNumber: phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
+        var updatedContacts = contacts.filter { $0.phoneNumber != normalizedPhoneNumber }
+        updatedContacts.append(
+            EmergencyContact(
+                name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                phoneNumber: normalizedPhoneNumber
             )
+        )
+
+        do {
+            try SecureEmergencyContactStore.shared.saveAll(updatedContacts)
+            contacts = updatedContacts
+            name = ""
+            phoneNumber = ""
             onChange()
             alertMessage = AssistanceAlertMessage(titleKey: "assistance.contacts.saved.title", detailKey: "assistance.contacts.saved.detail")
         } catch {
@@ -445,13 +565,14 @@ private struct EmergencyContactsView: View {
         }
     }
 
-    private func deleteContact() {
+    private func deleteContacts(at offsets: IndexSet) {
+        var updatedContacts = contacts
+        updatedContacts.remove(atOffsets: offsets)
+
         do {
-            try SecureEmergencyContactStore.shared.delete()
-            name = ""
-            phoneNumber = ""
+            try SecureEmergencyContactStore.shared.saveAll(updatedContacts)
+            contacts = updatedContacts
             onChange()
-            alertMessage = AssistanceAlertMessage(titleKey: "assistance.contacts.deleted.title", detailKey: "assistance.contacts.deleted.detail")
         } catch {
             alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.contacts.error")
         }
@@ -557,4 +678,75 @@ private struct AssistanceAlertMessage: Identifiable {
     let id = UUID()
     let titleKey: LocalizedStringKey
     let detailKey: LocalizedStringKey
+}
+
+private enum AssistanceLocationRequestState {
+    case searching
+    case available
+    case timedOut
+
+    var icon: String {
+        switch self {
+        case .searching, .available:
+            return "location.viewfinder"
+        case .timedOut:
+            return "location.slash.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .searching, .available:
+            return ViimColors.blue
+        case .timedOut:
+            return ViimColors.warning
+        }
+    }
+
+    func titleKey(for authorizationState: LocationAuthorizationState) -> LocalizedStringKey {
+        if authorizationState == .denied || authorizationState == .restricted {
+            return "assistance.location.permission.title"
+        }
+
+        switch self {
+        case .searching, .available:
+            return "assistance.location.searching.title"
+        case .timedOut:
+            return "assistance.location.unavailable.title"
+        }
+    }
+
+    func detailKey(for authorizationState: LocationAuthorizationState) -> LocalizedStringKey {
+        if authorizationState == .denied || authorizationState == .restricted {
+            return "assistance.location.permission.detail"
+        }
+
+        switch self {
+        case .searching, .available:
+            return "assistance.location.searching.detail"
+        case .timedOut:
+            return "assistance.location.unavailable.detail"
+        }
+    }
+}
+
+private enum AssistanceAPIErrorPresenter {
+    static func detailKey(for error: Error, fallbackKey: LocalizedStringKey) -> LocalizedStringKey {
+        guard let apiError = error as? BackendAPIError else {
+            return fallbackKey
+        }
+
+        switch apiError {
+        case let .apiStatus(statusCode, code) where statusCode == 422 && code == "invalid_contact":
+            return "assistance.error.invalidContact"
+        case let .apiStatus(statusCode, code) where statusCode == 503 && code == "newagent_unavailable":
+            return "assistance.error.whatsappUnavailable"
+        case .network(.notConnectedToInternet), .network(.networkConnectionLost):
+            return "assistance.error.offline"
+        case .network(.timedOut):
+            return "assistance.error.timeout"
+        default:
+            return fallbackKey
+        }
+    }
 }

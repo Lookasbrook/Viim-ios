@@ -1,0 +1,2021 @@
+2026-07-10T00:37:07Z location.authorization state=authorizedAlways
+2026-07-10T00:37:07Z location.passiveWakeups.start
+2026-07-10T00:37:07Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T00:37:07Z location.passiveWakeup.ignored count=1
+2026-07-10T00:37:15Z motion.phase stationary
+2026-07-10T00:43:06Z trip.maxSpeed.repaired count=6
+2026-07-10T00:43:06Z location.authorization state=authorizedAlways
+2026-07-10T00:43:06Z location.passiveWakeups.start
+2026-07-10T00:43:06Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T00:43:06Z location.passiveWakeup.ignored count=1
+2026-07-10T00:43:15Z motion.phase stationary
+2026-07-10T01:04:59Z motion.phase waitingForMovement
+2026-07-10T01:05:48Z motion.phase stationary
+2026-07-10T01:09:04Z motion.phase waitingForMovement
+2026-07-10T01:33:39Z location.authorization state=authorizedAlways
+2026-07-10T01:33:39Z location.passiveWakeups.start
+2026-07-10T01:33:39Z location.passiveWakeup.ignored count=1
+2026-07-10T01:33:39Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T01:33:39Z motion.phase waitingForMovement
+2026-07-10T01:33:40Z motion.phase movementDetected
+2026-07-10T01:33:40Z motion.triggerLocationMonitoring
+2026-07-10T01:33:40Z location.start active authorization=authorizedAlways
+2026-07-10T01:33:45Z motion.phase waitingForMovement
+2026-07-10T01:33:50Z motion.phase stationary
+2026-07-10T01:33:50Z motion.stationaryStopLocationMonitoring
+2026-07-10T01:33:50Z location.stop phase=idle
+2026-07-10T01:54:30Z motion.phase movementDetected
+2026-07-10T01:54:30Z motion.triggerLocationMonitoring
+2026-07-10T01:54:30Z location.start active authorization=authorizedAlways
+2026-07-10T01:54:39Z motion.phase waitingForMovement
+2026-07-10T01:54:40Z motion.phase movementDetected
+2026-07-10T01:54:40Z motion.phase waitingForMovement
+2026-07-10T01:54:40Z motion.phase movementDetected
+2026-07-10T01:54:42Z motion.phase waitingForMovement
+2026-07-10T01:54:45Z motion.phase movementDetected
+2026-07-10T01:54:46Z motion.phase waitingForMovement
+2026-07-10T23:08:04Z location.authorization state=authorizedAlways
+2026-07-10T23:08:04Z location.passiveWakeups.start
+2026-07-10T23:08:04Z location.passiveWakeup.promote count=1
+2026-07-10T23:08:04Z location.start active authorization=authorizedAlways
+2026-07-10T23:08:04Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T23:08:04Z motion.phase waitingForMovement
+2026-07-10T23:08:04Z motion.phase movementDetected
+2026-07-10T23:18:05Z motion.phase stationary
+2026-07-11T00:42:34Z location.idleFailsafe.stop phase=idle
+2026-07-11T00:42:34Z location.stop phase=idle
+2026-07-11T00:42:34Z location.passiveWakeup.promote count=1
+2026-07-11T00:42:34Z location.start active authorization=authorizedAlways
+2026-07-11T00:42:34Z motion.phase movementDetected
+2026-07-11T00:47:34Z motion.phase stationary
+2026-07-11T00:52:34Z location.idleFailsafe.stop phase=idle
+2026-07-11T00:52:34Z location.stop phase=idle
+2026-07-11T00:52:34Z motion.phase movementDetected
+2026-07-11T00:52:34Z motion.triggerLocationMonitoring
+2026-07-11T00:52:34Z location.start active authorization=authorizedAlways
+2026-07-11T00:52:40Z motion.phase waitingForMovement
+2026-07-11T00:52:42Z motion.phase movementDetected
+2026-07-11T01:14:50Z location.idleFailsafe.stop phase=idle
+2026-07-11T01:14:50Z location.stop phase=idle
+2026-07-11T01:14:50Z location.passiveWakeup.ignored count=1
+2026-07-11T01:14:50Z location.passiveWakeup.ignored count=1
+2026-07-11T01:14:55Z motion.phase waitingForMovement
+2026-07-11T01:14:56Z motion.phase movementDetected
+2026-07-11T01:14:56Z motion.triggerLocationMonitoring
+2026-07-11T01:14:56Z location.start active authorization=authorizedAlways
+2026-07-11T01:20:33Z location.idleFailsafe.stop phase=idle
+2026-07-11T01:20:33Z location.stop phase=idle
+2026-07-11T01:20:33Z location.passiveWakeup.ignored count=1
+2026-07-11T01:49:00Z motion.phase waitingForMovement
+2026-07-11T01:49:01Z motion.phase movementDetected
+2026-07-11T01:49:01Z motion.triggerLocationMonitoring
+2026-07-11T01:49:01Z location.start active authorization=authorizedAlways
+2026-07-11T01:52:21Z location.idleFailsafe.stop phase=idle
+2026-07-11T01:52:21Z location.stop phase=idle
+2026-07-11T01:52:21Z location.passiveWakeup.ignored count=1
+2026-07-11T01:52:21Z location.passiveWakeup.ignored count=1
+2026-07-11T01:52:21Z location.passiveWakeup.ignored count=1
+2026-07-11T03:21:32Z location.authorization state=authorizedAlways
+2026-07-11T03:21:32Z location.passiveWakeups.start
+2026-07-11T03:21:32Z location.passiveWakeup.promote count=1
+2026-07-11T03:21:32Z location.start active authorization=authorizedAlways
+2026-07-11T03:21:33Z motion.startAutoDetection vehicleType=voiture
+2026-07-11T03:21:33Z motion.phase waitingForMovement
+2026-07-11T14:08:23Z location.idleFailsafe.stop phase=idle
+2026-07-11T14:08:23Z location.stop phase=idle
+2026-07-11T14:08:23Z location.passiveWakeup.promote count=1
+2026-07-11T14:08:23Z location.start active authorization=authorizedAlways
+2026-07-11T14:08:23Z motion.phase stationary
+2026-07-11T14:08:23Z motion.phase movementDetected
+2026-07-11T14:08:31Z motion.phase waitingForMovement
+2026-07-11T14:11:04Z motion.phase movementDetected
+2026-07-11T14:11:04Z motion.phase waitingForMovement
+2026-07-11T14:13:24Z location.idleFailsafe.stop phase=idle
+2026-07-11T14:13:24Z location.stop phase=idle
+2026-07-11T14:13:24Z location.passiveWakeup.promote count=1
+2026-07-11T14:13:24Z location.start active authorization=authorizedAlways
+2026-07-11T14:13:24Z motion.phase movementDetected
+2026-07-11T14:18:25Z trip.begin.candidateRejected samples=1
+2026-07-11T14:23:25Z trip.begin.candidateRejected samples=1
+2026-07-11T14:28:26Z motion.phase waitingForMovement
+2026-07-11T14:28:26Z motion.phase movementDetected
+2026-07-11T14:28:27Z motion.phase waitingForMovement
+2026-07-11T14:28:28Z motion.phase movementDetected
+2026-07-11T14:28:28Z motion.phase waitingForMovement
+2026-07-11T14:28:28Z motion.phase movementDetected
+2026-07-11T14:28:31Z motion.phase waitingForMovement
+2026-07-11T14:28:31Z motion.phase movementDetected
+2026-07-11T14:28:32Z motion.phase waitingForMovement
+2026-07-11T14:28:33Z motion.phase movementDetected
+2026-07-11T14:28:33Z motion.phase waitingForMovement
+2026-07-11T14:28:34Z motion.phase movementDetected
+2026-07-11T23:03:28Z location.idleFailsafe.stop phase=idle
+2026-07-11T23:03:28Z location.stop phase=idle
+2026-07-11T23:03:28Z location.passiveWakeup.promote count=1
+2026-07-11T23:03:28Z location.start active authorization=authorizedAlways
+2026-07-11T23:08:28Z trip.begin.candidateRejected samples=1
+2026-07-11T23:13:28Z motion.phase stationary
+2026-07-11T23:13:28Z motion.stationaryStopLocationMonitoring
+2026-07-11T23:13:28Z location.stop phase=idle
+2026-07-11T23:13:31Z motion.phase movementDetected
+2026-07-11T23:13:31Z motion.triggerLocationMonitoring
+2026-07-11T23:13:31Z location.start active authorization=authorizedAlways
+2026-07-11T23:13:32Z motion.phase waitingForMovement
+2026-07-11T23:13:36Z motion.phase stationary
+2026-07-11T23:13:36Z motion.stationaryStopLocationMonitoring
+2026-07-11T23:13:36Z location.stop phase=idle
+2026-07-11T23:18:29Z motion.phase movementDetected
+2026-07-11T23:18:29Z motion.triggerLocationMonitoring
+2026-07-11T23:18:29Z location.start active authorization=authorizedAlways
+2026-07-11T23:23:29Z trip.begin.candidateRejected samples=1
+2026-07-11T23:28:35Z motion.phase waitingForMovement
+2026-07-11T23:28:36Z motion.phase movementDetected
+2026-07-11T23:28:39Z motion.phase waitingForMovement
+2026-07-12T00:05:36Z location.idleFailsafe.stop phase=idle
+2026-07-12T00:05:36Z location.stop phase=idle
+2026-07-12T00:05:36Z location.passiveWakeup.ignored count=1
+2026-07-12T00:05:36Z location.passiveWakeup.ignored count=1
+2026-07-12T00:05:36Z location.passiveWakeup.ignored count=1
+2026-07-12T00:05:36Z motion.phase movementDetected
+2026-07-12T00:05:36Z motion.triggerLocationMonitoring
+2026-07-12T00:05:36Z location.start active authorization=authorizedAlways
+2026-07-12T00:05:36Z motion.phase waitingForMovement
+2026-07-12T00:05:36Z motion.phase movementDetected
+2026-07-12T00:05:37Z motion.phase waitingForMovement
+2026-07-12T00:05:37Z motion.phase movementDetected
+2026-07-12T00:05:40Z motion.phase waitingForMovement
+2026-07-12T00:05:41Z motion.phase movementDetected
+2026-07-12T00:05:47Z motion.phase waitingForMovement
+2026-07-12T00:05:48Z motion.phase movementDetected
+2026-07-12T00:05:51Z motion.phase waitingForMovement
+2026-07-12T00:05:51Z motion.phase movementDetected
+2026-07-12T00:05:52Z motion.phase waitingForMovement
+2026-07-12T00:05:52Z motion.phase movementDetected
+2026-07-12T00:05:53Z motion.phase waitingForMovement
+2026-07-12T00:05:54Z motion.phase movementDetected
+2026-07-12T00:05:54Z motion.phase waitingForMovement
+2026-07-12T00:05:55Z motion.phase movementDetected
+2026-07-12T00:42:15Z location.authorization state=authorizedAlways
+2026-07-12T00:42:15Z location.passiveWakeups.start
+2026-07-12T00:42:15Z location.passiveWakeup.ignored count=1
+2026-07-12T00:42:15Z motion.startAutoDetection vehicleType=voiture
+2026-07-12T00:42:15Z motion.phase waitingForMovement
+2026-07-12T00:42:15Z motion.phase stationary
+2026-07-12T00:47:43Z motion.phase movementDetected
+2026-07-12T00:47:43Z motion.triggerLocationMonitoring
+2026-07-12T00:47:43Z location.start active authorization=authorizedAlways
+2026-07-12T00:47:43Z motion.phase waitingForMovement
+2026-07-12T00:47:48Z motion.phase stationary
+2026-07-12T00:47:48Z motion.stationaryStopLocationMonitoring
+2026-07-12T00:47:48Z location.stop phase=idle
+2026-07-12T00:49:48Z motion.phase movementDetected
+2026-07-12T00:49:48Z motion.triggerLocationMonitoring
+2026-07-12T00:49:48Z location.start active authorization=authorizedAlways
+2026-07-12T00:49:58Z motion.phase waitingForMovement
+2026-07-12T00:50:01Z motion.phase movementDetected
+2026-07-12T00:50:01Z motion.phase waitingForMovement
+2026-07-12T00:50:07Z motion.phase stationary
+2026-07-12T00:50:07Z motion.stationaryStopLocationMonitoring
+2026-07-12T00:50:07Z location.stop phase=idle
+2026-07-12T00:50:49Z motion.phase movementDetected
+2026-07-12T00:50:49Z motion.triggerLocationMonitoring
+2026-07-12T00:50:49Z location.start active authorization=authorizedAlways
+2026-07-12T00:50:52Z motion.phase waitingForMovement
+2026-07-12T00:50:55Z motion.phase stationary
+2026-07-12T00:50:55Z motion.stationaryStopLocationMonitoring
+2026-07-12T00:50:55Z location.stop phase=idle
+2026-07-12T01:00:19Z location.authorization state=authorizedAlways
+2026-07-12T01:00:19Z location.passiveWakeups.start
+2026-07-12T01:00:19Z location.passiveWakeup.ignored count=1
+2026-07-12T01:00:19Z motion.startAutoDetection vehicleType=voiture
+2026-07-12T01:00:19Z motion.phase waitingForMovement
+2026-07-12T01:00:19Z motion.phase stationary
+2026-07-12T01:26:35Z motion.phase movementDetected
+2026-07-12T01:26:35Z motion.triggerLocationMonitoring
+2026-07-12T01:26:35Z location.backgroundSession.start
+2026-07-12T01:26:35Z location.start active authorization=authorizedAlways
+2026-07-12T01:26:36Z motion.phase waitingForMovement
+2026-07-12T01:26:40Z motion.phase stationary
+2026-07-12T01:26:40Z motion.stationaryStopLocationMonitoring
+2026-07-12T01:26:40Z location.backgroundSession.end
+2026-07-12T01:26:40Z location.stop phase=idle
+2026-07-12T01:54:06Z motion.phase movementDetected
+2026-07-12T01:54:06Z motion.triggerLocationMonitoring
+2026-07-12T01:54:06Z location.backgroundSession.start
+2026-07-12T01:54:06Z location.start active authorization=authorizedAlways
+2026-07-12T01:54:08Z motion.phase waitingForMovement
+2026-07-12T01:54:13Z motion.phase stationary
+2026-07-12T01:54:13Z motion.stationaryStopLocationMonitoring
+2026-07-12T01:54:13Z location.backgroundSession.end
+2026-07-12T01:54:13Z location.stop phase=idle
+2026-07-12T01:55:38Z motion.phase movementDetected
+2026-07-12T01:55:38Z motion.triggerLocationMonitoring
+2026-07-12T01:55:38Z location.backgroundSession.start
+2026-07-12T01:55:38Z location.start active authorization=authorizedAlways
+2026-07-12T01:55:45Z motion.phase waitingForMovement
+2026-07-12T01:55:45Z motion.phase movementDetected
+2026-07-12T01:55:55Z motion.phase waitingForMovement
+2026-07-12T01:55:57Z motion.phase movementDetected
+2026-07-12T01:55:59Z motion.phase waitingForMovement
+2026-07-12T01:56:00Z motion.phase movementDetected
+2026-07-12T01:56:00Z motion.phase waitingForMovement
+2026-07-12T01:56:00Z motion.phase movementDetected
+2026-07-12T01:56:14Z motion.phase waitingForMovement
+2026-07-12T01:56:16Z motion.phase movementDetected
+2026-07-12T01:56:25Z motion.phase waitingForMovement
+2026-07-12T01:56:25Z motion.phase movementDetected
+2026-07-12T01:56:29Z motion.phase waitingForMovement
+2026-07-12T01:56:30Z motion.phase movementDetected
+2026-07-12T01:56:30Z motion.phase waitingForMovement
+2026-07-12T01:56:31Z motion.phase movementDetected
+2026-07-12T01:56:31Z motion.phase waitingForMovement
+2026-07-12T01:56:37Z motion.phase stationary
+2026-07-12T01:56:37Z motion.stationaryStopLocationMonitoring
+2026-07-12T01:56:37Z location.backgroundSession.end
+2026-07-12T01:56:37Z location.stop phase=idle
+2026-07-12T01:56:38Z motion.phase movementDetected
+2026-07-12T01:56:38Z motion.triggerLocationMonitoring
+2026-07-12T01:56:38Z location.backgroundSession.start
+2026-07-12T01:56:38Z location.start active authorization=authorizedAlways
+2026-07-12T01:56:42Z motion.phase waitingForMovement
+2026-07-12T01:56:46Z motion.phase movementDetected
+2026-07-12T02:11:51Z app.launch version=0.1.0 build=2 sha=cf47617-dirty builtAt=2026-07-12T02:10:36Z
+2026-07-12T02:11:51Z location.authorization state=authorizedAlways
+2026-07-12T02:11:51Z location.passiveWakeups.start
+2026-07-12T02:11:51Z location.passiveWakeup.ignored count=1
+2026-07-12T02:11:51Z motion.startAutoDetection vehicleType=voiture
+2026-07-12T02:11:51Z motion.phase waitingForMovement
+2026-07-12T02:11:51Z motion.phase waitingForMovement
+2026-07-12T02:11:51Z motion.phase movementDetected
+2026-07-12T02:11:51Z motion.triggerLocationMonitoring
+2026-07-12T02:11:51Z location.backgroundSession.start
+2026-07-12T02:11:51Z location.start active authorization=authorizedAlways
+2026-07-12T02:11:53Z motion.phase waitingForMovement
+2026-07-12T02:11:54Z motion.phase movementDetected
+2026-07-12T02:11:58Z motion.phase waitingForMovement
+2026-07-12T02:12:02Z motion.phase stationary
+2026-07-12T02:12:02Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-12T02:13:19Z motion.phase movementDetected
+2026-07-12T02:13:23Z motion.phase waitingForMovement
+2026-07-12T02:13:24Z motion.phase movementDetected
+2026-07-12T02:13:26Z motion.phase waitingForMovement
+2026-07-12T02:13:26Z motion.phase movementDetected
+2026-07-12T02:13:34Z motion.phase waitingForMovement
+2026-07-12T02:13:37Z motion.phase stationary
+2026-07-12T02:13:37Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-12T02:15:00Z location.idleFailsafe.stop phase=idle
+2026-07-12T02:15:00Z location.backgroundSession.end
+2026-07-12T02:15:00Z location.stop phase=idle
+2026-07-12T02:16:21Z motion.phase movementDetected
+2026-07-12T02:16:21Z motion.triggerLocationMonitoring
+2026-07-12T02:16:21Z location.backgroundSession.start
+2026-07-12T02:16:21Z location.start active authorization=authorizedAlways
+2026-07-12T02:16:21Z motion.phase waitingForMovement
+2026-07-12T02:16:25Z motion.phase stationary
+2026-07-12T02:16:25Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-12T02:17:35Z app.launch version=0.1.0 build=3 sha=cf47617-dirty builtAt=2026-07-12T02:16:01Z
+2026-07-12T02:17:35Z location.authorization state=authorizedAlways
+2026-07-12T02:17:35Z location.passiveWakeups.start
+2026-07-12T02:17:35Z location.passiveWakeup.ignored count=1
+2026-07-12T02:17:35Z motion.startAutoDetection vehicleType=voiture
+2026-07-12T02:17:35Z motion.phase waitingForMovement
+2026-07-12T02:17:35Z motion.phase waitingForMovement
+2026-07-12T02:17:35Z motion.phase stationary
+2026-07-12T02:21:56Z motion.phase movementDetected
+2026-07-12T02:21:56Z motion.triggerLocationMonitoring
+2026-07-12T02:21:56Z location.backgroundSession.start
+2026-07-12T02:21:56Z location.start active authorization=authorizedAlways
+2026-07-12T02:22:14Z motion.phase waitingForMovement
+2026-07-12T02:22:15Z motion.phase movementDetected
+2026-07-12T02:22:25Z motion.phase waitingForMovement
+2026-07-12T02:22:26Z motion.phase movementDetected
+2026-07-12T02:22:51Z motion.phase waitingForMovement
+2026-07-12T02:22:52Z motion.phase movementDetected
+2026-07-12T02:22:52Z motion.phase waitingForMovement
+2026-07-12T02:22:53Z motion.phase movementDetected
+2026-07-12T02:22:54Z motion.phase waitingForMovement
+2026-07-12T02:22:54Z motion.phase movementDetected
+2026-07-12T02:22:57Z motion.phase waitingForMovement
+2026-07-12T02:23:01Z motion.phase movementDetected
+2026-07-12T02:23:04Z motion.phase waitingForMovement
+2026-07-12T02:23:04Z motion.phase movementDetected
+2026-07-12T02:23:13Z motion.phase waitingForMovement
+2026-07-12T02:23:13Z motion.phase movementDetected
+2026-07-12T02:23:18Z motion.phase waitingForMovement
+2026-07-12T02:23:22Z motion.phase stationary
+2026-07-12T02:23:22Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-12T02:24:03Z motion.phase movementDetected
+2026-07-12T02:24:09Z motion.phase waitingForMovement
+2026-07-12T02:24:10Z motion.phase movementDetected
+2026-07-12T02:24:20Z motion.phase waitingForMovement
+2026-07-12T02:24:21Z motion.phase movementDetected
+2026-07-12T02:24:22Z motion.phase waitingForMovement
+2026-07-12T02:24:22Z motion.phase movementDetected
+2026-07-12T02:24:24Z motion.phase waitingForMovement
+2026-07-12T02:24:25Z motion.phase movementDetected
+2026-07-12T02:24:26Z motion.phase waitingForMovement
+2026-07-12T02:24:28Z motion.phase movementDetected
+2026-07-12T02:24:29Z motion.phase waitingForMovement
+2026-07-12T02:24:33Z motion.phase movementDetected
+2026-07-12T02:24:34Z motion.phase waitingForMovement
+2026-07-12T02:24:34Z motion.phase movementDetected
+2026-07-12T02:24:34Z motion.phase waitingForMovement
+2026-07-12T02:24:35Z motion.phase movementDetected
+2026-07-12T02:24:35Z motion.phase waitingForMovement
+2026-07-12T02:24:36Z motion.phase movementDetected
+2026-07-12T02:25:03Z motion.phase waitingForMovement
+2026-07-12T02:25:05Z location.idleFailsafe.stop phase=idle
+2026-07-12T02:25:05Z location.backgroundSession.end
+2026-07-12T02:25:05Z location.stop phase=idle
+2026-07-12T02:25:05Z motion.phase movementDetected
+2026-07-12T02:25:05Z motion.triggerLocationMonitoring
+2026-07-12T02:25:05Z location.backgroundSession.start
+2026-07-12T02:25:05Z location.start active authorization=authorizedAlways
+2026-07-12T02:25:08Z motion.phase waitingForMovement
+2026-07-12T02:25:09Z motion.phase movementDetected
+2026-07-12T02:25:09Z motion.phase waitingForMovement
+2026-07-12T02:25:09Z motion.phase movementDetected
+2026-07-12T10:02:53Z app.launch version=0.1.0 build=3 sha=cf47617-dirty builtAt=2026-07-12T02:16:01Z
+2026-07-12T10:02:53Z location.authorization state=authorizedAlways
+2026-07-12T10:02:53Z location.passiveWakeups.start
+2026-07-12T10:02:53Z motion.phase waitingForMovement
+2026-07-12T10:02:53Z location.passiveWakeup.promote count=1
+2026-07-12T10:02:53Z location.backgroundSession.start
+2026-07-12T10:02:53Z location.start active authorization=authorizedAlways
+2026-07-12T10:02:53Z trip.capture.start id=63DD1A34-A191-491D-8953-43C4149106F3 source=location
+2026-07-12T10:02:53Z trip.capture.outcome id=63DD1A34-A191-491D-8953-43C4149106F3 status=rejected reason=staleCandidate
+2026-07-12T10:02:53Z motion.startAutoDetection vehicleType=voiture
+2026-07-12T10:02:53Z motion.phase waitingForMovement
+2026-07-12T10:02:53Z motion.phase movementDetected
+2026-07-12T10:07:54Z trip.capture.outcome id=63DD1A34-A191-491D-8953-43C4149106F3 status=rejected reason=armingTimeout
+2026-07-12T10:07:54Z location.idleFailsafe.stop phase=starting
+2026-07-12T10:07:54Z location.backgroundSession.end
+2026-07-12T10:07:54Z location.stop phase=starting
+2026-07-12T10:07:54Z location.passiveWakeup.promote count=1
+2026-07-12T10:07:54Z location.backgroundSession.start
+2026-07-12T10:07:54Z location.start active authorization=authorizedAlways
+2026-07-12T10:07:54Z trip.capture.start id=89E86820-7634-4ABB-8A54-F5484F260C7C source=location
+2026-07-12T10:12:55Z trip.capture.outcome id=89E86820-7634-4ABB-8A54-F5484F260C7C status=rejected reason=armingTimeout
+2026-07-12T10:12:55Z location.idleFailsafe.stop phase=starting
+2026-07-12T10:12:55Z location.backgroundSession.end
+2026-07-12T10:12:55Z location.stop phase=starting
+2026-07-12T10:12:55Z motion.phase waitingForMovement
+2026-07-12T10:12:55Z location.passiveWakeup.promote count=1
+2026-07-12T10:12:55Z location.backgroundSession.start
+2026-07-12T10:12:55Z location.start active authorization=authorizedAlways
+2026-07-12T10:12:55Z trip.capture.start id=83C03A57-6F65-4200-B78C-F49D68775776 source=location
+2026-07-12T10:12:55Z motion.phase movementDetected
+2026-07-12T10:12:57Z motion.phase waitingForMovement
+2026-07-12T10:12:57Z motion.phase movementDetected
+2026-07-12T10:12:57Z motion.phase waitingForMovement
+2026-07-12T10:12:59Z motion.phase movementDetected
+2026-07-12T10:17:55Z trip.capture.outcome id=83C03A57-6F65-4200-B78C-F49D68775776 status=rejected reason=armingTimeout
+2026-07-12T10:17:55Z location.idleFailsafe.stop phase=starting
+2026-07-12T10:17:55Z location.backgroundSession.end
+2026-07-12T10:17:55Z location.stop phase=starting
+2026-07-12T10:17:55Z motion.phase stationary
+2026-07-12T10:17:55Z location.passiveWakeup.promote count=1
+2026-07-12T10:17:55Z location.backgroundSession.start
+2026-07-12T10:17:55Z location.start active authorization=authorizedAlways
+2026-07-12T10:22:56Z location.idleFailsafe.stop phase=idle
+2026-07-12T10:22:56Z location.backgroundSession.end
+2026-07-12T10:22:56Z location.stop phase=idle
+2026-07-12T10:22:56Z motion.phase waitingForMovement
+2026-07-12T10:22:56Z location.passiveWakeup.promote count=1
+2026-07-12T10:22:56Z location.backgroundSession.start
+2026-07-12T10:22:56Z location.start active authorization=authorizedAlways
+2026-07-12T21:16:40Z app.launch version=0.1.0 build=3 sha=cf47617-dirty builtAt=2026-07-12T02:16:01Z
+2026-07-12T21:16:40Z location.authorization state=authorizedAlways
+2026-07-12T21:16:40Z location.passiveWakeups.start
+2026-07-12T21:16:40Z motion.phase waitingForMovement
+2026-07-12T21:16:40Z location.passiveWakeup.promote count=1
+2026-07-12T21:16:40Z location.backgroundSession.start
+2026-07-12T21:16:40Z location.start active authorization=authorizedAlways
+2026-07-12T21:16:40Z trip.capture.start id=81EADE68-6E6C-4795-BC90-4C3E0AF67EA9 source=location
+2026-07-12T21:16:40Z trip.capture.outcome id=81EADE68-6E6C-4795-BC90-4C3E0AF67EA9 status=rejected reason=staleCandidate
+2026-07-12T21:16:40Z motion.startAutoDetection vehicleType=voiture
+2026-07-12T21:16:40Z motion.phase waitingForMovement
+2026-07-12T21:16:40Z motion.phase movementDetected
+2026-07-12T21:21:40Z trip.capture.outcome id=81EADE68-6E6C-4795-BC90-4C3E0AF67EA9 status=rejected reason=armingTimeout
+2026-07-12T21:21:40Z location.idleFailsafe.stop phase=starting
+2026-07-12T21:21:40Z location.backgroundSession.end
+2026-07-12T21:21:40Z location.stop phase=starting
+2026-07-12T21:21:40Z location.passiveWakeup.promote count=1
+2026-07-12T21:21:40Z location.backgroundSession.start
+2026-07-12T21:21:40Z location.start active authorization=authorizedAlways
+2026-07-12T21:21:40Z trip.capture.start id=FD10EB78-07E4-4DB3-9B26-44CD59126C29 source=location
+2026-07-12T21:21:43Z motion.phase waitingForMovement
+2026-07-12T21:21:44Z motion.phase movementDetected
+2026-07-12T21:26:40Z trip.capture.outcome id=FD10EB78-07E4-4DB3-9B26-44CD59126C29 status=rejected reason=armingTimeout
+2026-07-12T21:26:40Z location.idleFailsafe.stop phase=starting
+2026-07-12T21:26:40Z location.backgroundSession.end
+2026-07-12T21:26:40Z location.stop phase=starting
+2026-07-12T21:26:40Z motion.phase stationary
+2026-07-12T21:26:40Z location.passiveWakeup.promote count=1
+2026-07-12T21:26:40Z location.backgroundSession.start
+2026-07-12T21:26:40Z location.start active authorization=authorizedAlways
+2026-07-12T21:31:41Z location.idleFailsafe.stop phase=idle
+2026-07-12T21:31:41Z location.backgroundSession.end
+2026-07-12T21:31:41Z location.stop phase=idle
+2026-07-12T21:31:41Z motion.phase movementDetected
+2026-07-12T21:31:41Z motion.triggerLocationMonitoring
+2026-07-12T21:31:41Z location.backgroundSession.start
+2026-07-12T21:31:41Z location.start active authorization=authorizedAlways
+2026-07-12T21:31:41Z trip.capture.start id=C497224F-3CD9-4872-B2C3-5203B0B6B2B8 source=location
+2026-07-12T21:36:41Z trip.capture.outcome id=C497224F-3CD9-4872-B2C3-5203B0B6B2B8 status=rejected reason=armingTimeout
+2026-07-12T21:36:41Z location.idleFailsafe.stop phase=starting
+2026-07-12T21:36:41Z location.backgroundSession.end
+2026-07-12T21:36:41Z location.stop phase=starting
+2026-07-12T21:36:41Z location.passiveWakeup.promote count=1
+2026-07-12T21:36:41Z location.backgroundSession.start
+2026-07-12T21:36:41Z location.start active authorization=authorizedAlways
+2026-07-12T21:36:41Z trip.capture.start id=C6FA7E8C-86CC-46FA-B6AE-3C5BE236ABEE source=location
+2026-07-13T00:53:01Z trip.capture.outcome id=C6FA7E8C-86CC-46FA-B6AE-3C5BE236ABEE status=rejected reason=armingTimeout
+2026-07-13T00:53:01Z location.idleFailsafe.stop phase=starting
+2026-07-13T00:53:01Z location.backgroundSession.end
+2026-07-13T00:53:01Z location.stop phase=starting
+2026-07-13T00:53:01Z motion.phase waitingForMovement
+2026-07-13T00:53:01Z location.passiveWakeup.ignored count=1
+2026-07-13T00:53:01Z location.passiveWakeup.ignored count=1
+2026-07-13T00:53:01Z motion.phase movementDetected
+2026-07-13T00:53:01Z motion.triggerLocationMonitoring
+2026-07-13T00:53:01Z location.backgroundSession.start
+2026-07-13T00:53:01Z location.start active authorization=authorizedAlways
+2026-07-13T00:53:02Z motion.phase waitingForMovement
+2026-07-13T00:53:02Z motion.phase movementDetected
+2026-07-13T00:53:07Z motion.phase waitingForMovement
+2026-07-13T00:53:09Z motion.phase movementDetected
+2026-07-13T00:53:09Z motion.phase waitingForMovement
+2026-07-13T00:53:10Z motion.phase movementDetected
+2026-07-13T00:53:10Z motion.phase waitingForMovement
+2026-07-13T00:53:10Z motion.phase movementDetected
+2026-07-13T01:00:13Z location.idleFailsafe.stop phase=idle
+2026-07-13T01:00:13Z location.backgroundSession.end
+2026-07-13T01:00:13Z location.stop phase=idle
+2026-07-13T01:00:13Z location.passiveWakeup.ignored count=1
+2026-07-13T01:00:13Z location.passiveWakeup.ignored count=1
+2026-07-13T01:12:23Z motion.phase waitingForMovement
+2026-07-13T01:12:24Z motion.phase movementDetected
+2026-07-13T01:12:24Z motion.triggerLocationMonitoring
+2026-07-13T01:12:24Z location.backgroundSession.start
+2026-07-13T01:12:24Z location.start active authorization=authorizedAlways
+2026-07-13T01:12:24Z motion.phase waitingForMovement
+2026-07-13T01:12:25Z motion.phase movementDetected
+2026-07-13T01:12:30Z motion.phase waitingForMovement
+2026-07-13T01:12:31Z motion.phase movementDetected
+2026-07-13T01:12:33Z motion.phase waitingForMovement
+2026-07-13T01:12:34Z motion.phase movementDetected
+2026-07-13T01:12:39Z motion.phase waitingForMovement
+2026-07-13T01:12:40Z motion.phase movementDetected
+2026-07-13T01:12:57Z motion.phase waitingForMovement
+2026-07-13T01:12:59Z motion.phase movementDetected
+2026-07-13T01:13:02Z motion.phase waitingForMovement
+2026-07-13T01:13:02Z motion.phase movementDetected
+2026-07-13T01:13:02Z motion.phase waitingForMovement
+2026-07-13T01:13:04Z motion.phase movementDetected
+2026-07-13T01:13:10Z motion.phase waitingForMovement
+2026-07-13T01:13:10Z motion.phase movementDetected
+2026-07-13T01:13:11Z motion.phase waitingForMovement
+2026-07-13T01:13:11Z motion.phase movementDetected
+2026-07-13T01:13:13Z motion.phase waitingForMovement
+2026-07-13T01:13:13Z motion.phase movementDetected
+2026-07-13T01:13:15Z motion.phase waitingForMovement
+2026-07-13T01:13:16Z motion.phase movementDetected
+2026-07-13T01:13:18Z motion.phase waitingForMovement
+2026-07-13T01:13:20Z motion.phase movementDetected
+2026-07-13T01:13:27Z motion.phase waitingForMovement
+2026-07-13T01:13:27Z motion.phase movementDetected
+2026-07-13T01:13:29Z motion.phase waitingForMovement
+2026-07-13T01:13:30Z motion.phase movementDetected
+2026-07-13T01:13:30Z motion.phase waitingForMovement
+2026-07-13T01:13:32Z motion.phase movementDetected
+2026-07-13T01:13:35Z motion.phase waitingForMovement
+2026-07-13T01:13:35Z motion.phase movementDetected
+2026-07-13T01:13:37Z motion.phase waitingForMovement
+2026-07-13T01:13:37Z motion.phase movementDetected
+2026-07-13T01:13:46Z motion.phase waitingForMovement
+2026-07-13T01:13:46Z motion.phase movementDetected
+2026-07-13T01:13:49Z motion.phase waitingForMovement
+2026-07-13T01:13:49Z motion.phase movementDetected
+2026-07-13T01:13:50Z motion.phase waitingForMovement
+2026-07-13T01:13:50Z motion.phase movementDetected
+2026-07-13T01:13:53Z motion.phase waitingForMovement
+2026-07-13T01:13:54Z motion.phase movementDetected
+2026-07-13T01:14:03Z motion.phase waitingForMovement
+2026-07-13T01:14:04Z motion.phase movementDetected
+2026-07-13T01:14:10Z motion.phase waitingForMovement
+2026-07-13T01:14:12Z motion.phase movementDetected
+2026-07-13T01:14:15Z motion.phase waitingForMovement
+2026-07-13T01:14:17Z motion.phase movementDetected
+2026-07-13T01:14:17Z motion.phase waitingForMovement
+2026-07-13T01:14:18Z motion.phase movementDetected
+2026-07-13T01:14:20Z motion.phase waitingForMovement
+2026-07-13T01:14:21Z motion.phase movementDetected
+2026-07-13T01:14:21Z motion.phase waitingForMovement
+2026-07-13T01:14:24Z motion.phase movementDetected
+2026-07-13T01:14:35Z motion.phase waitingForMovement
+2026-07-13T01:14:37Z motion.phase movementDetected
+2026-07-13T01:14:37Z motion.phase waitingForMovement
+2026-07-13T01:14:41Z motion.phase movementDetected
+2026-07-13T01:14:42Z motion.phase waitingForMovement
+2026-07-13T01:14:45Z motion.phase movementDetected
+2026-07-13T01:14:53Z motion.phase waitingForMovement
+2026-07-13T01:14:54Z motion.phase movementDetected
+2026-07-13T01:15:02Z motion.phase waitingForMovement
+2026-07-13T01:15:03Z motion.phase movementDetected
+2026-07-13T01:15:05Z motion.phase waitingForMovement
+2026-07-13T01:15:06Z motion.phase movementDetected
+2026-07-13T01:15:06Z motion.phase waitingForMovement
+2026-07-13T01:15:07Z motion.phase movementDetected
+2026-07-13T01:15:07Z motion.phase waitingForMovement
+2026-07-13T01:15:09Z motion.phase movementDetected
+2026-07-13T01:15:09Z motion.phase waitingForMovement
+2026-07-13T01:15:10Z motion.phase movementDetected
+2026-07-13T01:15:27Z motion.phase waitingForMovement
+2026-07-13T01:15:28Z motion.phase movementDetected
+2026-07-13T01:15:29Z motion.phase waitingForMovement
+2026-07-13T01:15:30Z motion.phase movementDetected
+2026-07-13T01:15:33Z location.idleFailsafe.stop phase=idle
+2026-07-13T01:15:33Z location.backgroundSession.end
+2026-07-13T01:15:33Z location.stop phase=idle
+2026-07-13T01:53:51Z app.launch version=0.1.0 build=4 sha=local builtAt=local
+2026-07-13T01:53:51Z location.authorization state=authorizedAlways
+2026-07-13T01:53:51Z location.backgroundSession.start
+2026-07-13T01:53:51Z location.passiveWakeups.start
+2026-07-13T01:53:51Z location.passiveWakeup.ignored count=1
+2026-07-13T01:53:51Z motion.startAutoDetection vehicleType=voiture
+2026-07-13T01:53:51Z motion.phase waitingForMovement
+2026-07-13T01:53:51Z motion.phase waitingForMovement
+2026-07-13T01:53:51Z motion.phase stationary
+2026-07-13T01:58:08Z app.launch version=0.1.0 build=5 sha=local builtAt=local
+2026-07-13T01:58:08Z location.authorization state=authorizedAlways
+2026-07-13T01:58:08Z location.backgroundSession.start
+2026-07-13T01:58:08Z location.passiveWakeups.start
+2026-07-13T01:58:08Z location.passiveWakeup.ignored count=1
+2026-07-13T01:58:08Z motion.startAutoDetection vehicleType=voiture
+2026-07-13T01:58:08Z motion.phase waitingForMovement
+2026-07-13T01:58:08Z motion.phase waitingForMovement
+2026-07-13T01:58:08Z motion.phase stationary
+2026-07-13T02:01:29Z app.launch version=0.1.0 build=6 sha=cf47617-dirty builtAt=2026-07-13T02:00:00Z
+2026-07-13T02:01:29Z location.authorization state=authorizedAlways
+2026-07-13T02:01:29Z location.backgroundSession.start
+2026-07-13T02:01:29Z location.passiveWakeups.start
+2026-07-13T02:01:29Z location.passiveWakeup.ignored count=1
+2026-07-13T02:01:29Z motion.startAutoDetection vehicleType=voiture
+2026-07-13T02:01:29Z motion.phase waitingForMovement
+2026-07-13T02:01:30Z motion.phase waitingForMovement
+2026-07-13T02:01:30Z motion.phase stationary
+2026-07-13T02:06:13Z motion.phase movementDetected
+2026-07-13T02:06:13Z motion.triggerLocationMonitoring
+2026-07-13T02:06:13Z location.passiveWakeups.stop
+2026-07-13T02:06:13Z location.start active authorization=authorizedAlways
+2026-07-13T02:06:18Z motion.phase waitingForMovement
+2026-07-13T02:06:19Z motion.phase movementDetected
+2026-07-13T02:06:21Z motion.phase waitingForMovement
+2026-07-13T02:06:22Z motion.phase movementDetected
+2026-07-13T02:06:25Z motion.phase waitingForMovement
+2026-07-13T02:06:26Z motion.phase movementDetected
+2026-07-13T02:06:29Z motion.phase waitingForMovement
+2026-07-13T02:06:33Z motion.phase stationary
+2026-07-13T02:06:33Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-13T02:09:22Z location.idleFailsafe.stop phase=idle
+2026-07-13T02:09:22Z location.stop phase=idle
+2026-07-13T02:09:22Z location.passiveWakeups.start
+2026-07-13T02:19:52Z motion.phase movementDetected
+2026-07-13T02:19:52Z motion.triggerLocationMonitoring
+2026-07-13T02:19:52Z location.passiveWakeups.stop
+2026-07-13T02:19:52Z location.start active authorization=authorizedAlways
+2026-07-13T02:19:56Z motion.phase waitingForMovement
+2026-07-13T02:19:56Z motion.phase movementDetected
+2026-07-13T02:20:02Z motion.phase waitingForMovement
+2026-07-13T02:20:06Z motion.phase stationary
+2026-07-13T02:20:06Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-13T02:20:39Z motion.phase movementDetected
+2026-07-13T02:20:40Z motion.phase waitingForMovement
+2026-07-13T02:20:43Z motion.phase stationary
+2026-07-13T02:20:43Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-13T02:23:01Z location.idleFailsafe.stop phase=idle
+2026-07-13T02:23:01Z location.stop phase=idle
+2026-07-13T02:23:01Z location.passiveWakeups.start
+2026-07-13T04:16:03Z app.launch version=0.1.0 build=6 sha=cf47617-dirty builtAt=2026-07-13T02:00:00Z
+2026-07-13T04:16:03Z location.authorization state=authorizedAlways
+2026-07-13T04:16:03Z location.backgroundSession.start
+2026-07-13T04:16:03Z location.passiveWakeups.start
+2026-07-13T04:16:03Z location.passiveWakeup.ignored count=1
+2026-07-13T04:16:03Z motion.startAutoDetection vehicleType=voiture
+2026-07-13T04:16:03Z motion.phase waitingForMovement
+2026-07-13T04:16:03Z motion.phase waitingForMovement
+2026-07-13T04:16:03Z motion.phase movementDetected
+2026-07-13T04:16:03Z motion.triggerLocationMonitoring
+2026-07-13T04:16:03Z location.passiveWakeups.stop
+2026-07-13T04:16:03Z location.start active authorization=authorizedAlways
+2026-07-13T04:16:05Z motion.phase waitingForMovement
+2026-07-13T04:16:07Z app.launch version=0.1.0 build=6 sha=cf47617-dirty builtAt=2026-07-13T02:00:00Z
+2026-07-13T04:16:07Z location.authorization state=authorizedAlways
+2026-07-13T04:16:07Z location.backgroundSession.start
+2026-07-13T04:16:07Z location.passiveWakeups.start
+2026-07-13T04:16:07Z motion.startAutoDetection vehicleType=voiture
+2026-07-13T04:16:07Z motion.phase waitingForMovement
+2026-07-13T04:16:07Z location.passiveWakeup.ignored count=1
+2026-07-13T04:16:07Z motion.phase waitingForMovement
+2026-07-13T04:16:07Z motion.phase movementDetected
+2026-07-13T04:16:07Z motion.triggerLocationMonitoring
+2026-07-13T04:16:07Z location.passiveWakeups.stop
+2026-07-13T04:16:07Z location.start active authorization=authorizedAlways
+2026-07-13T04:16:08Z motion.phase waitingForMovement
+2026-07-13T04:16:09Z motion.phase movementDetected
+2026-07-13T04:16:13Z motion.phase waitingForMovement
+2026-07-13T04:16:16Z motion.phase movementDetected
+2026-07-13T04:16:16Z motion.phase waitingForMovement
+2026-07-13T04:16:20Z motion.phase movementDetected
+2026-07-13T04:16:23Z motion.phase waitingForMovement
+2026-07-13T04:16:23Z motion.phase movementDetected
+2026-07-13T04:16:25Z motion.phase waitingForMovement
+2026-07-13T04:16:26Z motion.phase movementDetected
+2026-07-13T04:16:26Z motion.phase waitingForMovement
+2026-07-13T04:16:27Z motion.phase movementDetected
+2026-07-13T04:16:29Z motion.phase waitingForMovement
+2026-07-13T04:16:29Z motion.phase movementDetected
+2026-07-13T04:16:30Z motion.phase waitingForMovement
+2026-07-13T04:16:31Z motion.phase movementDetected
+2026-07-13T04:16:32Z motion.phase waitingForMovement
+2026-07-13T04:16:37Z motion.phase movementDetected
+2026-07-13T04:16:37Z motion.phase waitingForMovement
+2026-07-13T04:16:39Z motion.phase movementDetected
+2026-07-13T04:16:49Z motion.phase waitingForMovement
+2026-07-13T04:16:50Z motion.phase movementDetected
+2026-07-13T04:16:56Z motion.phase waitingForMovement
+2026-07-13T04:16:58Z motion.phase movementDetected
+2026-07-13T04:17:00Z motion.phase waitingForMovement
+2026-07-13T04:17:01Z motion.phase movementDetected
+2026-07-13T04:17:02Z motion.phase waitingForMovement
+2026-07-13T04:17:03Z motion.phase movementDetected
+2026-07-13T04:17:03Z motion.phase waitingForMovement
+2026-07-13T04:17:06Z motion.phase movementDetected
+2026-07-13T04:17:06Z motion.phase waitingForMovement
+2026-07-13T04:17:08Z motion.phase movementDetected
+2026-07-13T04:17:11Z motion.phase waitingForMovement
+2026-07-13T04:17:12Z motion.phase movementDetected
+2026-07-13T04:17:13Z motion.phase waitingForMovement
+2026-07-13T04:17:13Z motion.phase movementDetected
+2026-07-13T04:17:15Z motion.phase waitingForMovement
+2026-07-13T04:17:15Z motion.phase movementDetected
+2026-07-13T04:17:17Z motion.phase waitingForMovement
+2026-07-13T04:17:18Z motion.phase movementDetected
+2026-07-13T04:17:18Z motion.phase waitingForMovement
+2026-07-13T04:17:20Z motion.phase movementDetected
+2026-07-13T04:17:44Z motion.phase waitingForMovement
+2026-07-13T04:17:45Z motion.phase movementDetected
+2026-07-13T04:17:51Z motion.phase waitingForMovement
+2026-07-13T04:17:51Z motion.phase movementDetected
+2026-07-13T04:17:55Z motion.phase waitingForMovement
+2026-07-13T04:17:56Z motion.phase movementDetected
+2026-07-13T04:17:56Z motion.phase waitingForMovement
+2026-07-13T04:17:57Z motion.phase movementDetected
+2026-07-13T04:17:57Z motion.phase waitingForMovement
+2026-07-13T04:17:57Z motion.phase movementDetected
+2026-07-13T04:17:58Z motion.phase waitingForMovement
+2026-07-13T04:18:01Z motion.phase movementDetected
+2026-07-13T04:18:01Z motion.phase waitingForMovement
+2026-07-13T04:18:02Z motion.phase movementDetected
+2026-07-13T04:18:04Z motion.phase waitingForMovement
+2026-07-13T04:18:10Z motion.phase stationary
+2026-07-13T04:18:10Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-13T04:18:11Z motion.phase movementDetected
+2026-07-13T04:18:11Z motion.phase waitingForMovement
+2026-07-13T04:18:14Z motion.phase movementDetected
+2026-07-13T04:18:15Z motion.phase waitingForMovement
+2026-07-13T04:18:17Z motion.phase movementDetected
+2026-07-13T04:18:17Z motion.phase waitingForMovement
+2026-07-13T04:18:18Z motion.phase movementDetected
+2026-07-13T04:18:19Z motion.phase waitingForMovement
+2026-07-13T04:18:20Z motion.phase movementDetected
+2026-07-13T04:18:20Z motion.phase waitingForMovement
+2026-07-13T04:18:23Z motion.phase stationary
+2026-07-13T04:18:23Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-13T04:18:25Z motion.phase movementDetected
+2026-07-13T04:18:25Z motion.phase waitingForMovement
+2026-07-13T04:18:26Z motion.phase movementDetected
+2026-07-13T04:18:27Z motion.phase waitingForMovement
+2026-07-13T04:18:27Z motion.phase movementDetected
+2026-07-13T04:18:27Z motion.phase waitingForMovement
+2026-07-13T04:18:29Z motion.phase movementDetected
+2026-07-13T04:18:29Z motion.phase waitingForMovement
+2026-07-13T04:18:31Z motion.phase movementDetected
+2026-07-13T04:18:32Z motion.phase waitingForMovement
+2026-07-13T04:18:34Z motion.phase movementDetected
+2026-07-13T04:18:34Z motion.phase waitingForMovement
+2026-07-13T04:18:37Z motion.phase movementDetected
+2026-07-13T04:18:41Z motion.phase waitingForMovement
+2026-07-13T04:18:42Z motion.phase movementDetected
+2026-07-13T04:18:43Z motion.phase waitingForMovement
+2026-07-13T04:18:44Z motion.phase movementDetected
+2026-07-13T04:18:44Z motion.phase waitingForMovement
+2026-07-13T04:18:45Z motion.phase movementDetected
+2026-07-13T04:18:45Z motion.phase waitingForMovement
+2026-07-13T04:18:45Z motion.phase movementDetected
+2026-07-13T04:18:48Z motion.phase waitingForMovement
+2026-07-13T04:18:49Z motion.phase movementDetected
+2026-07-13T04:18:52Z motion.phase waitingForMovement
+2026-07-13T04:18:53Z motion.phase movementDetected
+2026-07-13T04:18:53Z motion.phase waitingForMovement
+2026-07-13T04:18:54Z motion.phase movementDetected
+2026-07-13T04:18:54Z motion.phase waitingForMovement
+2026-07-13T04:18:56Z motion.phase movementDetected
+2026-07-13T04:18:59Z motion.phase waitingForMovement
+2026-07-13T04:19:00Z motion.phase movementDetected
+2026-07-13T04:19:02Z motion.phase waitingForMovement
+2026-07-13T04:19:02Z motion.phase movementDetected
+2026-07-13T04:19:16Z location.idleFailsafe.stop phase=idle
+2026-07-13T04:19:16Z location.stop phase=idle
+2026-07-13T04:19:16Z location.passiveWakeups.start
+2026-07-13T04:19:18Z motion.phase waitingForMovement
+2026-07-13T04:19:18Z motion.phase movementDetected
+2026-07-13T04:19:18Z motion.triggerLocationMonitoring
+2026-07-13T04:19:18Z location.passiveWakeups.stop
+2026-07-13T04:19:18Z location.start active authorization=authorizedAlways
+2026-07-13T04:19:19Z motion.phase waitingForMovement
+2026-07-13T04:19:21Z motion.phase movementDetected
+2026-07-13T04:19:22Z motion.phase waitingForMovement
+2026-07-13T04:19:23Z motion.phase movementDetected
+2026-07-13T04:19:23Z motion.phase waitingForMovement
+2026-07-13T04:19:27Z motion.phase stationary
+2026-07-13T04:19:27Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-13T04:19:30Z motion.phase movementDetected
+2026-07-13T04:19:33Z motion.phase waitingForMovement
+2026-07-13T04:19:33Z motion.phase movementDetected
+2026-07-13T04:19:34Z motion.phase waitingForMovement
+2026-07-13T04:19:35Z motion.phase movementDetected
+2026-07-13T04:19:35Z motion.phase waitingForMovement
+2026-07-13T04:19:35Z motion.phase movementDetected
+2026-07-13T04:19:37Z motion.phase waitingForMovement
+2026-07-13T04:19:37Z motion.phase movementDetected
+2026-07-13T04:19:43Z motion.phase waitingForMovement
+2026-07-13T04:19:43Z motion.phase movementDetected
+2026-07-13T04:19:45Z motion.phase waitingForMovement
+2026-07-13T04:19:45Z motion.phase movementDetected
+2026-07-13T04:19:46Z motion.phase waitingForMovement
+2026-07-13T04:19:47Z motion.phase movementDetected
+2026-07-13T04:19:48Z motion.phase waitingForMovement
+2026-07-13T04:19:48Z motion.phase movementDetected
+2026-07-13T04:19:49Z motion.phase waitingForMovement
+2026-07-13T04:19:51Z motion.phase movementDetected
+2026-07-13T04:19:53Z motion.phase waitingForMovement
+2026-07-13T04:19:54Z motion.phase movementDetected
+2026-07-13T04:20:11Z motion.phase waitingForMovement
+2026-07-13T04:20:13Z motion.phase movementDetected
+2026-07-13T04:20:13Z motion.phase waitingForMovement
+2026-07-13T04:20:14Z motion.phase movementDetected
+2026-07-13T04:20:15Z motion.phase waitingForMovement
+2026-07-13T04:20:15Z motion.phase movementDetected
+2026-07-13T04:20:27Z motion.phase waitingForMovement
+2026-07-13T04:20:28Z motion.phase movementDetected
+2026-07-13T04:20:34Z motion.phase waitingForMovement
+2026-07-13T04:20:35Z motion.phase movementDetected
+2026-07-13T04:20:35Z motion.phase waitingForMovement
+2026-07-13T04:20:35Z motion.phase movementDetected
+2026-07-13T04:20:38Z motion.phase waitingForMovement
+2026-07-13T04:20:39Z motion.phase movementDetected
+2026-07-13T04:20:42Z motion.phase waitingForMovement
+2026-07-13T04:20:42Z motion.phase movementDetected
+2026-07-13T04:20:44Z motion.phase waitingForMovement
+2026-07-13T04:20:45Z motion.phase movementDetected
+2026-07-13T04:20:49Z motion.phase waitingForMovement
+2026-07-13T04:20:50Z motion.phase movementDetected
+2026-07-13T04:20:55Z motion.phase waitingForMovement
+2026-07-13T04:20:56Z motion.phase movementDetected
+2026-07-13T04:21:03Z motion.phase waitingForMovement
+2026-07-13T04:21:04Z motion.phase movementDetected
+2026-07-13T04:21:09Z motion.phase waitingForMovement
+2026-07-13T04:21:13Z motion.phase movementDetected
+2026-07-13T04:21:15Z motion.phase waitingForMovement
+2026-07-13T04:21:16Z motion.phase movementDetected
+2026-07-13T04:21:19Z motion.phase waitingForMovement
+2026-07-13T04:21:19Z motion.phase movementDetected
+2026-07-13T04:21:21Z motion.phase waitingForMovement
+2026-07-13T04:21:22Z motion.phase movementDetected
+2026-07-13T04:21:22Z motion.phase waitingForMovement
+2026-07-13T04:21:23Z motion.phase movementDetected
+2026-07-13T04:21:24Z motion.phase waitingForMovement
+2026-07-13T04:21:26Z motion.phase movementDetected
+2026-07-13T04:21:40Z motion.phase waitingForMovement
+2026-07-13T04:21:41Z motion.phase movementDetected
+2026-07-13T04:21:41Z motion.phase waitingForMovement
+2026-07-13T04:21:42Z motion.phase movementDetected
+2026-07-13T04:21:45Z motion.phase waitingForMovement
+2026-07-13T04:21:46Z motion.phase movementDetected
+2026-07-13T04:21:50Z motion.phase waitingForMovement
+2026-07-13T04:21:51Z motion.phase movementDetected
+2026-07-13T04:21:55Z motion.phase waitingForMovement
+2026-07-13T04:21:55Z motion.phase movementDetected
+2026-07-13T04:22:02Z motion.phase waitingForMovement
+2026-07-13T04:22:03Z motion.phase movementDetected
+2026-07-13T04:22:20Z motion.phase waitingForMovement
+2026-07-13T04:22:21Z motion.phase movementDetected
+2026-07-13T04:22:27Z location.idleFailsafe.stop phase=idle
+2026-07-13T04:22:27Z location.stop phase=idle
+2026-07-13T04:22:27Z location.passiveWakeups.start
+2026-07-13T04:22:28Z motion.phase waitingForMovement
+2026-07-13T04:22:29Z motion.phase movementDetected
+2026-07-13T04:22:29Z motion.triggerLocationMonitoring
+2026-07-13T04:22:29Z location.passiveWakeups.stop
+2026-07-13T04:22:29Z location.start active authorization=authorizedAlways
+2026-07-13T04:22:30Z motion.phase waitingForMovement
+2026-07-13T04:22:31Z motion.phase movementDetected
+2026-07-13T04:22:34Z motion.phase waitingForMovement
+2026-07-13T04:22:35Z motion.phase movementDetected
+2026-07-13T04:22:37Z motion.phase waitingForMovement
+2026-07-13T04:22:39Z motion.phase movementDetected
+2026-07-13T04:22:48Z motion.phase waitingForMovement
+2026-07-13T04:22:51Z motion.phase movementDetected
+2026-07-13T04:23:01Z motion.phase waitingForMovement
+2026-07-13T04:23:03Z motion.phase movementDetected
+2026-07-13T04:23:04Z motion.phase waitingForMovement
+2026-07-13T04:23:07Z motion.phase movementDetected
+2026-07-13T04:23:09Z motion.phase waitingForMovement
+2026-07-13T04:23:10Z motion.phase movementDetected
+2026-07-13T04:23:13Z motion.phase waitingForMovement
+2026-07-13T04:23:14Z motion.phase movementDetected
+2026-07-13T04:23:14Z motion.phase waitingForMovement
+2026-07-13T04:23:15Z motion.phase movementDetected
+2026-07-13T04:23:15Z motion.phase waitingForMovement
+2026-07-13T04:23:16Z motion.phase movementDetected
+2026-07-13T04:23:31Z motion.phase waitingForMovement
+2026-07-13T04:23:36Z motion.phase stationary
+2026-07-13T04:23:36Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-13T04:23:39Z motion.phase movementDetected
+2026-07-13T04:23:40Z motion.phase waitingForMovement
+2026-07-13T04:23:41Z motion.phase movementDetected
+2026-07-13T04:23:44Z motion.phase waitingForMovement
+2026-07-13T04:23:48Z motion.phase movementDetected
+2026-07-13T04:24:09Z motion.phase waitingForMovement
+2026-07-13T04:24:10Z motion.phase movementDetected
+2026-07-13T04:24:12Z motion.phase waitingForMovement
+2026-07-13T04:24:12Z motion.phase movementDetected
+2026-07-13T04:24:13Z motion.phase waitingForMovement
+2026-07-13T04:24:15Z motion.phase movementDetected
+2026-07-13T04:24:18Z motion.phase waitingForMovement
+2026-07-13T04:24:19Z motion.phase movementDetected
+2026-07-13T04:24:19Z motion.phase waitingForMovement
+2026-07-13T04:24:21Z motion.phase movementDetected
+2026-07-13T04:24:21Z motion.phase waitingForMovement
+2026-07-13T04:24:21Z motion.phase movementDetected
+2026-07-13T04:24:21Z motion.phase waitingForMovement
+2026-07-13T04:24:23Z motion.phase movementDetected
+2026-07-13T04:24:24Z motion.phase waitingForMovement
+2026-07-13T04:24:25Z motion.phase movementDetected
+2026-07-13T04:24:27Z motion.phase waitingForMovement
+2026-07-13T04:24:28Z motion.phase movementDetected
+2026-07-13T04:24:28Z motion.phase waitingForMovement
+2026-07-13T04:24:31Z motion.phase movementDetected
+2026-07-13T04:24:31Z motion.phase waitingForMovement
+2026-07-13T04:24:32Z motion.phase movementDetected
+2026-07-13T04:24:33Z motion.phase waitingForMovement
+2026-07-13T04:24:35Z motion.phase movementDetected
+2026-07-13T04:24:38Z motion.phase waitingForMovement
+2026-07-13T04:24:38Z motion.phase movementDetected
+2026-07-13T04:24:41Z motion.phase waitingForMovement
+2026-07-13T04:24:42Z motion.phase movementDetected
+2026-07-13T04:24:47Z motion.phase waitingForMovement
+2026-07-13T04:24:47Z motion.phase movementDetected
+2026-07-13T04:24:54Z motion.phase waitingForMovement
+2026-07-13T04:24:55Z motion.phase movementDetected
+2026-07-13T04:25:02Z motion.phase waitingForMovement
+2026-07-13T04:25:03Z motion.phase movementDetected
+2026-07-13T04:25:08Z motion.phase waitingForMovement
+2026-07-13T04:25:09Z motion.phase movementDetected
+2026-07-13T04:25:11Z motion.phase waitingForMovement
+2026-07-13T04:25:13Z motion.phase movementDetected
+2026-07-13T04:25:17Z motion.phase waitingForMovement
+2026-07-13T04:25:18Z motion.phase movementDetected
+2026-07-13T04:25:23Z motion.phase waitingForMovement
+2026-07-13T04:25:25Z motion.phase movementDetected
+2026-07-13T04:25:26Z motion.phase waitingForMovement
+2026-07-13T04:25:27Z motion.phase movementDetected
+2026-07-13T04:25:27Z motion.phase waitingForMovement
+2026-07-13T04:25:29Z motion.phase movementDetected
+2026-07-13T04:25:29Z motion.phase waitingForMovement
+2026-07-13T04:25:30Z motion.phase movementDetected
+2026-07-13T04:25:30Z motion.phase waitingForMovement
+2026-07-13T04:25:31Z motion.phase movementDetected
+2026-07-13T04:25:38Z motion.phase waitingForMovement
+2026-07-13T04:25:38Z location.idleFailsafe.stop phase=idle
+2026-07-13T04:25:38Z location.stop phase=idle
+2026-07-13T04:25:38Z location.passiveWakeups.start
+2026-07-13T04:25:38Z motion.phase movementDetected
+2026-07-13T04:25:38Z motion.triggerLocationMonitoring
+2026-07-13T04:25:38Z location.passiveWakeups.stop
+2026-07-13T04:25:38Z location.start active authorization=authorizedAlways
+2026-07-13T04:25:46Z trip.capture.start id=8BFF15BA-240E-41FF-99E8-C1F459BD1873 source=location
+2026-07-13T04:25:46Z motion.phase waitingForMovement
+2026-07-13T04:25:47Z motion.phase movementDetected
+2026-07-13T04:25:47Z motion.phase waitingForMovement
+2026-07-13T04:25:49Z motion.phase movementDetected
+2026-07-13T04:25:50Z motion.phase waitingForMovement
+2026-07-13T04:25:51Z motion.phase movementDetected
+2026-07-13T04:25:52Z motion.phase waitingForMovement
+2026-07-13T04:25:53Z motion.phase movementDetected
+2026-07-13T04:25:58Z motion.phase waitingForMovement
+2026-07-13T04:25:59Z motion.phase movementDetected
+2026-07-13T04:25:59Z motion.phase waitingForMovement
+2026-07-13T04:26:01Z motion.phase movementDetected
+2026-07-13T04:26:04Z motion.phase waitingForMovement
+2026-07-13T04:26:06Z motion.phase movementDetected
+2026-07-13T04:26:06Z motion.phase waitingForMovement
+2026-07-13T04:26:08Z motion.phase movementDetected
+2026-07-13T04:26:09Z motion.phase waitingForMovement
+2026-07-13T04:26:10Z motion.phase movementDetected
+2026-07-13T04:26:15Z motion.phase waitingForMovement
+2026-07-13T04:26:15Z motion.phase movementDetected
+2026-07-13T04:26:32Z motion.phase waitingForMovement
+2026-07-13T04:26:32Z motion.phase movementDetected
+2026-07-13T04:26:39Z motion.phase waitingForMovement
+2026-07-13T04:26:39Z motion.phase movementDetected
+2026-07-13T04:26:39Z motion.phase waitingForMovement
+2026-07-13T04:26:43Z motion.phase stationary
+2026-07-13T04:26:47Z motion.phase movementDetected
+2026-07-13T04:26:48Z motion.phase waitingForMovement
+2026-07-13T04:26:49Z motion.phase movementDetected
+2026-07-13T04:26:50Z motion.phase waitingForMovement
+2026-07-13T04:26:50Z motion.phase movementDetected
+2026-07-13T04:26:56Z motion.phase waitingForMovement
+2026-07-13T04:26:59Z motion.phase movementDetected
+2026-07-13T04:27:00Z motion.phase waitingForMovement
+2026-07-13T04:27:02Z motion.phase movementDetected
+2026-07-13T04:27:04Z motion.phase waitingForMovement
+2026-07-13T04:27:06Z motion.phase movementDetected
+2026-07-13T04:27:06Z motion.phase waitingForMovement
+2026-07-13T04:27:08Z motion.phase movementDetected
+2026-07-13T04:27:10Z motion.phase waitingForMovement
+2026-07-13T04:27:13Z motion.phase movementDetected
+2026-07-13T04:27:13Z motion.phase waitingForMovement
+2026-07-13T04:27:13Z motion.phase movementDetected
+2026-07-13T04:27:14Z motion.phase waitingForMovement
+2026-07-13T04:27:16Z motion.phase movementDetected
+2026-07-13T04:27:17Z motion.phase waitingForMovement
+2026-07-13T04:27:22Z motion.phase stationary
+2026-07-13T04:27:27Z motion.phase movementDetected
+2026-07-13T04:27:28Z trip.begin samples=7 distanceMeters=89
+2026-07-13T04:27:40Z motion.phase waitingForMovement
+2026-07-13T04:27:40Z motion.phase movementDetected
+2026-07-13T04:27:51Z motion.phase waitingForMovement
+2026-07-13T04:27:53Z motion.phase movementDetected
+2026-07-13T04:27:53Z motion.phase waitingForMovement
+2026-07-13T04:27:54Z motion.phase movementDetected
+2026-07-13T04:27:58Z motion.phase waitingForMovement
+2026-07-13T04:27:59Z motion.phase movementDetected
+2026-07-13T04:27:59Z motion.phase waitingForMovement
+2026-07-13T04:28:00Z motion.phase movementDetected
+2026-07-13T04:28:00Z motion.phase waitingForMovement
+2026-07-13T04:28:02Z motion.phase movementDetected
+2026-07-13T04:28:03Z motion.phase waitingForMovement
+2026-07-13T04:28:04Z motion.phase movementDetected
+2026-07-13T04:28:04Z motion.phase waitingForMovement
+2026-07-13T04:28:08Z motion.phase stationary
+2026-07-13T04:28:08Z trip.stationaryFinalize.scheduled
+2026-07-13T04:28:13Z motion.phase movementDetected
+2026-07-13T04:28:13Z trip.stationaryFinalize.cancelled
+2026-07-13T04:28:15Z motion.phase waitingForMovement
+2026-07-13T04:28:18Z motion.phase movementDetected
+2026-07-13T04:28:18Z motion.phase waitingForMovement
+2026-07-13T04:28:19Z motion.phase movementDetected
+2026-07-13T04:28:20Z motion.phase waitingForMovement
+2026-07-13T04:28:21Z motion.phase movementDetected
+2026-07-13T04:28:22Z motion.phase waitingForMovement
+2026-07-13T04:28:23Z motion.phase movementDetected
+2026-07-13T04:28:24Z motion.phase waitingForMovement
+2026-07-13T04:28:25Z motion.phase movementDetected
+2026-07-13T04:28:27Z motion.phase waitingForMovement
+2026-07-13T04:28:32Z motion.phase movementDetected
+2026-07-13T04:28:32Z motion.phase waitingForMovement
+2026-07-13T04:28:34Z motion.phase movementDetected
+2026-07-13T04:28:34Z motion.phase waitingForMovement
+2026-07-13T04:28:39Z motion.phase stationary
+2026-07-13T04:28:39Z trip.stationaryFinalize.scheduled
+2026-07-13T04:28:40Z motion.phase movementDetected
+2026-07-13T04:28:40Z trip.stationaryFinalize.cancelled
+2026-07-13T04:28:44Z motion.phase waitingForMovement
+2026-07-13T04:28:44Z motion.phase movementDetected
+2026-07-13T04:28:45Z motion.phase waitingForMovement
+2026-07-13T04:28:47Z motion.phase movementDetected
+2026-07-13T04:28:48Z motion.phase waitingForMovement
+2026-07-13T04:28:48Z motion.phase movementDetected
+2026-07-13T04:28:49Z motion.phase waitingForMovement
+2026-07-13T04:28:52Z motion.phase movementDetected
+2026-07-13T04:28:53Z motion.phase waitingForMovement
+2026-07-13T04:28:55Z motion.phase movementDetected
+2026-07-13T04:28:55Z motion.phase waitingForMovement
+2026-07-13T04:28:57Z motion.phase movementDetected
+2026-07-13T04:29:12Z motion.phase waitingForMovement
+2026-07-13T04:29:15Z motion.phase stationary
+2026-07-13T04:29:15Z trip.stationaryFinalize.scheduled
+2026-07-13T04:29:16Z motion.phase movementDetected
+2026-07-13T04:29:16Z trip.stationaryFinalize.cancelled
+2026-07-13T04:29:17Z motion.phase waitingForMovement
+2026-07-13T04:29:18Z motion.phase movementDetected
+2026-07-13T04:29:18Z motion.phase waitingForMovement
+2026-07-13T04:29:21Z motion.phase movementDetected
+2026-07-13T04:29:21Z motion.phase waitingForMovement
+2026-07-13T04:29:23Z motion.phase movementDetected
+2026-07-13T04:29:23Z motion.phase waitingForMovement
+2026-07-13T04:29:24Z motion.phase movementDetected
+2026-07-13T04:29:25Z motion.phase waitingForMovement
+2026-07-13T04:29:27Z motion.phase movementDetected
+2026-07-13T04:29:27Z motion.phase waitingForMovement
+2026-07-13T04:29:30Z motion.phase movementDetected
+2026-07-13T04:29:31Z motion.phase waitingForMovement
+2026-07-13T04:29:33Z motion.phase movementDetected
+2026-07-13T04:29:33Z motion.phase waitingForMovement
+2026-07-13T04:29:35Z motion.phase movementDetected
+2026-07-13T04:29:36Z motion.phase waitingForMovement
+2026-07-13T04:29:37Z motion.phase movementDetected
+2026-07-13T04:29:38Z motion.phase waitingForMovement
+2026-07-13T04:29:39Z motion.phase movementDetected
+2026-07-13T04:29:40Z motion.phase waitingForMovement
+2026-07-13T04:29:41Z motion.phase movementDetected
+2026-07-13T04:29:42Z motion.phase waitingForMovement
+2026-07-13T04:29:43Z motion.phase movementDetected
+2026-07-13T04:29:44Z motion.phase waitingForMovement
+2026-07-13T04:29:45Z motion.phase movementDetected
+2026-07-13T04:29:45Z motion.phase waitingForMovement
+2026-07-13T04:29:46Z motion.phase movementDetected
+2026-07-13T04:29:47Z motion.phase waitingForMovement
+2026-07-13T04:29:49Z motion.phase movementDetected
+2026-07-13T04:29:50Z motion.phase waitingForMovement
+2026-07-13T04:29:50Z motion.phase movementDetected
+2026-07-13T04:29:50Z motion.phase waitingForMovement
+2026-07-13T04:29:51Z motion.phase movementDetected
+2026-07-13T04:29:54Z motion.phase waitingForMovement
+2026-07-13T04:29:54Z motion.phase movementDetected
+2026-07-13T04:29:55Z motion.phase waitingForMovement
+2026-07-13T04:29:56Z motion.phase movementDetected
+2026-07-13T04:30:02Z motion.phase waitingForMovement
+2026-07-13T04:30:05Z motion.phase movementDetected
+2026-07-13T04:30:13Z motion.phase waitingForMovement
+2026-07-13T04:30:13Z motion.phase movementDetected
+2026-07-13T04:30:33Z motion.phase waitingForMovement
+2026-07-13T04:30:34Z motion.phase movementDetected
+2026-07-13T04:30:34Z motion.phase waitingForMovement
+2026-07-13T04:30:35Z motion.phase movementDetected
+2026-07-13T04:30:36Z motion.phase waitingForMovement
+2026-07-13T04:30:37Z motion.phase movementDetected
+2026-07-13T04:30:41Z motion.phase waitingForMovement
+2026-07-13T04:30:41Z motion.phase movementDetected
+2026-07-13T04:30:42Z motion.phase waitingForMovement
+2026-07-13T04:30:42Z motion.phase movementDetected
+2026-07-13T04:30:43Z motion.phase waitingForMovement
+2026-07-13T04:30:43Z motion.phase movementDetected
+2026-07-13T04:30:46Z motion.phase waitingForMovement
+2026-07-13T04:30:47Z motion.phase movementDetected
+2026-07-13T04:30:48Z motion.phase waitingForMovement
+2026-07-13T04:30:48Z motion.phase movementDetected
+2026-07-13T04:30:49Z motion.phase waitingForMovement
+2026-07-13T04:30:50Z motion.phase movementDetected
+2026-07-13T04:30:50Z motion.phase waitingForMovement
+2026-07-13T04:30:51Z motion.phase movementDetected
+2026-07-13T04:30:53Z motion.phase waitingForMovement
+2026-07-13T04:30:53Z motion.phase movementDetected
+2026-07-13T04:30:54Z motion.phase waitingForMovement
+2026-07-13T04:30:54Z motion.phase movementDetected
+2026-07-13T04:30:59Z motion.phase waitingForMovement
+2026-07-13T04:30:59Z motion.phase movementDetected
+2026-07-13T04:31:02Z motion.phase waitingForMovement
+2026-07-13T04:31:02Z motion.phase movementDetected
+2026-07-13T04:31:04Z motion.phase waitingForMovement
+2026-07-13T04:31:05Z motion.phase movementDetected
+2026-07-13T04:31:06Z motion.phase waitingForMovement
+2026-07-13T04:31:07Z motion.phase movementDetected
+2026-07-13T04:31:13Z motion.phase waitingForMovement
+2026-07-13T04:31:13Z motion.phase movementDetected
+2026-07-13T04:31:16Z motion.phase waitingForMovement
+2026-07-13T04:31:16Z motion.phase movementDetected
+2026-07-13T04:31:22Z motion.phase waitingForMovement
+2026-07-13T04:31:23Z motion.phase movementDetected
+2026-07-13T04:31:24Z motion.phase waitingForMovement
+2026-07-13T04:31:24Z motion.phase movementDetected
+2026-07-13T04:31:25Z motion.phase waitingForMovement
+2026-07-13T04:31:26Z motion.phase movementDetected
+2026-07-13T04:31:27Z motion.phase waitingForMovement
+2026-07-13T04:31:28Z motion.phase movementDetected
+2026-07-13T04:31:29Z motion.phase waitingForMovement
+2026-07-13T04:31:30Z motion.phase movementDetected
+2026-07-13T04:31:31Z motion.phase waitingForMovement
+2026-07-13T04:31:34Z motion.phase movementDetected
+2026-07-13T04:31:35Z motion.phase waitingForMovement
+2026-07-13T04:31:37Z motion.phase movementDetected
+2026-07-13T04:31:37Z motion.phase waitingForMovement
+2026-07-13T04:31:38Z motion.phase movementDetected
+2026-07-13T04:31:40Z motion.phase waitingForMovement
+2026-07-13T04:31:42Z motion.phase movementDetected
+2026-07-13T04:31:45Z motion.phase waitingForMovement
+2026-07-13T04:31:46Z motion.phase movementDetected
+2026-07-13T04:31:46Z motion.phase waitingForMovement
+2026-07-13T04:31:50Z motion.phase movementDetected
+2026-07-13T04:31:57Z motion.phase waitingForMovement
+2026-07-13T04:31:57Z motion.phase movementDetected
+2026-07-13T04:31:58Z motion.phase waitingForMovement
+2026-07-13T04:32:01Z motion.phase movementDetected
+2026-07-13T04:32:02Z motion.phase waitingForMovement
+2026-07-13T04:32:02Z motion.phase movementDetected
+2026-07-13T04:32:06Z motion.phase waitingForMovement
+2026-07-13T04:32:07Z motion.phase movementDetected
+2026-07-13T04:32:10Z motion.phase waitingForMovement
+2026-07-13T04:32:11Z motion.phase movementDetected
+2026-07-13T04:32:11Z motion.phase waitingForMovement
+2026-07-13T04:32:13Z motion.phase movementDetected
+2026-07-13T04:32:14Z motion.phase waitingForMovement
+2026-07-13T04:32:15Z motion.phase movementDetected
+2026-07-13T04:32:17Z motion.phase waitingForMovement
+2026-07-13T04:32:24Z motion.phase stationary
+2026-07-13T04:32:24Z trip.stationaryFinalize.scheduled
+2026-07-13T04:32:25Z motion.phase movementDetected
+2026-07-13T04:32:25Z trip.stationaryFinalize.cancelled
+2026-07-13T04:32:25Z motion.phase waitingForMovement
+2026-07-13T04:32:28Z motion.phase movementDetected
+2026-07-13T04:32:37Z motion.phase waitingForMovement
+2026-07-13T04:32:37Z motion.phase movementDetected
+2026-07-13T04:32:42Z motion.phase waitingForMovement
+2026-07-13T04:32:42Z motion.phase movementDetected
+2026-07-13T04:32:42Z motion.phase waitingForMovement
+2026-07-13T04:32:43Z motion.phase movementDetected
+2026-07-13T04:32:44Z motion.phase waitingForMovement
+2026-07-13T04:32:45Z motion.phase movementDetected
+2026-07-13T04:32:46Z motion.phase waitingForMovement
+2026-07-13T04:32:46Z motion.phase movementDetected
+2026-07-13T04:32:47Z motion.phase waitingForMovement
+2026-07-13T04:32:48Z motion.phase movementDetected
+2026-07-13T04:32:49Z motion.phase waitingForMovement
+2026-07-13T04:32:49Z motion.phase movementDetected
+2026-07-13T04:32:52Z motion.phase waitingForMovement
+2026-07-13T04:32:56Z motion.phase movementDetected
+2026-07-13T04:32:56Z motion.phase waitingForMovement
+2026-07-13T04:32:57Z motion.phase movementDetected
+2026-07-13T04:32:57Z motion.phase waitingForMovement
+2026-07-13T04:32:58Z motion.phase movementDetected
+2026-07-13T04:33:03Z motion.phase waitingForMovement
+2026-07-13T04:33:07Z motion.phase movementDetected
+2026-07-13T04:33:07Z motion.phase waitingForMovement
+2026-07-13T04:33:09Z motion.phase movementDetected
+2026-07-13T04:33:11Z motion.phase waitingForMovement
+2026-07-13T04:33:14Z motion.phase stationary
+2026-07-13T04:33:14Z trip.stationaryFinalize.scheduled
+2026-07-13T04:33:15Z motion.phase movementDetected
+2026-07-13T04:33:15Z trip.stationaryFinalize.cancelled
+2026-07-13T04:33:16Z motion.phase waitingForMovement
+2026-07-13T04:33:17Z motion.phase movementDetected
+2026-07-13T04:33:20Z motion.phase waitingForMovement
+2026-07-13T04:33:22Z motion.phase movementDetected
+2026-07-13T04:33:22Z motion.phase waitingForMovement
+2026-07-13T04:33:23Z motion.phase movementDetected
+2026-07-13T04:33:24Z motion.phase waitingForMovement
+2026-07-13T04:33:24Z motion.phase movementDetected
+2026-07-13T04:33:25Z motion.phase waitingForMovement
+2026-07-13T04:33:25Z motion.phase movementDetected
+2026-07-13T04:33:25Z motion.phase waitingForMovement
+2026-07-13T04:33:25Z motion.phase movementDetected
+2026-07-13T04:33:27Z motion.phase waitingForMovement
+2026-07-13T04:33:28Z motion.phase movementDetected
+2026-07-13T04:33:28Z motion.phase waitingForMovement
+2026-07-13T04:33:28Z motion.phase movementDetected
+2026-07-13T04:33:29Z motion.phase waitingForMovement
+2026-07-13T04:33:30Z motion.phase movementDetected
+2026-07-13T04:33:31Z motion.phase waitingForMovement
+2026-07-13T04:33:31Z motion.phase movementDetected
+2026-07-13T04:33:34Z motion.phase waitingForMovement
+2026-07-13T04:33:35Z motion.phase movementDetected
+2026-07-13T04:33:37Z motion.phase waitingForMovement
+2026-07-13T04:33:38Z motion.phase movementDetected
+2026-07-13T04:33:39Z motion.phase waitingForMovement
+2026-07-13T04:33:41Z motion.phase movementDetected
+2026-07-13T04:33:42Z motion.phase waitingForMovement
+2026-07-13T04:33:45Z motion.phase movementDetected
+2026-07-13T04:33:45Z motion.phase waitingForMovement
+2026-07-13T04:33:50Z motion.phase stationary
+2026-07-13T04:33:50Z trip.stationaryFinalize.scheduled
+2026-07-13T04:34:01Z motion.phase movementDetected
+2026-07-13T04:34:01Z trip.stationaryFinalize.cancelled
+2026-07-13T04:34:01Z motion.phase waitingForMovement
+2026-07-13T04:34:03Z motion.phase movementDetected
+2026-07-13T04:34:04Z motion.phase waitingForMovement
+2026-07-13T04:34:06Z motion.phase movementDetected
+2026-07-13T04:34:06Z motion.phase waitingForMovement
+2026-07-13T04:34:10Z motion.phase stationary
+2026-07-13T04:34:10Z trip.stationaryFinalize.scheduled
+2026-07-13T04:34:16Z motion.phase movementDetected
+2026-07-13T04:34:16Z trip.stationaryFinalize.cancelled
+2026-07-13T04:34:17Z motion.phase waitingForMovement
+2026-07-13T04:34:17Z motion.phase movementDetected
+2026-07-13T04:34:18Z motion.phase waitingForMovement
+2026-07-13T04:34:18Z motion.phase movementDetected
+2026-07-13T04:34:19Z motion.phase waitingForMovement
+2026-07-13T04:34:20Z motion.phase movementDetected
+2026-07-13T04:34:30Z motion.phase waitingForMovement
+2026-07-13T04:34:32Z motion.phase movementDetected
+2026-07-13T04:34:33Z motion.phase waitingForMovement
+2026-07-13T04:34:34Z motion.phase movementDetected
+2026-07-13T04:34:34Z motion.phase waitingForMovement
+2026-07-13T04:34:37Z motion.phase movementDetected
+2026-07-13T04:34:40Z motion.phase waitingForMovement
+2026-07-13T04:34:40Z motion.phase movementDetected
+2026-07-13T04:34:41Z motion.phase waitingForMovement
+2026-07-13T04:34:42Z motion.phase movementDetected
+2026-07-13T04:34:43Z motion.phase waitingForMovement
+2026-07-13T04:34:44Z motion.phase movementDetected
+2026-07-13T04:34:45Z motion.phase waitingForMovement
+2026-07-13T04:34:49Z motion.phase movementDetected
+2026-07-13T04:34:50Z motion.phase waitingForMovement
+2026-07-13T04:34:52Z motion.phase movementDetected
+2026-07-13T04:34:53Z motion.phase waitingForMovement
+2026-07-13T04:34:54Z motion.phase movementDetected
+2026-07-13T04:34:55Z motion.phase waitingForMovement
+2026-07-13T04:34:56Z motion.phase movementDetected
+2026-07-13T04:34:56Z motion.phase waitingForMovement
+2026-07-13T04:34:57Z motion.phase movementDetected
+2026-07-13T04:34:59Z motion.phase waitingForMovement
+2026-07-13T04:34:59Z motion.phase movementDetected
+2026-07-13T04:35:03Z motion.phase waitingForMovement
+2026-07-13T04:35:04Z motion.phase movementDetected
+2026-07-13T04:35:05Z motion.phase waitingForMovement
+2026-07-13T04:35:06Z motion.phase movementDetected
+2026-07-13T04:35:09Z motion.phase waitingForMovement
+2026-07-13T04:35:10Z motion.phase movementDetected
+2026-07-13T04:35:11Z motion.phase waitingForMovement
+2026-07-13T04:35:11Z motion.phase movementDetected
+2026-07-13T04:35:13Z motion.phase waitingForMovement
+2026-07-13T04:35:15Z motion.phase movementDetected
+2026-07-13T04:35:16Z motion.phase waitingForMovement
+2026-07-13T04:35:17Z motion.phase movementDetected
+2026-07-13T04:35:17Z motion.phase waitingForMovement
+2026-07-13T04:35:18Z motion.phase movementDetected
+2026-07-13T04:35:19Z motion.phase waitingForMovement
+2026-07-13T04:35:21Z motion.phase movementDetected
+2026-07-13T04:35:21Z motion.phase waitingForMovement
+2026-07-13T04:35:22Z motion.phase movementDetected
+2026-07-13T04:35:22Z motion.phase waitingForMovement
+2026-07-13T04:35:24Z motion.phase movementDetected
+2026-07-13T04:35:24Z motion.phase waitingForMovement
+2026-07-13T04:35:27Z motion.phase movementDetected
+2026-07-13T04:35:29Z motion.phase waitingForMovement
+2026-07-13T04:35:30Z motion.phase movementDetected
+2026-07-13T04:35:31Z motion.phase waitingForMovement
+2026-07-13T04:35:32Z motion.phase movementDetected
+2026-07-13T04:35:33Z motion.phase waitingForMovement
+2026-07-13T04:35:34Z motion.phase movementDetected
+2026-07-13T04:35:35Z motion.phase waitingForMovement
+2026-07-13T04:35:38Z motion.phase movementDetected
+2026-07-13T04:35:39Z motion.phase waitingForMovement
+2026-07-13T04:35:39Z motion.phase movementDetected
+2026-07-13T04:35:43Z motion.phase waitingForMovement
+2026-07-13T04:35:43Z motion.phase movementDetected
+2026-07-13T04:35:45Z motion.phase waitingForMovement
+2026-07-13T04:35:48Z motion.phase movementDetected
+2026-07-13T04:35:53Z motion.phase waitingForMovement
+2026-07-13T04:35:53Z motion.phase movementDetected
+2026-07-13T04:35:54Z motion.phase waitingForMovement
+2026-07-13T04:35:55Z motion.phase movementDetected
+2026-07-13T04:36:01Z motion.phase waitingForMovement
+2026-07-13T04:36:05Z motion.phase movementDetected
+2026-07-13T04:36:05Z motion.phase waitingForMovement
+2026-07-13T04:36:07Z motion.phase movementDetected
+2026-07-13T04:36:07Z motion.phase waitingForMovement
+2026-07-13T04:36:08Z motion.phase movementDetected
+2026-07-13T04:36:08Z motion.phase waitingForMovement
+2026-07-13T04:36:10Z motion.phase movementDetected
+2026-07-13T04:36:12Z motion.phase waitingForMovement
+2026-07-13T04:36:13Z motion.phase movementDetected
+2026-07-13T04:36:14Z motion.phase waitingForMovement
+2026-07-13T04:36:15Z motion.phase movementDetected
+2026-07-13T04:36:15Z motion.phase waitingForMovement
+2026-07-13T04:36:17Z motion.phase movementDetected
+2026-07-13T04:36:18Z motion.phase waitingForMovement
+2026-07-13T04:36:19Z motion.phase movementDetected
+2026-07-13T04:36:27Z motion.phase waitingForMovement
+2026-07-13T04:36:27Z motion.phase movementDetected
+2026-07-13T04:36:29Z motion.phase waitingForMovement
+2026-07-13T04:36:31Z motion.phase movementDetected
+2026-07-13T04:36:31Z motion.phase waitingForMovement
+2026-07-13T04:36:32Z motion.phase movementDetected
+2026-07-13T04:36:33Z motion.phase waitingForMovement
+2026-07-13T04:36:34Z motion.phase movementDetected
+2026-07-13T04:36:35Z motion.phase waitingForMovement
+2026-07-13T04:36:35Z motion.phase movementDetected
+2026-07-13T04:36:35Z motion.phase waitingForMovement
+2026-07-13T04:36:36Z motion.phase movementDetected
+2026-07-13T04:36:38Z motion.phase waitingForMovement
+2026-07-13T04:36:38Z motion.phase movementDetected
+2026-07-13T04:36:46Z motion.phase waitingForMovement
+2026-07-13T04:36:47Z motion.phase movementDetected
+2026-07-13T04:36:53Z motion.phase waitingForMovement
+2026-07-13T04:36:54Z motion.phase movementDetected
+2026-07-13T04:36:56Z motion.phase waitingForMovement
+2026-07-13T04:36:56Z motion.phase movementDetected
+2026-07-13T04:36:57Z motion.phase waitingForMovement
+2026-07-13T04:36:58Z motion.phase movementDetected
+2026-07-13T04:37:01Z motion.phase waitingForMovement
+2026-07-13T04:37:04Z motion.phase movementDetected
+2026-07-13T04:37:13Z motion.phase waitingForMovement
+2026-07-13T04:37:14Z motion.phase movementDetected
+2026-07-13T04:37:21Z motion.phase waitingForMovement
+2026-07-13T04:37:22Z motion.phase movementDetected
+2026-07-13T04:37:26Z motion.phase waitingForMovement
+2026-07-13T04:37:26Z motion.phase movementDetected
+2026-07-13T04:37:29Z motion.phase waitingForMovement
+2026-07-13T04:37:30Z motion.phase movementDetected
+2026-07-13T04:37:36Z motion.phase waitingForMovement
+2026-07-13T04:37:37Z motion.phase movementDetected
+2026-07-13T04:37:42Z motion.phase waitingForMovement
+2026-07-13T04:37:43Z motion.phase movementDetected
+2026-07-13T04:37:51Z motion.phase waitingForMovement
+2026-07-13T04:37:51Z motion.phase movementDetected
+2026-07-13T04:37:56Z motion.phase waitingForMovement
+2026-07-13T04:37:59Z motion.phase movementDetected
+2026-07-13T04:38:02Z motion.phase waitingForMovement
+2026-07-13T04:38:04Z motion.phase movementDetected
+2026-07-13T04:38:05Z motion.phase waitingForMovement
+2026-07-13T04:38:08Z motion.phase movementDetected
+2026-07-13T04:38:12Z motion.phase waitingForMovement
+2026-07-13T04:38:13Z motion.phase movementDetected
+2026-07-13T04:38:15Z motion.phase waitingForMovement
+2026-07-13T04:38:17Z motion.phase movementDetected
+2026-07-13T04:38:21Z motion.phase waitingForMovement
+2026-07-13T04:38:22Z motion.phase movementDetected
+2026-07-13T04:38:24Z motion.phase waitingForMovement
+2026-07-13T04:38:27Z motion.phase stationary
+2026-07-13T04:38:27Z trip.stationaryFinalize.scheduled
+2026-07-13T04:38:30Z motion.phase movementDetected
+2026-07-13T04:38:30Z trip.stationaryFinalize.cancelled
+2026-07-13T04:38:32Z motion.phase waitingForMovement
+2026-07-13T04:38:35Z motion.phase movementDetected
+2026-07-13T04:38:35Z motion.phase waitingForMovement
+2026-07-13T04:38:40Z motion.phase stationary
+2026-07-13T04:38:40Z trip.stationaryFinalize.scheduled
+2026-07-13T04:38:46Z motion.phase movementDetected
+2026-07-13T04:38:46Z trip.stationaryFinalize.cancelled
+2026-07-13T04:38:52Z motion.phase waitingForMovement
+2026-07-13T04:38:53Z motion.phase movementDetected
+2026-07-13T04:39:01Z motion.phase waitingForMovement
+2026-07-13T04:39:01Z motion.phase movementDetected
+2026-07-13T04:39:06Z motion.phase waitingForMovement
+2026-07-13T04:39:06Z motion.phase movementDetected
+2026-07-13T04:39:11Z motion.phase waitingForMovement
+2026-07-13T04:39:16Z motion.phase stationary
+2026-07-13T04:39:16Z trip.stationaryFinalize.scheduled
+2026-07-13T04:40:54Z trip.finish.motionStop distanceMeters=107 durationSec=101
+2026-07-13T04:40:54Z trip.end distanceMeters=107 samples=8
+2026-07-13T04:40:54Z trip.persisted distanceMeters=107 samples=8 score=100 quality=100
+2026-07-13T04:40:54Z trip.capture.outcome id=8BFF15BA-240E-41FF-99E8-C1F459BD1873 status=persisted reason=none source=live
+2026-07-13T04:41:09Z location.idleFailsafe.stop phase=idle
+2026-07-13T04:41:09Z location.stop phase=idle
+2026-07-13T04:41:09Z location.passiveWakeups.start
+2026-07-14T03:01:55Z app.launch version=0.1.0 build=6 sha=cf47617-dirty builtAt=2026-07-13T02:00:00Z
+2026-07-14T03:01:55Z location.authorization state=authorizedAlways
+2026-07-14T03:01:55Z location.backgroundSession.start
+2026-07-14T03:01:55Z location.passiveWakeups.start
+2026-07-14T03:01:55Z location.passiveWakeup.ignored count=1
+2026-07-14T03:01:55Z motion.startAutoDetection vehicleType=voiture
+2026-07-14T03:01:55Z motion.phase waitingForMovement
+2026-07-14T03:01:55Z motion.phase waitingForMovement
+2026-07-14T03:01:55Z motion.phase movementDetected
+2026-07-14T03:01:55Z motion.triggerLocationMonitoring
+2026-07-14T03:01:55Z location.passiveWakeups.stop
+2026-07-14T03:01:55Z location.start active authorization=authorizedAlways
+2026-07-14T03:01:56Z motion.phase waitingForMovement
+2026-07-14T03:01:56Z motion.phase movementDetected
+2026-07-14T03:01:59Z motion.phase waitingForMovement
+2026-07-14T03:02:00Z motion.phase movementDetected
+2026-07-14T03:02:04Z motion.phase waitingForMovement
+2026-07-14T03:02:05Z motion.phase movementDetected
+2026-07-14T03:02:06Z motion.phase waitingForMovement
+2026-07-14T03:02:06Z motion.phase movementDetected
+2026-07-14T03:02:08Z motion.phase waitingForMovement
+2026-07-14T03:02:10Z motion.phase movementDetected
+2026-07-14T03:02:10Z motion.phase waitingForMovement
+2026-07-14T03:02:11Z motion.phase movementDetected
+2026-07-14T03:02:16Z motion.phase waitingForMovement
+2026-07-14T03:02:18Z motion.phase movementDetected
+2026-07-14T03:02:21Z motion.phase waitingForMovement
+2026-07-14T03:02:23Z motion.phase movementDetected
+2026-07-14T03:02:28Z motion.phase waitingForMovement
+2026-07-14T03:02:30Z motion.phase movementDetected
+2026-07-14T03:02:35Z motion.phase waitingForMovement
+2026-07-14T03:02:35Z motion.phase movementDetected
+2026-07-14T03:02:36Z motion.phase waitingForMovement
+2026-07-14T03:02:36Z motion.phase movementDetected
+2026-07-14T03:02:39Z motion.phase waitingForMovement
+2026-07-14T03:02:41Z motion.phase movementDetected
+2026-07-14T03:02:41Z motion.phase waitingForMovement
+2026-07-14T03:02:43Z motion.phase movementDetected
+2026-07-14T03:02:44Z motion.phase waitingForMovement
+2026-07-14T03:02:45Z motion.phase movementDetected
+2026-07-14T03:02:48Z motion.phase waitingForMovement
+2026-07-14T03:02:48Z motion.phase movementDetected
+2026-07-14T03:02:49Z motion.phase waitingForMovement
+2026-07-14T03:02:50Z motion.phase movementDetected
+2026-07-14T03:02:52Z motion.phase waitingForMovement
+2026-07-14T03:02:52Z motion.phase movementDetected
+2026-07-14T03:02:57Z motion.phase waitingForMovement
+2026-07-14T03:02:59Z motion.phase movementDetected
+2026-07-14T03:03:01Z motion.phase waitingForMovement
+2026-07-14T03:03:01Z motion.phase movementDetected
+2026-07-14T03:03:02Z motion.phase waitingForMovement
+2026-07-14T03:03:05Z motion.phase movementDetected
+2026-07-14T03:03:05Z motion.phase waitingForMovement
+2026-07-14T03:03:06Z motion.phase movementDetected
+2026-07-14T03:03:06Z motion.phase waitingForMovement
+2026-07-14T03:03:08Z motion.phase movementDetected
+2026-07-14T03:03:10Z motion.phase waitingForMovement
+2026-07-14T03:03:14Z motion.phase stationary
+2026-07-14T03:03:14Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-14T03:03:17Z motion.phase movementDetected
+2026-07-14T03:03:17Z motion.phase waitingForMovement
+2026-07-14T03:03:22Z motion.phase stationary
+2026-07-14T03:03:22Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-14T03:03:25Z motion.phase movementDetected
+2026-07-14T03:03:27Z motion.phase waitingForMovement
+2026-07-14T03:03:27Z motion.phase movementDetected
+2026-07-14T03:03:28Z motion.phase waitingForMovement
+2026-07-14T03:03:29Z motion.phase movementDetected
+2026-07-14T03:03:29Z motion.phase waitingForMovement
+2026-07-14T03:03:29Z motion.phase movementDetected
+2026-07-14T03:03:32Z motion.phase waitingForMovement
+2026-07-14T03:03:33Z motion.phase movementDetected
+2026-07-14T03:03:34Z motion.phase waitingForMovement
+2026-07-14T03:03:35Z motion.phase movementDetected
+2026-07-14T03:03:35Z motion.phase waitingForMovement
+2026-07-14T03:03:42Z motion.phase stationary
+2026-07-14T03:03:42Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-14T03:03:52Z motion.phase movementDetected
+2026-07-14T03:03:53Z motion.phase waitingForMovement
+2026-07-14T03:03:54Z motion.phase movementDetected
+2026-07-14T03:03:57Z motion.phase waitingForMovement
+2026-07-14T03:03:59Z motion.phase movementDetected
+2026-07-14T03:03:59Z motion.phase waitingForMovement
+2026-07-14T03:04:01Z motion.phase movementDetected
+2026-07-14T03:04:01Z motion.phase waitingForMovement
+2026-07-14T03:04:07Z motion.phase movementDetected
+2026-07-14T03:04:08Z motion.phase waitingForMovement
+2026-07-14T03:04:09Z motion.phase movementDetected
+2026-07-14T03:04:18Z motion.phase waitingForMovement
+2026-07-14T03:04:19Z motion.phase movementDetected
+2026-07-14T03:04:19Z motion.phase waitingForMovement
+2026-07-14T03:04:21Z motion.phase movementDetected
+2026-07-14T03:04:31Z motion.phase waitingForMovement
+2026-07-14T03:04:32Z motion.phase movementDetected
+2026-07-14T03:04:36Z motion.phase waitingForMovement
+2026-07-14T03:04:39Z motion.phase stationary
+2026-07-14T03:04:39Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-14T03:05:04Z location.idleFailsafe.stop phase=idle
+2026-07-14T03:05:04Z location.stop phase=idle
+2026-07-14T03:05:04Z location.passiveWakeups.start
+2026-07-14T14:37:49Z app.launch version=0.1.0 build=6 sha=cf47617-dirty builtAt=2026-07-13T02:00:00Z
+2026-07-14T14:37:49Z location.authorization state=authorizedAlways
+2026-07-14T14:37:49Z location.backgroundSession.start
+2026-07-14T14:37:49Z location.passiveWakeups.start
+2026-07-14T14:37:49Z location.passiveWakeup.ignored count=1
+2026-07-14T14:37:49Z motion.startAutoDetection vehicleType=voiture
+2026-07-14T14:37:49Z motion.phase waitingForMovement
+2026-07-14T14:37:49Z motion.phase waitingForMovement
+2026-07-14T14:37:49Z motion.phase movementDetected
+2026-07-14T14:37:49Z motion.triggerLocationMonitoring
+2026-07-14T14:37:49Z location.passiveWakeups.stop
+2026-07-14T14:37:49Z location.start active authorization=authorizedAlways
+2026-07-14T14:37:51Z motion.phase waitingForMovement
+2026-07-14T14:37:52Z motion.phase movementDetected
+2026-07-14T14:37:53Z motion.phase waitingForMovement
+2026-07-14T14:37:53Z motion.phase movementDetected
+2026-07-14T14:37:54Z motion.phase waitingForMovement
+2026-07-14T14:37:55Z motion.phase movementDetected
+2026-07-14T14:37:55Z motion.phase waitingForMovement
+2026-07-14T14:37:56Z motion.phase movementDetected
+2026-07-14T14:38:04Z motion.phase waitingForMovement
+2026-07-14T14:38:05Z motion.phase movementDetected
+2026-07-14T14:38:06Z motion.phase waitingForMovement
+2026-07-14T14:38:07Z motion.phase movementDetected
+2026-07-14T14:38:08Z motion.phase waitingForMovement
+2026-07-14T14:38:08Z motion.phase movementDetected
+2026-07-14T14:38:09Z motion.phase waitingForMovement
+2026-07-14T14:38:09Z motion.phase movementDetected
+2026-07-14T14:38:12Z motion.phase waitingForMovement
+2026-07-14T14:38:12Z motion.phase movementDetected
+2026-07-14T14:38:19Z motion.phase waitingForMovement
+2026-07-14T14:38:20Z motion.phase movementDetected
+2026-07-14T14:38:21Z motion.phase waitingForMovement
+2026-07-14T14:38:22Z motion.phase movementDetected
+2026-07-14T14:38:27Z motion.phase waitingForMovement
+2026-07-14T14:38:28Z motion.phase movementDetected
+2026-07-14T14:38:37Z motion.phase waitingForMovement
+2026-07-14T14:38:37Z motion.phase movementDetected
+2026-07-14T14:38:40Z motion.phase waitingForMovement
+2026-07-14T14:38:42Z motion.phase movementDetected
+2026-07-14T14:38:44Z motion.phase waitingForMovement
+2026-07-14T14:38:46Z motion.phase movementDetected
+2026-07-14T14:38:48Z motion.phase waitingForMovement
+2026-07-14T14:38:49Z motion.phase movementDetected
+2026-07-14T14:38:53Z motion.phase waitingForMovement
+2026-07-14T14:38:54Z motion.phase movementDetected
+2026-07-14T14:38:57Z motion.phase waitingForMovement
+2026-07-14T14:38:58Z motion.phase movementDetected
+2026-07-14T14:38:58Z motion.phase waitingForMovement
+2026-07-14T14:38:59Z motion.phase movementDetected
+2026-07-14T14:39:02Z motion.phase waitingForMovement
+2026-07-14T14:39:02Z motion.phase movementDetected
+2026-07-14T14:39:02Z motion.phase waitingForMovement
+2026-07-14T14:39:02Z motion.phase movementDetected
+2026-07-14T14:39:03Z motion.phase waitingForMovement
+2026-07-14T14:39:03Z motion.phase movementDetected
+2026-07-14T14:39:05Z motion.phase waitingForMovement
+2026-07-14T14:39:05Z motion.phase movementDetected
+2026-07-14T14:39:09Z motion.phase waitingForMovement
+2026-07-14T14:39:10Z motion.phase movementDetected
+2026-07-14T14:39:12Z motion.phase waitingForMovement
+2026-07-14T14:39:13Z motion.phase movementDetected
+2026-07-14T14:39:14Z motion.phase waitingForMovement
+2026-07-14T14:39:15Z motion.phase movementDetected
+2026-07-14T14:39:16Z motion.phase waitingForMovement
+2026-07-14T14:39:17Z motion.phase movementDetected
+2026-07-14T14:39:18Z motion.phase waitingForMovement
+2026-07-14T14:39:19Z motion.phase movementDetected
+2026-07-14T14:39:25Z motion.phase waitingForMovement
+2026-07-14T14:39:26Z motion.phase movementDetected
+2026-07-14T14:39:28Z motion.phase waitingForMovement
+2026-07-14T14:39:28Z motion.phase movementDetected
+2026-07-14T14:39:29Z motion.phase waitingForMovement
+2026-07-14T14:39:31Z motion.phase movementDetected
+2026-07-14T14:39:39Z motion.phase waitingForMovement
+2026-07-14T14:39:42Z motion.phase movementDetected
+2026-07-14T14:39:43Z motion.phase waitingForMovement
+2026-07-14T14:39:45Z motion.phase movementDetected
+2026-07-14T14:39:48Z motion.phase waitingForMovement
+2026-07-14T14:39:48Z motion.phase movementDetected
+2026-07-14T14:39:50Z motion.phase waitingForMovement
+2026-07-14T14:39:50Z motion.phase movementDetected
+2026-07-14T14:40:00Z motion.phase waitingForMovement
+2026-07-14T14:40:00Z motion.phase movementDetected
+2026-07-14T14:40:06Z motion.phase waitingForMovement
+2026-07-14T14:40:07Z motion.phase movementDetected
+2026-07-14T14:40:07Z motion.phase waitingForMovement
+2026-07-14T14:40:08Z motion.phase movementDetected
+2026-07-14T14:40:09Z motion.phase waitingForMovement
+2026-07-14T14:40:12Z motion.phase movementDetected
+2026-07-14T14:40:12Z motion.phase waitingForMovement
+2026-07-14T14:40:13Z motion.phase movementDetected
+2026-07-14T14:40:14Z motion.phase waitingForMovement
+2026-07-14T14:40:14Z motion.phase movementDetected
+2026-07-14T14:40:16Z motion.phase waitingForMovement
+2026-07-14T14:40:17Z motion.phase movementDetected
+2026-07-14T14:40:17Z motion.phase waitingForMovement
+2026-07-14T14:40:19Z motion.phase movementDetected
+2026-07-14T14:40:19Z motion.phase waitingForMovement
+2026-07-14T14:40:19Z motion.phase movementDetected
+2026-07-14T14:40:20Z motion.phase waitingForMovement
+2026-07-14T14:40:21Z motion.phase movementDetected
+2026-07-14T14:40:21Z motion.phase waitingForMovement
+2026-07-14T14:40:22Z motion.phase movementDetected
+2026-07-14T14:40:23Z motion.phase waitingForMovement
+2026-07-14T14:40:23Z motion.phase movementDetected
+2026-07-14T14:40:27Z motion.phase waitingForMovement
+2026-07-14T14:40:27Z motion.phase movementDetected
+2026-07-14T14:40:29Z motion.phase waitingForMovement
+2026-07-14T14:40:29Z motion.phase movementDetected
+2026-07-14T14:40:33Z motion.phase waitingForMovement
+2026-07-14T14:40:33Z motion.phase movementDetected
+2026-07-14T14:40:38Z motion.phase waitingForMovement
+2026-07-14T14:40:39Z motion.phase movementDetected
+2026-07-14T14:40:41Z motion.phase waitingForMovement
+2026-07-14T14:40:41Z motion.phase movementDetected
+2026-07-14T14:40:42Z motion.phase waitingForMovement
+2026-07-14T14:40:42Z motion.phase movementDetected
+2026-07-14T14:40:44Z motion.phase waitingForMovement
+2026-07-14T14:40:45Z motion.phase movementDetected
+2026-07-14T14:40:58Z location.idleFailsafe.stop phase=idle
+2026-07-14T14:40:58Z location.stop phase=idle
+2026-07-14T14:40:58Z location.passiveWakeups.start
+2026-07-14T14:41:07Z motion.phase waitingForMovement
+2026-07-14T14:41:08Z motion.phase movementDetected
+2026-07-14T14:41:08Z motion.triggerLocationMonitoring
+2026-07-14T14:41:08Z location.passiveWakeups.stop
+2026-07-14T14:41:08Z location.start active authorization=authorizedAlways
+2026-07-14T14:41:09Z motion.phase waitingForMovement
+2026-07-14T14:41:10Z motion.phase movementDetected
+2026-07-14T18:16:09Z location.idleFailsafe.stop phase=idle
+2026-07-14T18:16:09Z location.stop phase=idle
+2026-07-14T18:16:09Z location.passiveWakeups.start
+2026-07-14T18:16:14Z motion.phase waitingForMovement
+2026-07-14T18:16:18Z motion.phase movementDetected
+2026-07-14T18:16:18Z motion.triggerLocationMonitoring
+2026-07-14T18:16:18Z location.passiveWakeups.stop
+2026-07-14T18:16:18Z location.start active authorization=authorizedAlways
+2026-07-14T23:33:26Z location.idleFailsafe.stop phase=idle
+2026-07-14T23:33:26Z location.stop phase=idle
+2026-07-14T23:33:26Z location.passiveWakeups.start
+2026-07-14T23:33:26Z location.passiveWakeup.promote count=1
+2026-07-14T23:33:26Z location.passiveWakeups.stop
+2026-07-14T23:33:26Z location.start active authorization=authorizedAlways
+2026-07-14T23:33:34Z motion.phase waitingForMovement
+2026-07-14T23:33:34Z motion.phase movementDetected
+2026-07-14T23:33:36Z motion.phase waitingForMovement
+2026-07-14T23:33:37Z motion.phase movementDetected
+2026-07-14T23:33:45Z motion.phase waitingForMovement
+2026-07-14T23:33:45Z motion.phase movementDetected
+2026-07-14T23:33:53Z motion.phase waitingForMovement
+2026-07-14T23:33:59Z motion.phase stationary
+2026-07-14T23:33:59Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-14T23:33:59Z motion.phase movementDetected
+2026-07-14T23:33:59Z motion.phase waitingForMovement
+2026-07-14T23:34:03Z motion.phase movementDetected
+2026-07-14T23:34:06Z motion.phase waitingForMovement
+2026-07-14T23:34:06Z motion.phase movementDetected
+2026-07-14T23:34:10Z motion.phase waitingForMovement
+2026-07-14T23:34:11Z motion.phase movementDetected
+2026-07-14T23:34:13Z motion.phase waitingForMovement
+2026-07-14T23:34:14Z motion.phase movementDetected
+2026-07-14T23:34:15Z motion.phase waitingForMovement
+2026-07-14T23:34:15Z motion.phase movementDetected
+2026-07-14T23:34:23Z trip.capture.start id=074258E2-1E6C-47B2-ACE7-B71ED55856CE source=location
+2026-07-14T23:34:54Z trip.begin samples=21 distanceMeters=255
+2026-07-14T23:34:56Z motion.phase waitingForMovement
+2026-07-14T23:34:57Z motion.phase movementDetected
+2026-07-14T23:34:59Z motion.phase waitingForMovement
+2026-07-14T23:35:01Z motion.phase movementDetected
+2026-07-14T23:35:02Z motion.phase waitingForMovement
+2026-07-14T23:35:03Z motion.phase movementDetected
+2026-07-14T23:35:04Z motion.phase waitingForMovement
+2026-07-14T23:35:06Z motion.phase movementDetected
+2026-07-14T23:35:23Z motion.phase waitingForMovement
+2026-07-14T23:35:28Z motion.phase stationary
+2026-07-14T23:35:28Z trip.stationaryFinalize.scheduled
+2026-07-14T23:35:35Z motion.phase movementDetected
+2026-07-14T23:35:35Z trip.stationaryFinalize.cancelled
+2026-07-14T23:36:01Z motion.phase waitingForMovement
+2026-07-14T23:36:02Z motion.phase movementDetected
+2026-07-14T23:37:09Z motion.phase waitingForMovement
+2026-07-14T23:37:10Z motion.phase movementDetected
+2026-07-14T23:38:57Z motion.phase waitingForMovement
+2026-07-14T23:39:01Z motion.phase stationary
+2026-07-14T23:39:01Z trip.stationaryFinalize.scheduled
+2026-07-14T23:39:12Z motion.phase movementDetected
+2026-07-14T23:39:12Z trip.stationaryFinalize.cancelled
+2026-07-14T23:40:38Z motion.phase waitingForMovement
+2026-07-14T23:40:40Z motion.phase movementDetected
+2026-07-14T23:40:40Z motion.phase waitingForMovement
+2026-07-14T23:40:41Z motion.phase movementDetected
+2026-07-14T23:40:41Z motion.phase waitingForMovement
+2026-07-14T23:40:42Z motion.phase movementDetected
+2026-07-14T23:40:42Z motion.phase waitingForMovement
+2026-07-14T23:40:43Z motion.phase movementDetected
+2026-07-14T23:41:41Z motion.phase waitingForMovement
+2026-07-14T23:41:43Z motion.phase movementDetected
+2026-07-14T23:41:55Z motion.phase waitingForMovement
+2026-07-14T23:41:56Z motion.phase movementDetected
+2026-07-14T23:41:59Z motion.phase waitingForMovement
+2026-07-14T23:41:59Z motion.phase movementDetected
+2026-07-14T23:42:01Z motion.phase waitingForMovement
+2026-07-14T23:42:06Z motion.phase movementDetected
+2026-07-14T23:42:08Z motion.phase waitingForMovement
+2026-07-14T23:42:10Z motion.phase movementDetected
+2026-07-14T23:42:15Z motion.phase waitingForMovement
+2026-07-14T23:42:17Z motion.phase movementDetected
+2026-07-14T23:42:18Z motion.phase waitingForMovement
+2026-07-14T23:42:22Z motion.phase stationary
+2026-07-14T23:42:22Z trip.stationaryFinalize.scheduled
+2026-07-14T23:42:28Z motion.phase movementDetected
+2026-07-14T23:42:28Z trip.stationaryFinalize.cancelled
+2026-07-14T23:42:31Z motion.phase waitingForMovement
+2026-07-14T23:42:32Z motion.phase movementDetected
+2026-07-14T23:42:36Z motion.phase waitingForMovement
+2026-07-14T23:42:37Z motion.phase movementDetected
+2026-07-14T23:42:37Z motion.phase waitingForMovement
+2026-07-14T23:42:38Z motion.phase movementDetected
+2026-07-14T23:42:39Z motion.phase waitingForMovement
+2026-07-14T23:42:39Z motion.phase movementDetected
+2026-07-14T23:42:45Z motion.phase waitingForMovement
+2026-07-14T23:42:46Z motion.phase movementDetected
+2026-07-14T23:42:48Z motion.phase waitingForMovement
+2026-07-14T23:42:52Z motion.phase stationary
+2026-07-14T23:42:52Z trip.stationaryFinalize.scheduled
+2026-07-14T23:42:53Z motion.phase movementDetected
+2026-07-14T23:42:53Z trip.stationaryFinalize.cancelled
+2026-07-14T23:42:53Z motion.phase waitingForMovement
+2026-07-14T23:42:55Z motion.phase movementDetected
+2026-07-14T23:42:57Z motion.phase waitingForMovement
+2026-07-14T23:42:58Z motion.phase movementDetected
+2026-07-14T23:43:07Z motion.phase waitingForMovement
+2026-07-14T23:43:07Z motion.phase movementDetected
+2026-07-14T23:43:07Z motion.phase waitingForMovement
+2026-07-14T23:43:08Z motion.phase movementDetected
+2026-07-14T23:43:18Z motion.phase waitingForMovement
+2026-07-14T23:43:18Z motion.phase movementDetected
+2026-07-14T23:43:26Z motion.phase waitingForMovement
+2026-07-14T23:43:27Z motion.phase movementDetected
+2026-07-14T23:43:31Z motion.phase waitingForMovement
+2026-07-14T23:43:31Z motion.phase movementDetected
+2026-07-14T23:43:31Z motion.phase waitingForMovement
+2026-07-14T23:43:32Z motion.phase movementDetected
+2026-07-14T23:43:34Z motion.phase waitingForMovement
+2026-07-14T23:43:41Z motion.phase stationary
+2026-07-14T23:43:41Z trip.stationaryFinalize.scheduled
+2026-07-14T23:43:43Z motion.phase movementDetected
+2026-07-14T23:43:43Z trip.stationaryFinalize.cancelled
+2026-07-14T23:43:45Z motion.phase waitingForMovement
+2026-07-14T23:43:46Z motion.phase movementDetected
+2026-07-14T23:43:50Z motion.phase waitingForMovement
+2026-07-14T23:43:51Z motion.phase movementDetected
+2026-07-14T23:43:52Z motion.phase waitingForMovement
+2026-07-14T23:43:53Z motion.phase movementDetected
+2026-07-14T23:44:06Z motion.phase waitingForMovement
+2026-07-14T23:44:07Z motion.phase movementDetected
+2026-07-14T23:44:10Z motion.phase waitingForMovement
+2026-07-14T23:44:11Z motion.phase movementDetected
+2026-07-14T23:44:12Z motion.phase waitingForMovement
+2026-07-14T23:44:15Z motion.phase stationary
+2026-07-14T23:44:15Z trip.stationaryFinalize.scheduled
+2026-07-14T23:44:20Z motion.phase movementDetected
+2026-07-14T23:44:20Z trip.stationaryFinalize.cancelled
+2026-07-14T23:44:21Z motion.phase waitingForMovement
+2026-07-14T23:44:25Z motion.phase stationary
+2026-07-14T23:44:25Z trip.stationaryFinalize.scheduled
+2026-07-14T23:44:40Z motion.phase movementDetected
+2026-07-14T23:44:40Z trip.stationaryFinalize.cancelled
+2026-07-14T23:44:40Z motion.phase waitingForMovement
+2026-07-14T23:44:41Z motion.phase movementDetected
+2026-07-14T23:44:41Z motion.phase waitingForMovement
+2026-07-14T23:44:41Z motion.phase movementDetected
+2026-07-14T23:44:44Z motion.phase waitingForMovement
+2026-07-14T23:44:44Z motion.phase movementDetected
+2026-07-14T23:44:46Z motion.phase waitingForMovement
+2026-07-14T23:44:50Z motion.phase stationary
+2026-07-14T23:44:50Z trip.stationaryFinalize.scheduled
+2026-07-14T23:45:00Z motion.phase movementDetected
+2026-07-14T23:45:00Z trip.stationaryFinalize.cancelled
+2026-07-14T23:45:02Z motion.phase waitingForMovement
+2026-07-14T23:45:06Z motion.phase stationary
+2026-07-14T23:45:06Z trip.stationaryFinalize.scheduled
+2026-07-14T23:45:08Z motion.phase movementDetected
+2026-07-14T23:45:08Z trip.stationaryFinalize.cancelled
+2026-07-14T23:45:16Z motion.phase waitingForMovement
+2026-07-14T23:45:18Z motion.phase movementDetected
+2026-07-14T23:45:40Z motion.phase waitingForMovement
+2026-07-14T23:45:41Z motion.phase movementDetected
+2026-07-14T23:45:48Z motion.phase waitingForMovement
+2026-07-14T23:45:52Z motion.phase stationary
+2026-07-14T23:45:52Z trip.stationaryFinalize.scheduled
+2026-07-14T23:46:06Z motion.phase movementDetected
+2026-07-14T23:46:06Z trip.stationaryFinalize.cancelled
+2026-07-14T23:46:07Z motion.phase waitingForMovement
+2026-07-14T23:46:10Z motion.phase stationary
+2026-07-14T23:46:10Z trip.stationaryFinalize.scheduled
+2026-07-14T23:47:26Z motion.phase movementDetected
+2026-07-14T23:47:26Z trip.stationaryFinalize.cancelled
+2026-07-14T23:47:27Z motion.phase waitingForMovement
+2026-07-14T23:47:30Z motion.phase movementDetected
+2026-07-14T23:47:31Z motion.phase waitingForMovement
+2026-07-14T23:47:33Z motion.phase movementDetected
+2026-07-14T23:47:34Z motion.phase waitingForMovement
+2026-07-14T23:47:37Z motion.phase stationary
+2026-07-14T23:47:37Z trip.stationaryFinalize.scheduled
+2026-07-14T23:47:39Z motion.phase movementDetected
+2026-07-14T23:47:39Z trip.stationaryFinalize.cancelled
+2026-07-14T23:47:40Z motion.phase waitingForMovement
+2026-07-14T23:47:40Z motion.phase movementDetected
+2026-07-14T23:47:41Z motion.phase waitingForMovement
+2026-07-14T23:47:42Z motion.phase movementDetected
+2026-07-14T23:47:43Z motion.phase waitingForMovement
+2026-07-14T23:47:48Z motion.phase stationary
+2026-07-14T23:47:48Z trip.stationaryFinalize.scheduled
+2026-07-14T23:47:54Z motion.phase movementDetected
+2026-07-14T23:47:54Z trip.stationaryFinalize.cancelled
+2026-07-14T23:47:55Z motion.phase waitingForMovement
+2026-07-14T23:47:55Z motion.phase movementDetected
+2026-07-14T23:48:00Z motion.phase waitingForMovement
+2026-07-14T23:48:01Z motion.phase movementDetected
+2026-07-14T23:48:01Z motion.phase waitingForMovement
+2026-07-14T23:48:06Z motion.phase stationary
+2026-07-14T23:48:06Z trip.stationaryFinalize.scheduled
+2026-07-14T23:48:10Z motion.phase movementDetected
+2026-07-14T23:48:10Z trip.stationaryFinalize.cancelled
+2026-07-14T23:48:11Z motion.phase waitingForMovement
+2026-07-14T23:48:16Z motion.phase stationary
+2026-07-14T23:48:16Z trip.stationaryFinalize.scheduled
+2026-07-14T23:48:18Z motion.phase movementDetected
+2026-07-14T23:48:18Z trip.stationaryFinalize.cancelled
+2026-07-14T23:48:19Z motion.phase waitingForMovement
+2026-07-14T23:48:24Z motion.phase stationary
+2026-07-14T23:48:24Z trip.stationaryFinalize.scheduled
+2026-07-14T23:48:26Z motion.phase movementDetected
+2026-07-14T23:48:26Z trip.stationaryFinalize.cancelled
+2026-07-14T23:48:27Z motion.phase waitingForMovement
+2026-07-14T23:48:29Z motion.phase movementDetected
+2026-07-14T23:48:33Z motion.phase waitingForMovement
+2026-07-14T23:48:36Z motion.phase stationary
+2026-07-14T23:48:36Z trip.stationaryFinalize.scheduled
+2026-07-14T23:48:55Z motion.phase movementDetected
+2026-07-14T23:48:55Z trip.stationaryFinalize.cancelled
+2026-07-14T23:48:56Z motion.phase waitingForMovement
+2026-07-14T23:48:57Z motion.phase movementDetected
+2026-07-14T23:48:57Z motion.phase waitingForMovement
+2026-07-14T23:49:02Z motion.phase stationary
+2026-07-14T23:49:02Z trip.stationaryFinalize.scheduled
+2026-07-14T23:49:08Z motion.phase movementDetected
+2026-07-14T23:49:08Z trip.stationaryFinalize.cancelled
+2026-07-14T23:49:09Z motion.phase waitingForMovement
+2026-07-14T23:49:10Z trip.finish.inactive distanceMeters=2039 samples=158
+2026-07-14T23:49:10Z trip.end distanceMeters=2039 samples=158
+2026-07-14T23:49:10Z trip.persisted distanceMeters=2039 samples=158 score=100 quality=100
+2026-07-14T23:49:10Z trip.capture.outcome id=074258E2-1E6C-47B2-ACE7-B71ED55856CE status=persisted reason=none source=live
+2026-07-14T23:49:15Z motion.phase stationary
+2026-07-14T23:49:15Z motion.stationaryStopLocationMonitoring
+2026-07-14T23:49:15Z location.stop phase=idle
+2026-07-14T23:49:15Z location.passiveWakeups.start
+2026-07-14T23:49:26Z motion.phase movementDetected
+2026-07-14T23:49:26Z motion.triggerLocationMonitoring
+2026-07-14T23:49:26Z location.passiveWakeups.stop
+2026-07-14T23:49:26Z location.start active authorization=authorizedAlways
+2026-07-15T00:13:52Z location.idleFailsafe.stop phase=idle
+2026-07-15T00:13:52Z location.stop phase=idle
+2026-07-15T00:13:52Z location.passiveWakeups.start
+2026-07-15T00:13:52Z location.passiveWakeup.ignored count=1
+2026-07-15T00:13:52Z location.passiveWakeup.ignored count=1
+2026-07-15T00:13:58Z motion.phase waitingForMovement
+2026-07-15T00:13:59Z motion.phase movementDetected
+2026-07-15T00:13:59Z motion.triggerLocationMonitoring
+2026-07-15T00:13:59Z location.passiveWakeups.stop
+2026-07-15T00:13:59Z location.start active authorization=authorizedAlways
+2026-07-15T00:14:00Z motion.phase waitingForMovement
+2026-07-15T00:14:00Z motion.phase movementDetected
+2026-07-15T00:15:03Z motion.phase waitingForMovement
+2026-07-15T00:15:04Z motion.phase movementDetected
+2026-07-15T00:15:15Z motion.phase waitingForMovement
+2026-07-15T00:15:17Z motion.phase movementDetected
+2026-07-15T00:15:17Z motion.phase waitingForMovement
+2026-07-15T00:15:17Z motion.phase movementDetected
+2026-07-15T00:15:19Z motion.phase waitingForMovement
+2026-07-15T00:15:21Z motion.phase movementDetected
+2026-07-15T00:15:22Z motion.phase waitingForMovement
+2026-07-15T00:15:23Z motion.phase movementDetected
+2026-07-15T00:15:29Z motion.phase waitingForMovement
+2026-07-15T00:15:31Z motion.phase movementDetected
+2026-07-15T00:15:32Z motion.phase waitingForMovement
+2026-07-15T00:15:33Z motion.phase movementDetected
+2026-07-15T00:15:33Z motion.phase waitingForMovement
+2026-07-15T00:15:37Z motion.phase movementDetected
+2026-07-15T00:15:43Z motion.phase waitingForMovement
+2026-07-15T00:15:47Z motion.phase stationary
+2026-07-15T00:15:47Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:15:54Z motion.phase movementDetected
+2026-07-15T00:15:55Z motion.phase waitingForMovement
+2026-07-15T00:15:57Z motion.phase movementDetected
+2026-07-15T00:15:57Z motion.phase waitingForMovement
+2026-07-15T00:15:58Z motion.phase movementDetected
+2026-07-15T00:15:59Z motion.phase waitingForMovement
+2026-07-15T00:16:01Z motion.phase movementDetected
+2026-07-15T00:16:02Z motion.phase waitingForMovement
+2026-07-15T00:16:05Z motion.phase movementDetected
+2026-07-15T00:16:05Z motion.phase waitingForMovement
+2026-07-15T00:16:07Z motion.phase movementDetected
+2026-07-15T00:16:09Z motion.phase waitingForMovement
+2026-07-15T00:16:12Z motion.phase movementDetected
+2026-07-15T00:16:14Z motion.phase waitingForMovement
+2026-07-15T00:16:20Z motion.phase stationary
+2026-07-15T00:16:20Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:16:21Z motion.phase movementDetected
+2026-07-15T00:16:22Z motion.phase waitingForMovement
+2026-07-15T00:16:25Z motion.phase movementDetected
+2026-07-15T00:16:27Z motion.phase waitingForMovement
+2026-07-15T00:16:30Z motion.phase stationary
+2026-07-15T00:16:30Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:16:34Z motion.phase movementDetected
+2026-07-15T00:16:34Z motion.phase waitingForMovement
+2026-07-15T00:16:38Z motion.phase stationary
+2026-07-15T00:16:38Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:16:39Z motion.phase movementDetected
+2026-07-15T00:16:40Z motion.phase waitingForMovement
+2026-07-15T00:16:46Z motion.phase stationary
+2026-07-15T00:16:46Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:16:47Z motion.phase movementDetected
+2026-07-15T00:16:49Z motion.phase waitingForMovement
+2026-07-15T00:16:52Z motion.phase movementDetected
+2026-07-15T00:16:53Z motion.phase waitingForMovement
+2026-07-15T00:16:55Z motion.phase movementDetected
+2026-07-15T00:16:56Z motion.phase waitingForMovement
+2026-07-15T00:16:57Z motion.phase movementDetected
+2026-07-15T00:17:01Z location.idleFailsafe.stop phase=idle
+2026-07-15T00:17:01Z location.stop phase=idle
+2026-07-15T00:17:01Z location.passiveWakeups.start
+2026-07-15T00:17:09Z motion.phase waitingForMovement
+2026-07-15T00:17:10Z motion.phase movementDetected
+2026-07-15T00:17:10Z motion.triggerLocationMonitoring
+2026-07-15T00:17:10Z location.passiveWakeups.stop
+2026-07-15T00:17:10Z location.start active authorization=authorizedAlways
+2026-07-15T00:17:10Z motion.phase waitingForMovement
+2026-07-15T00:17:14Z motion.phase stationary
+2026-07-15T00:17:14Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:17:31Z motion.phase movementDetected
+2026-07-15T00:17:33Z motion.phase waitingForMovement
+2026-07-15T00:17:33Z motion.phase movementDetected
+2026-07-15T00:17:33Z motion.phase waitingForMovement
+2026-07-15T00:17:36Z motion.phase movementDetected
+2026-07-15T00:17:37Z motion.phase waitingForMovement
+2026-07-15T00:17:38Z motion.phase movementDetected
+2026-07-15T00:17:38Z motion.phase waitingForMovement
+2026-07-15T00:17:42Z motion.phase stationary
+2026-07-15T00:17:42Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:17:45Z motion.phase movementDetected
+2026-07-15T00:17:45Z motion.phase waitingForMovement
+2026-07-15T00:17:47Z motion.phase movementDetected
+2026-07-15T00:17:48Z motion.phase waitingForMovement
+2026-07-15T00:17:52Z motion.phase stationary
+2026-07-15T00:17:52Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:17:53Z motion.phase movementDetected
+2026-07-15T00:17:54Z motion.phase waitingForMovement
+2026-07-15T00:17:55Z motion.phase movementDetected
+2026-07-15T00:17:55Z motion.phase waitingForMovement
+2026-07-15T00:17:55Z motion.phase movementDetected
+2026-07-15T00:17:59Z motion.phase waitingForMovement
+2026-07-15T00:18:00Z motion.phase movementDetected
+2026-07-15T00:18:00Z motion.phase waitingForMovement
+2026-07-15T00:18:01Z motion.phase movementDetected
+2026-07-15T00:18:02Z motion.phase waitingForMovement
+2026-07-15T00:18:03Z motion.phase movementDetected
+2026-07-15T00:18:03Z motion.phase waitingForMovement
+2026-07-15T00:18:04Z motion.phase movementDetected
+2026-07-15T00:18:06Z motion.phase waitingForMovement
+2026-07-15T00:18:07Z motion.phase movementDetected
+2026-07-15T00:18:09Z motion.phase waitingForMovement
+2026-07-15T00:18:10Z motion.phase movementDetected
+2026-07-15T00:18:10Z motion.phase waitingForMovement
+2026-07-15T00:18:11Z motion.phase movementDetected
+2026-07-15T00:18:12Z motion.phase waitingForMovement
+2026-07-15T00:18:12Z motion.phase movementDetected
+2026-07-15T00:18:13Z motion.phase waitingForMovement
+2026-07-15T00:18:18Z motion.phase stationary
+2026-07-15T00:18:18Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:18:20Z motion.phase movementDetected
+2026-07-15T00:18:20Z motion.phase waitingForMovement
+2026-07-15T00:18:24Z motion.phase stationary
+2026-07-15T00:18:24Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:18:41Z motion.phase movementDetected
+2026-07-15T00:18:42Z motion.phase waitingForMovement
+2026-07-15T00:18:46Z motion.phase stationary
+2026-07-15T00:18:46Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:19:05Z motion.phase movementDetected
+2026-07-15T00:19:07Z motion.phase waitingForMovement
+2026-07-15T00:19:10Z motion.phase stationary
+2026-07-15T00:19:10Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:20:13Z location.idleFailsafe.stop phase=idle
+2026-07-15T00:20:13Z location.stop phase=idle
+2026-07-15T00:20:13Z location.passiveWakeups.start
+2026-07-15T00:30:30Z motion.phase movementDetected
+2026-07-15T00:30:30Z motion.triggerLocationMonitoring
+2026-07-15T00:30:30Z location.passiveWakeups.stop
+2026-07-15T00:30:30Z location.start active authorization=authorizedAlways
+2026-07-15T00:30:35Z motion.phase waitingForMovement
+2026-07-15T00:30:36Z motion.phase movementDetected
+2026-07-15T00:30:45Z motion.phase waitingForMovement
+2026-07-15T00:30:45Z motion.phase movementDetected
+2026-07-15T00:31:03Z motion.phase waitingForMovement
+2026-07-15T00:31:03Z motion.phase movementDetected
+2026-07-15T00:31:04Z motion.phase waitingForMovement
+2026-07-15T00:31:08Z motion.phase stationary
+2026-07-15T00:31:08Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:31:11Z motion.phase movementDetected
+2026-07-15T00:31:12Z motion.phase waitingForMovement
+2026-07-15T00:31:16Z motion.phase stationary
+2026-07-15T00:31:16Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:31:44Z motion.phase movementDetected
+2026-07-15T00:31:46Z motion.phase waitingForMovement
+2026-07-15T00:31:46Z motion.phase movementDetected
+2026-07-15T00:31:47Z motion.phase waitingForMovement
+2026-07-15T00:31:50Z motion.phase movementDetected
+2026-07-15T00:31:50Z motion.phase waitingForMovement
+2026-07-15T00:31:55Z motion.phase stationary
+2026-07-15T00:31:55Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:32:18Z motion.phase movementDetected
+2026-07-15T00:32:19Z motion.phase waitingForMovement
+2026-07-15T00:32:19Z motion.phase movementDetected
+2026-07-15T00:32:19Z motion.phase waitingForMovement
+2026-07-15T00:32:21Z motion.phase movementDetected
+2026-07-15T00:32:21Z motion.phase waitingForMovement
+2026-07-15T00:32:25Z motion.phase stationary
+2026-07-15T00:32:25Z motion.stationaryStop.deferred reason=armingOrMovement
+2026-07-15T00:32:49Z motion.phase movementDetected
+2026-07-15T00:33:01Z motion.phase waitingForMovement
+2026-07-15T00:33:02Z motion.phase movementDetected
+2026-07-15T00:33:16Z motion.phase waitingForMovement
+2026-07-15T00:33:19Z motion.phase movementDetected
+2026-07-15T00:33:20Z motion.phase waitingForMovement
+2026-07-15T00:33:21Z motion.phase movementDetected
+2026-07-15T00:33:21Z motion.phase waitingForMovement
+2026-07-15T00:33:21Z motion.phase movementDetected
+2026-07-15T00:33:27Z motion.phase waitingForMovement
+2026-07-15T00:33:28Z motion.phase movementDetected
+2026-07-15T00:33:29Z motion.phase waitingForMovement
+2026-07-15T00:33:30Z motion.phase movementDetected
+2026-07-15T00:33:30Z motion.phase waitingForMovement
+2026-07-15T00:33:32Z location.idleFailsafe.stop phase=idle
+2026-07-15T00:33:32Z location.stop phase=idle
+2026-07-15T00:33:32Z location.passiveWakeups.start
+2026-07-15T00:33:34Z motion.phase stationary
+2026-07-15T00:33:43Z motion.phase movementDetected
+2026-07-15T00:33:43Z motion.triggerLocationMonitoring
+2026-07-15T00:33:43Z location.passiveWakeups.stop
+2026-07-15T00:33:43Z location.start active authorization=authorizedAlways

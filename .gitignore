@@ -13,3 +13,5 @@ ios/build/
 **/*.xcodeproj/xcuserdata/
 **/*.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcresult
+.derivedData-device/
+.playwright-mcp/

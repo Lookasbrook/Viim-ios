@@ -1,0 +1,11 @@
+2026-07-10T00:37:07Z location.authorization state=authorizedAlways
+2026-07-10T00:37:07Z location.passiveWakeups.start
+2026-07-10T00:37:07Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T00:37:07Z location.passiveWakeup.ignored count=1
+2026-07-10T00:37:15Z motion.phase stationary
+2026-07-10T00:43:06Z trip.maxSpeed.repaired count=6
+2026-07-10T00:43:06Z location.authorization state=authorizedAlways
+2026-07-10T00:43:06Z location.passiveWakeups.start
+2026-07-10T00:43:06Z motion.startAutoDetection vehicleType=voiture
+2026-07-10T00:43:06Z location.passiveWakeup.ignored count=1
+2026-07-10T00:43:15Z motion.phase stationary

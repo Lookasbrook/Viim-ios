@@ -15,7 +15,8 @@ healthRouter.get("/", async (_request, response) => {
   const whatsappStatus = whatsapp.status === "fulfilled" ? whatsapp.value : { status: "error" };
   const dependenciesConfigured =
     requireProductionDependency(config.databaseUrl) &&
-    requireProductionDependency(config.newagentUrl) &&
+    requireProductionDependency(config.newagentHealthUrl) &&
+    requireProductionDependency(config.newagentSendUrl) &&
     requireProductionDependency(config.newagentToken);
   const dependencyErrors = [dbStatus.status, whatsappStatus.status].includes("error");
   const status = dependenciesConfigured && !dependencyErrors ? "ok" : "degraded";

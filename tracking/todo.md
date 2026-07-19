@@ -16,9 +16,9 @@ Rappels transverses : app nommée **Viim** (règle de marque dans `design/brandi
 - [ ] `SensorService` : CoreMotion 50 Hz, filtre passe-bas (alpha selon véhicule), buffer 30 s.
 - [x] `TripManager` + CoreData (`Trip`, `TripEvent`, flag `synced`).
 - [ ] Détection d'événements avec confirmation GPS (sensor-algorithms.md §2-3).
-- [ ] Phase de calibration silencieuse (5 trajets, `calibration: true`).
-- [ ] Onglet Accueil (résumé du jour + statuts + trajets récents).
-- [ ] Onglet Votre conduite : historique + détail trajet (carte, événements).
+- [x] Ancienne phase silencieuse de 5 trajets supprimée par décision produit : score GPS personnel affiché dès le premier trajet enregistré.
+- [x] Onglet Accueil (résumé du jour + statuts + trajets du jour, détail navigation, emplacement coût carburant).
+- [ ] Onglet Votre conduite : historique complet + événements.
 
 ## Phase 2 — Score & sync
 - [ ] `ScoreEngine` : 5 critères + score global + couleur polyline.
@@ -29,15 +29,16 @@ Rappels transverses : app nommée **Viim** (règle de marque dans `design/brandi
 ## Phase 3 — Sécurité (Assistance)
 - [ ] `CollisionDetector` + fenêtre annulation 60 s.
 - [ ] `MedicalVault` (Keychain AES-256) + écran fiche médicale.
-- [ ] Contacts d'urgence + bouton test WhatsApp (`/alerts/test`).
+- [x] Contacts d'urgence + bouton test WhatsApp (`/alerts/test`).
 - [ ] Micro-sync collision (URLSession background) + cascade WhatsApp backend + SMS fallback.
-- [ ] Voir ma localisation, assistance routière (18/17, hôpitaux), constat PDF.
+- [x] Voir ma localisation + partage WhatsApp ponctuel.
+- [ ] Assistance routière complète (18/17, hôpitaux), constat PDF.
 
 ## Phase 4 — Prévention & engagement
 - [ ] Zones dangereuses ONASER + geofencing ; conditions de route.
 - [ ] Entretien véhicule + rappels.
 - [ ] Résumé WhatsApp 20h00 (cron backend via NEwAGENT-IA).
-- [ ] Écoconduite FCFA + saisie de plein ; badges ; classement opt-in.
+- [ ] Écoconduite avancée : conso véhicule, prix carburant, saisie de plein ; badges ; classement opt-in.
 - [ ] Profil & Paramètres complets (export, suppression, batterie, sensibilité).
 
 ## Phase 5 — Validation

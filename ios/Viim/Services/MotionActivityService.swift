@@ -74,6 +74,18 @@ final class MotionActivityService: ObservableObject {
             return
         }
 
+        // Autorisation Mouvement et fitness refusee : sans ce signal, la phase
+        // resterait bloquee sur waitingForMovement et le GPS ne demarrerait
+        // jamais. On passe en .unavailable pour que l'app bascule sur la
+        // detection GPS pure.
+        if CMMotionActivityManager.authorizationStatus() == .denied ||
+            CMMotionActivityManager.authorizationStatus() == .restricted {
+            phase = .unavailable
+            isAutoDetectionActive = false
+            ViimDiagnostics.log("motion.authorizationDenied")
+            return
+        }
+
         guard !isAutoDetectionActive else {
             return
         }
@@ -117,10 +129,34 @@ final class MotionActivityService: ObservableObject {
         }
 
         switch vehicleType {
-        case .moto, .voiture:
-            return snapshot.isAutomotive ? .movementDetected : .waitingForMovement
+        case .voiture:
+            if snapshot.isAutomotive {
+                return .movementDetected
+            }
+            // Mouvement non classe (ni marche, ni course, ni velo) : CoreMotion
+            // hesite souvent en debut de trajet voiture. On lance le GPS, la
+            // detection de trajet (10 km/h soutenus) et le failsafe d'inactivite
+            // tranchent ensuite.
+            if !snapshot.isWalking, !snapshot.isRunning, !snapshot.isCycling {
+                return .movementDetected
+            }
+            return .waitingForMovement
+        case .moto:
+            // CoreMotion classe tres mal les motos (souvent automotive, parfois
+            // cycling, souvent inconnu). Seuls marche et course excluent un
+            // depart moto.
+            if snapshot.isWalking || snapshot.isRunning {
+                return .waitingForMovement
+            }
+            return .movementDetected
         case .velo:
-            return snapshot.isCycling ? .movementDetected : .waitingForMovement
+            if snapshot.isCycling || snapshot.isAutomotive {
+                return .movementDetected
+            }
+            if !snapshot.isWalking, !snapshot.isRunning {
+                return .movementDetected
+            }
+            return .waitingForMovement
         }
     }
 }

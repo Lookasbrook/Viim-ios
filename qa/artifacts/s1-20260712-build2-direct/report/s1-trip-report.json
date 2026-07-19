@@ -1,0 +1,441 @@
+{
+  "generatedAt": "2026-07-12T02:12:51.958995+00:00",
+  "storePath": "/Users/lookasbrook/Documents/Viim-ios/qa/artifacts/s1-20260712-build2-direct/Viim.sqlite",
+  "tripCount": 6,
+  "activeDraftCount": 0,
+  "activeSampleCount": 0,
+  "qualityTelemetryCount": 6,
+  "latestTripAgeHours": 75.02,
+  "localTripsTodayCount": 0,
+  "diagnosticsLogPresent": true,
+  "buildIdentity": {
+    "version": "0.1.0",
+    "build": "2",
+    "gitSHA": "cf47617-dirty",
+    "builtAt": "2026-07-12T02:10:36Z"
+  },
+  "captureSessionCount": 0,
+  "captureSessionsWithoutOutcome": 0,
+  "latestTrip": {
+    "id": "21e20d77-c586-4ca2-b388-df2c3916f3a6",
+    "startDate": "2026-07-08T22:37:00.645223+00:00",
+    "endDate": "2026-07-08T23:11:41.934315+00:00",
+    "distanceKm": 2.0009,
+    "durationSec": 2081,
+    "avgSpeedKmh": 3.46,
+    "maxSpeedKmh": 49.36,
+    "qualityScore": 100,
+    "qualityConfidence": "reliable",
+    "qualityReasonCodes": [
+      "complete"
+    ],
+    "rejectedSegmentCount": 0,
+    "validSegmentCount": 31,
+    "gpsAccuracyAvg": 3.78,
+    "gpsAccuracyP95": 4.75,
+    "routePointCount": 32,
+    "firstRoutePoint": {
+      "timestamp": 805243319.99933,
+      "latitude": 46.89147499409227,
+      "longitude": -71.21369677673371,
+      "speedKmh": 10.26779003602013,
+      "horizontalAccuracy": 2.5658106429829663,
+      "speedAccuracy": null
+    },
+    "lastRoutePoint": {
+      "timestamp": 805245101.934315,
+      "latitude": 46.90647355553514,
+      "longitude": -71.21167193168563,
+      "speedKmh": 0,
+      "horizontalAccuracy": 5,
+      "speedAccuracy": null
+    }
+  },
+  "trips": [
+    {
+      "id": "21e20d77-c586-4ca2-b388-df2c3916f3a6",
+      "startDate": "2026-07-08T22:37:00.645223+00:00",
+      "endDate": "2026-07-08T23:11:41.934315+00:00",
+      "distanceKm": 2.0009,
+      "durationSec": 2081,
+      "avgSpeedKmh": 3.46,
+      "maxSpeedKmh": 49.36,
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 31,
+      "gpsAccuracyAvg": 3.78,
+      "gpsAccuracyP95": 4.75,
+      "routePointCount": 32,
+      "firstRoutePoint": {
+        "timestamp": 805243319.99933,
+        "latitude": 46.89147499409227,
+        "longitude": -71.21369677673371,
+        "speedKmh": 10.26779003602013,
+        "horizontalAccuracy": 2.5658106429829663,
+        "speedAccuracy": null
+      },
+      "lastRoutePoint": {
+        "timestamp": 805245101.934315,
+        "latitude": 46.90647355553514,
+        "longitude": -71.21167193168563,
+        "speedKmh": 0,
+        "horizontalAccuracy": 5,
+        "speedAccuracy": null
+      }
+    },
+    {
+      "id": "62ce3c0a-fc80-4f01-920b-e165c14420f4",
+      "startDate": "2026-07-07T11:02:11.999447+00:00",
+      "endDate": "2026-07-07T14:30:24.818361+00:00",
+      "distanceKm": 4.3486,
+      "durationSec": 12493,
+      "avgSpeedKmh": 1.25,
+      "maxSpeedKmh": 28.29,
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 14,
+      "gpsAccuracyAvg": 11.34,
+      "gpsAccuracyP95": 16.35,
+      "routePointCount": 15,
+      "firstRoutePoint": {
+        "timestamp": 805115232.9996772,
+        "latitude": 46.84683966779733,
+        "longitude": -71.21570316931162,
+        "speedKmh": 10.716277535009787,
+        "horizontalAccuracy": 10.335600059030144,
+        "speedAccuracy": null
+      },
+      "lastRoutePoint": {
+        "timestamp": 805127424.818361,
+        "latitude": 46.80855452768346,
+        "longitude": -71.21810302304131,
+        "speedKmh": 0,
+        "horizontalAccuracy": 12.886269255093477,
+        "speedAccuracy": null
+      }
+    },
+    {
+      "id": "c5b5cc3f-fa1a-4845-8510-41e77c6dd9b7",
+      "startDate": "2026-07-06T21:13:25.031887+00:00",
+      "endDate": "2026-07-06T21:34:12.000236+00:00",
+      "distanceKm": 4.4154,
+      "durationSec": 1247,
+      "avgSpeedKmh": 12.75,
+      "maxSpeedKmh": 50.18,
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 1250,
+      "gpsAccuracyAvg": 6.37,
+      "gpsAccuracyP95": 16.24,
+      "routePointCount": 1251,
+      "firstRoutePoint": {
+        "timestamp": 805065205.031887,
+        "latitude": 46.901030627192675,
+        "longitude": -71.20918986550917,
+        "speedKmh": 11.631842085303607,
+        "horizontalAccuracy": 4.748651441625161,
+        "speedAccuracy": null
+      },
+      "lastRoutePoint": {
+        "timestamp": 805066452.0002364,
+        "latitude": 46.906462587324896,
+        "longitude": -71.21168127533618,
+        "speedKmh": 0,
+        "horizontalAccuracy": 4.74865153019176,
+        "speedAccuracy": null
+      }
+    },
+    {
+      "id": "054c5ed6-95ff-4b18-8a92-85ab0c7cee70",
+      "startDate": "2026-07-06T19:51:15.027508+00:00",
+      "endDate": "2026-07-06T20:37:51.999940+00:00",
+      "distanceKm": 14.0253,
+      "durationSec": 2797,
+      "avgSpeedKmh": 18.05,
+      "maxSpeedKmh": 90.82,
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 2804,
+      "gpsAccuracyAvg": 5.72,
+      "gpsAccuracyP95": 11.88,
+      "routePointCount": 2805,
+      "firstRoutePoint": {
+        "timestamp": 805060275.027508,
+        "latitude": 46.81628944447981,
+        "longitude": -71.21650300917683,
+        "speedKmh": 71.07298753791636,
+        "horizontalAccuracy": 3.566620080319795,
+        "speedAccuracy": null
+      },
+      "lastRoutePoint": {
+        "timestamp": 805063071.9999399,
+        "latitude": 46.90644647400628,
+        "longitude": -71.21173274100069,
+        "speedKmh": 0,
+        "horizontalAccuracy": 4.7486515301917525,
+        "speedAccuracy": null
+      }
+    },
+    {
+      "id": "047cde45-b468-4b23-82d3-1f964abc289d",
+      "startDate": "2026-07-06T10:41:52.030372+00:00",
+      "endDate": "2026-07-06T11:22:15.443387+00:00",
+      "distanceKm": 14.0477,
+      "durationSec": 2423,
+      "avgSpeedKmh": 20.87,
+      "maxSpeedKmh": 186.06,
+      "qualityScore": 70,
+      "qualityConfidence": "partial",
+      "qualityReasonCodes": [
+        "impossibleSpeed"
+      ],
+      "rejectedSegmentCount": 2,
+      "validSegmentCount": 2271,
+      "gpsAccuracyAvg": 5.95,
+      "gpsAccuracyP95": 14.24,
+      "routePointCount": 2274,
+      "firstRoutePoint": {
+        "timestamp": 805027312.030372,
+        "latitude": 46.90221647270666,
+        "longitude": -71.20931544347779,
+        "speedKmh": 29.051998901367188,
+        "horizontalAccuracy": 3.5355339059327373,
+        "speedAccuracy": null
+      },
+      "lastRoutePoint": {
+        "timestamp": 805029735.443387,
+        "latitude": 46.80854850113164,
+        "longitude": -71.21821034138037,
+        "speedKmh": 0.03184566214174845,
+        "horizontalAccuracy": 10.30369671467039,
+        "speedAccuracy": null
+      }
+    },
+    {
+      "id": "c90c2c87-5e1f-4794-a20b-0f9adfc51c96",
+      "startDate": "2026-07-05T18:53:23.029009+00:00",
+      "endDate": "2026-07-05T20:01:04.479942+00:00",
+      "distanceKm": 7.9195,
+      "durationSec": 4061,
+      "avgSpeedKmh": 7.02,
+      "maxSpeedKmh": 55.8,
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 52,
+      "gpsAccuracyAvg": 4.4,
+      "gpsAccuracyP95": 5.18,
+      "routePointCount": 53,
+      "firstRoutePoint": {
+        "timestamp": 804970703.999055,
+        "latitude": 46.843820519088794,
+        "longitude": -71.21904831429275,
+        "speedKmh": 54.90077733677165,
+        "horizontalAccuracy": 5.176952855939975,
+        "speedAccuracy": null
+      },
+      "lastRoutePoint": {
+        "timestamp": 804973034.141188,
+        "latitude": 46.90647359845633,
+        "longitude": -71.21167117679137,
+        "speedKmh": 0,
+        "horizontalAccuracy": 5,
+        "speedAccuracy": null
+      }
+    }
+  ],
+  "activeDrafts": [],
+  "recentQualityTelemetry": [
+    {
+      "tripId": "21e20d77-c586-4ca2-b388-df2c3916f3a6",
+      "createdAt": "2026-07-09T03:04:11.434797+00:00",
+      "decisionSource": "historicalRecalculation",
+      "vehicleType": "voiture",
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "acceptedForStorage": true,
+      "sampleCount": 32,
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 31
+    },
+    {
+      "tripId": "62ce3c0a-fc80-4f01-920b-e165c14420f4",
+      "createdAt": "2026-07-09T03:04:11.434611+00:00",
+      "decisionSource": "historicalRecalculation",
+      "vehicleType": "voiture",
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "acceptedForStorage": true,
+      "sampleCount": 15,
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 14
+    },
+    {
+      "tripId": "c5b5cc3f-fa1a-4845-8510-41e77c6dd9b7",
+      "createdAt": "2026-07-09T03:04:11.433672+00:00",
+      "decisionSource": "historicalRecalculation",
+      "vehicleType": "voiture",
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "acceptedForStorage": true,
+      "sampleCount": 1251,
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 1250
+    },
+    {
+      "tripId": "054c5ed6-95ff-4b18-8a92-85ab0c7cee70",
+      "createdAt": "2026-07-09T03:04:11.425316+00:00",
+      "decisionSource": "historicalRecalculation",
+      "vehicleType": "voiture",
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "acceptedForStorage": true,
+      "sampleCount": 2805,
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 2804
+    },
+    {
+      "tripId": "047cde45-b468-4b23-82d3-1f964abc289d",
+      "createdAt": "2026-07-09T03:04:11.409061+00:00",
+      "decisionSource": "historicalRecalculation",
+      "vehicleType": "voiture",
+      "qualityScore": 70,
+      "qualityConfidence": "partial",
+      "qualityReasonCodes": [
+        "impossibleSpeed"
+      ],
+      "acceptedForStorage": true,
+      "sampleCount": 2274,
+      "rejectedSegmentCount": 2,
+      "validSegmentCount": 2271
+    },
+    {
+      "tripId": "c90c2c87-5e1f-4794-a20b-0f9adfc51c96",
+      "createdAt": "2026-07-09T03:04:11.396615+00:00",
+      "decisionSource": "historicalRecalculation",
+      "vehicleType": "voiture",
+      "qualityScore": 100,
+      "qualityConfidence": "reliable",
+      "qualityReasonCodes": [
+        "complete"
+      ],
+      "acceptedForStorage": true,
+      "sampleCount": 53,
+      "rejectedSegmentCount": 0,
+      "validSegmentCount": 52
+    }
+  ],
+  "recentDiagnostics": [
+    "2026-07-12T00:50:07Z motion.stationaryStopLocationMonitoring",
+    "2026-07-12T00:50:07Z location.stop phase=idle",
+    "2026-07-12T00:50:49Z motion.phase movementDetected",
+    "2026-07-12T00:50:49Z motion.triggerLocationMonitoring",
+    "2026-07-12T00:50:49Z location.start active authorization=authorizedAlways",
+    "2026-07-12T00:50:52Z motion.phase waitingForMovement",
+    "2026-07-12T00:50:55Z motion.phase stationary",
+    "2026-07-12T00:50:55Z motion.stationaryStopLocationMonitoring",
+    "2026-07-12T00:50:55Z location.stop phase=idle",
+    "2026-07-12T01:00:19Z location.authorization state=authorizedAlways",
+    "2026-07-12T01:00:19Z location.passiveWakeups.start",
+    "2026-07-12T01:00:19Z location.passiveWakeup.ignored count=1",
+    "2026-07-12T01:00:19Z motion.startAutoDetection vehicleType=voiture",
+    "2026-07-12T01:00:19Z motion.phase waitingForMovement",
+    "2026-07-12T01:00:19Z motion.phase stationary",
+    "2026-07-12T01:26:35Z motion.phase movementDetected",
+    "2026-07-12T01:26:35Z motion.triggerLocationMonitoring",
+    "2026-07-12T01:26:35Z location.backgroundSession.start",
+    "2026-07-12T01:26:35Z location.start active authorization=authorizedAlways",
+    "2026-07-12T01:26:36Z motion.phase waitingForMovement",
+    "2026-07-12T01:26:40Z motion.phase stationary",
+    "2026-07-12T01:26:40Z motion.stationaryStopLocationMonitoring",
+    "2026-07-12T01:26:40Z location.backgroundSession.end",
+    "2026-07-12T01:26:40Z location.stop phase=idle",
+    "2026-07-12T01:54:06Z motion.phase movementDetected",
+    "2026-07-12T01:54:06Z motion.triggerLocationMonitoring",
+    "2026-07-12T01:54:06Z location.backgroundSession.start",
+    "2026-07-12T01:54:06Z location.start active authorization=authorizedAlways",
+    "2026-07-12T01:54:08Z motion.phase waitingForMovement",
+    "2026-07-12T01:54:13Z motion.phase stationary",
+    "2026-07-12T01:54:13Z motion.stationaryStopLocationMonitoring",
+    "2026-07-12T01:54:13Z location.backgroundSession.end",
+    "2026-07-12T01:54:13Z location.stop phase=idle",
+    "2026-07-12T01:55:38Z motion.phase movementDetected",
+    "2026-07-12T01:55:38Z motion.triggerLocationMonitoring",
+    "2026-07-12T01:55:38Z location.backgroundSession.start",
+    "2026-07-12T01:55:38Z location.start active authorization=authorizedAlways",
+    "2026-07-12T01:55:45Z motion.phase waitingForMovement",
+    "2026-07-12T01:55:45Z motion.phase movementDetected",
+    "2026-07-12T01:55:55Z motion.phase waitingForMovement",
+    "2026-07-12T01:55:57Z motion.phase movementDetected",
+    "2026-07-12T01:55:59Z motion.phase waitingForMovement",
+    "2026-07-12T01:56:00Z motion.phase movementDetected",
+    "2026-07-12T01:56:00Z motion.phase waitingForMovement",
+    "2026-07-12T01:56:00Z motion.phase movementDetected",
+    "2026-07-12T01:56:14Z motion.phase waitingForMovement",
+    "2026-07-12T01:56:16Z motion.phase movementDetected",
+    "2026-07-12T01:56:25Z motion.phase waitingForMovement",
+    "2026-07-12T01:56:25Z motion.phase movementDetected",
+    "2026-07-12T01:56:29Z motion.phase waitingForMovement",
+    "2026-07-12T01:56:30Z motion.phase movementDetected",
+    "2026-07-12T01:56:30Z motion.phase waitingForMovement",
+    "2026-07-12T01:56:31Z motion.phase movementDetected",
+    "2026-07-12T01:56:31Z motion.phase waitingForMovement",
+    "2026-07-12T01:56:37Z motion.phase stationary",
+    "2026-07-12T01:56:37Z motion.stationaryStopLocationMonitoring",
+    "2026-07-12T01:56:37Z location.backgroundSession.end",
+    "2026-07-12T01:56:37Z location.stop phase=idle",
+    "2026-07-12T01:56:38Z motion.phase movementDetected",
+    "2026-07-12T01:56:38Z motion.triggerLocationMonitoring",
+    "2026-07-12T01:56:38Z location.backgroundSession.start",
+    "2026-07-12T01:56:38Z location.start active authorization=authorizedAlways",
+    "2026-07-12T01:56:42Z motion.phase waitingForMovement",
+    "2026-07-12T01:56:46Z motion.phase movementDetected",
+    "2026-07-12T02:11:51Z app.launch version=0.1.0 build=2 sha=cf47617-dirty builtAt=2026-07-12T02:10:36Z",
+    "2026-07-12T02:11:51Z location.authorization state=authorizedAlways",
+    "2026-07-12T02:11:51Z location.passiveWakeups.start",
+    "2026-07-12T02:11:51Z location.passiveWakeup.ignored count=1",
+    "2026-07-12T02:11:51Z motion.startAutoDetection vehicleType=voiture",
+    "2026-07-12T02:11:51Z motion.phase waitingForMovement",
+    "2026-07-12T02:11:51Z motion.phase waitingForMovement",
+    "2026-07-12T02:11:51Z motion.phase movementDetected",
+    "2026-07-12T02:11:51Z motion.triggerLocationMonitoring",
+    "2026-07-12T02:11:51Z location.backgroundSession.start",
+    "2026-07-12T02:11:51Z location.start active authorization=authorizedAlways",
+    "2026-07-12T02:11:53Z motion.phase waitingForMovement",
+    "2026-07-12T02:11:54Z motion.phase movementDetected",
+    "2026-07-12T02:11:58Z motion.phase waitingForMovement",
+    "2026-07-12T02:12:02Z motion.phase stationary",
+    "2026-07-12T02:12:02Z motion.stationaryStop.deferred reason=armingOrMovement"
+  ]
+}

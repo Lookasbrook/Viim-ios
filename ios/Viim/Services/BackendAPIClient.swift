@@ -1,10 +1,12 @@
 import CoreLocation
 import Foundation
 
-enum BackendAPIError: Error {
+enum BackendAPIError: Error, Equatable {
     case invalidURL
     case invalidResponse
-    case serverStatus(Int)
+    case apiStatus(statusCode: Int, code: String?)
+    case network(URLError.Code)
+    case transport
 }
 
 final class BackendAPIClient {
@@ -48,14 +50,31 @@ final class BackendAPIClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(payload)
 
-        let (_, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let urlError as URLError {
+            ViimDiagnostics.log("api.post.transport path=/v1/\(path) urlError=\(urlError.code.rawValue)")
+            throw BackendAPIError.network(urlError.code)
+        } catch {
+            ViimDiagnostics.log("api.post.transport path=/v1/\(path) error=unknown")
+            throw BackendAPIError.transport
+        }
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw BackendAPIError.invalidResponse
         }
         guard 200..<300 ~= httpResponse.statusCode else {
-            throw BackendAPIError.serverStatus(httpResponse.statusCode)
+            let apiError = try? JSONDecoder().decode(APIErrorPayload.self, from: data)
+            ViimDiagnostics.log("api.post.failure path=/v1/\(path) status=\(httpResponse.statusCode) code=\(apiError?.error ?? "none")")
+            throw BackendAPIError.apiStatus(statusCode: httpResponse.statusCode, code: apiError?.error)
         }
     }
+}
+
+private struct APIErrorPayload: Decodable {
+    let error: String?
 }
 
 private struct AlertContactPayload: Encodable {

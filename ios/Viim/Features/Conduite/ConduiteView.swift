@@ -2,12 +2,15 @@ import SwiftUI
 
 struct ConduiteView: View {
     @EnvironmentObject private var tripManager: TripManager
+    @EnvironmentObject private var onboardingStore: OnboardingStore
+    @State private var hasAppeared = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
-                    DrivingHeroCard(summary: tripManager.last30DaysSummary)
+                    DrivingHeroCard(summary: summary, animate: hasAppeared)
+                        .staggeredAppear(hasAppeared, index: 0)
 
                     Text("driving.period")
                         .font(.caption)
@@ -17,27 +20,35 @@ struct ConduiteView: View {
                     SectionTitle(titleKey: "driving.performance.section", systemImage: "info.circle.fill", tint: ViimColors.blue)
 
                     ViimCard {
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text("driving.performance.badges")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(ViimColors.text)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Text("driving.performance.cityAverage")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(ViimColors.blue)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(performanceTitle)
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(ViimColors.text)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    if scoreMetric.value != nil {
+                                        ViimChip(titleKey: "driving.score.partialChip", style: .neutral)
+                                    }
+                                }
+                                Spacer(minLength: 8)
+                                ScoreRing(
+                                    score: scoreMetric.value,
+                                    text: displayedScoreText,
+                                    color: displayedScoreColor,
+                                    animate: hasAppeared
+                                )
                             }
-                            Spacer(minLength: 8)
-                            ScoreRing(valueKey: "driving.performance.percent", color: ViimColors.navy)
+
+                            Text(performanceDetail)
+                                .font(.caption)
+                                .foregroundStyle(ViimColors.muted)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
 
-                    CompactInfoRow(
-                        icon: "fuelpump.fill",
-                        titleKey: "driving.eco.title",
-                        detailKey: "driving.eco.savings",
-                        tint: ViimColors.green
-                    )
+                    EcoSummaryRow(summary: summary, settings: onboardingStore.fuelSettings)
+                        .staggeredAppear(hasAppeared, index: 2)
 
                     CompactInfoRow(
                         icon: "medal.fill",
@@ -47,50 +58,62 @@ struct ConduiteView: View {
                     )
 
                     NavigationLink {
-                        DrivingStyleDetailView(summary: tripManager.last30DaysSummary)
+                        DrivingStyleDetailView(
+                            summary: summary,
+                            speedMetric: scoreMetric,
+                            animate: true
+                        )
                     } label: {
                         Text("driving.action.style")
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 46)
-                            .background(ViimColors.blue)
+                            .background(
+                                LinearGradient(
+                                    colors: [ViimColors.blue, Color(hex: 0x2361A0)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .shadow(color: ViimColors.blue.opacity(0.28), radius: 6, x: 0, y: 3)
                     }
+                    .buttonStyle(PressableButtonStyle())
 
                     SectionTitle(titleKey: "driving.portrait.title", systemImage: "gauge.medium", tint: ViimColors.blue)
 
-                    DrivingCriterionCard(
-                        icon: "speedometer",
-                        titleKey: "driving.criteria.speed",
-                        valueKey: "driving.criteria.speed.value",
-                        detailKey: "driving.criteria.speed.detail",
-                        progress: 0,
-                        color: ViimColors.success
-                    )
-                    DrivingCriterionCard(
-                        icon: "waveform.path.ecg",
-                        titleKey: "driving.criteria.smoothness",
-                        valueKey: "driving.criteria.smoothness.value",
-                        detailKey: "driving.criteria.smoothness.detail",
-                        progress: 0,
-                        color: ViimColors.warning
-                    )
-                    DrivingCriterionCard(
+                    SpeedCriterionCard(metric: scoreMetric, animate: hasAppeared)
+
+                    if let fluidityScore = summary.avgScoreFluidite {
+                        ScoreCriterionCard(
+                            icon: "waveform.path.ecg",
+                            titleKey: "driving.criteria.smoothness",
+                            detailKey: "driving.criteria.smoothness.detail.real",
+                            score: fluidityScore,
+                            animate: hasAppeared
+                        )
+                    } else {
+                        UpcomingCriterionCard(
+                            icon: "waveform.path.ecg",
+                            titleKey: "driving.criteria.smoothness",
+                            detailKey: "driving.criteria.smoothness.detail"
+                        )
+                    }
+                    if let ecoScore = summary.avgScoreEco {
+                        ScoreCriterionCard(
+                            icon: "leaf.fill",
+                            titleKey: "driving.criteria.eco",
+                            detailKey: "driving.criteria.eco.detail.real",
+                            score: ecoScore,
+                            animate: hasAppeared
+                        )
+                    }
+                    UpcomingCriterionCard(
                         icon: "iphone.slash",
                         titleKey: "driving.criteria.vigilance",
-                        valueKey: "driving.criteria.vigilance.value",
-                        detailKey: "driving.criteria.vigilance.detail",
-                        progress: 0,
-                        color: ViimColors.success
+                        detailKey: "driving.criteria.vigilance.detail"
                     )
-
-                    ViimCard {
-                        HStack(spacing: 10) {
-                            StatusPill(icon: "shield.fill", titleKey: "driving.security.title", valueKey: "driving.security.status", tint: ViimColors.warning)
-                            StatusPill(icon: "leaf.fill", titleKey: "driving.eco.shortTitle", valueKey: "driving.eco.improvement", tint: ViimColors.green)
-                        }
-                    }
 
                     AdviceCard(
                         titleKey: "driving.advice.title",
@@ -103,63 +126,123 @@ struct ConduiteView: View {
             }
             .background(ViimColors.background.ignoresSafeArea())
             .navigationTitle("driving.title")
+            .onAppear {
+                guard !hasAppeared else { return }
+                withAnimation(.spring(response: 0.7, dampingFraction: 0.8).delay(0.15)) {
+                    hasAppeared = true
+                }
+            }
         }
+    }
+
+    private var summary: DrivingSummary {
+        tripManager.last30DaysSummary
+    }
+
+    private var displayedScoreText: String {
+        DrivingValueFormatter.scoreText(scoreMetric)
+    }
+
+    private var displayedScoreColor: Color {
+        guard let score = scoreMetric.value else {
+            return ViimColors.navy
+        }
+        if score >= 80 { return ViimColors.success }
+        if score >= 60 { return ViimColors.warning }
+        return ViimColors.danger
+    }
+
+    private var performanceTitle: String {
+        guard scoreMetric.value != nil else {
+            return String(localized: "driving.performance.empty")
+        }
+        return String.localizedStringWithFormat(
+            String(localized: "driving.performance.basedOnTrips"),
+            summary.tripsCount
+        )
+    }
+
+    private var performanceDetail: String {
+        guard scoreMetric.value != nil else {
+            return String(localized: "driving.performance.empty.detail")
+        }
+        return String(localized: "driving.performance.detail")
+    }
+
+    private var scoreMetric: ReliableMetric<Int> {
+        TripMetricsCalculator.summaryScoreMetric(summary)
     }
 }
 
 private struct DrivingStyleDetailView: View {
     let summary: DrivingSummary
+    let speedMetric: ReliableMetric<Int>
+    let animate: Bool
+    @State private var hasAppeared = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
-                DrivingHeroCard(summary: summary)
+                DrivingHeroCard(summary: summary, animate: hasAppeared)
                 ViimCard {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("driving.portrait.title")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(ViimColors.text)
-                        Text("driving.advice.detail")
+                        Text("driving.portrait.explanation")
                             .font(.body)
                             .foregroundStyle(ViimColors.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                DrivingCriterionCard(
-                    icon: "speedometer",
-                    titleKey: "driving.criteria.speed",
-                    valueKey: "driving.criteria.speed.value",
-                    detailKey: "driving.criteria.speed.detail",
-                    progress: 0,
-                    color: ViimColors.success
-                )
-                DrivingCriterionCard(
-                    icon: "waveform.path.ecg",
-                    titleKey: "driving.criteria.smoothness",
-                    valueKey: "driving.criteria.smoothness.value",
-                    detailKey: "driving.criteria.smoothness.detail",
-                    progress: 0,
-                    color: ViimColors.warning
-                )
-                DrivingCriterionCard(
+                SpeedCriterionCard(metric: speedMetric, animate: hasAppeared)
+                if let fluidityScore = summary.avgScoreFluidite {
+                    ScoreCriterionCard(
+                        icon: "waveform.path.ecg",
+                        titleKey: "driving.criteria.smoothness",
+                        detailKey: "driving.criteria.smoothness.detail.real",
+                        score: fluidityScore,
+                        animate: hasAppeared
+                    )
+                } else {
+                    UpcomingCriterionCard(
+                        icon: "waveform.path.ecg",
+                        titleKey: "driving.criteria.smoothness",
+                        detailKey: "driving.criteria.smoothness.detail"
+                    )
+                }
+                if let ecoScore = summary.avgScoreEco {
+                    ScoreCriterionCard(
+                        icon: "leaf.fill",
+                        titleKey: "driving.criteria.eco",
+                        detailKey: "driving.criteria.eco.detail.real",
+                        score: ecoScore,
+                        animate: hasAppeared
+                    )
+                }
+                UpcomingCriterionCard(
                     icon: "iphone.slash",
                     titleKey: "driving.criteria.vigilance",
-                    valueKey: "driving.criteria.vigilance.value",
-                    detailKey: "driving.criteria.vigilance.detail",
-                    progress: 0,
-                    color: ViimColors.success
+                    detailKey: "driving.criteria.vigilance.detail"
                 )
             }
             .padding(14)
         }
         .background(ViimColors.background.ignoresSafeArea())
         .navigationTitle("driving.portrait.title")
+        .onAppear {
+            guard !hasAppeared else { return }
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.8).delay(0.15)) {
+                hasAppeared = true
+            }
+        }
     }
 }
 
 private struct DrivingHeroCard: View {
     let summary: DrivingSummary
+    var animate = true
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -169,7 +252,7 @@ private struct DrivingHeroCard: View {
                 endPoint: .bottomTrailing
             )
 
-            MountainScene()
+            MountainScene(animate: animate)
                 .padding(.top, 18)
 
             HStack(spacing: 0) {
@@ -189,6 +272,8 @@ private struct DrivingHeroCard: View {
 }
 
 private struct MountainScene: View {
+    var animate = true
+
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
@@ -214,11 +299,14 @@ private struct MountainScene: View {
                 Circle()
                     .fill(ViimColors.gold)
                     .frame(width: 18, height: 18)
+                    .scaleEffect(animate ? 1 : 0.2)
+                    .opacity(animate ? 1 : 0)
                     .position(x: width * 0.40, y: height * 0.35)
 
                 Image(systemName: "flag.fill")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(ViimColors.red)
+                    .opacity(animate ? 1 : 0)
                     .position(x: width * 0.55, y: height * 0.21)
             }
         }
@@ -235,6 +323,7 @@ private struct HeroMetric: View {
             Text(value)
                 .font(.system(size: 18, weight: .heavy))
                 .foregroundStyle(ViimColors.navy)
+                .contentTransition(.numericText())
             Text(labelKey)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(ViimColors.muted)
@@ -263,18 +352,101 @@ private struct SectionTitle: View {
 }
 
 private struct ScoreRing: View {
-    let valueKey: LocalizedStringKey
+    let score: Int?
+    let text: String
     let color: Color
+    var animate = true
 
     var body: some View {
         ZStack {
             Circle()
-                .fill(color)
-            Text(valueKey)
-                .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
+                .stroke(color.opacity(0.15), lineWidth: 7)
+
+            if let score {
+                Circle()
+                    .trim(from: 0, to: animate ? CGFloat(min(max(score, 0), 100)) / 100 : 0.02)
+                    .stroke(
+                        AngularGradient(
+                            colors: [color.opacity(0.6), color],
+                            center: .center,
+                            startAngle: .degrees(-90),
+                            endAngle: .degrees(270)
+                        ),
+                        style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .animation(.spring(response: 0.9, dampingFraction: 0.85).delay(0.2), value: animate)
+            }
+
+            Text(text)
+                .font(.system(size: 19, weight: .heavy, design: .rounded))
+                .foregroundStyle(score == nil ? ViimColors.muted : color)
+                .contentTransition(.numericText())
         }
-        .frame(width: 58, height: 58)
+        .frame(width: 64, height: 64)
+        .scaleEffect(animate ? 1 : 0.7)
+        .opacity(animate ? 1 : 0)
+    }
+}
+
+private struct EcoSummaryRow: View {
+    let summary: DrivingSummary
+    let settings: FuelSettings?
+
+    var body: some View {
+        ViimCard {
+            HStack(spacing: 12) {
+                Image(systemName: "fuelpump.fill")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(ViimColors.green)
+                    .frame(width: 34, height: 34)
+                    .background(ViimColors.green.opacity(0.12))
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("driving.eco.title")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(ViimColors.text)
+                    if hasRealEstimate {
+                        Text("driving.eco.estimatedTag")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(ViimColors.muted)
+                    }
+                }
+                Spacer(minLength: 8)
+                Text(detailText)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(ViimColors.green)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+    }
+
+    private var hasRealEstimate: Bool {
+        summary.fuelLiters != nil && summary.tripsCount > 0
+    }
+
+    private var detailText: String {
+        guard let liters = summary.fuelLiters, summary.tripsCount > 0 else {
+            return String(localized: "driving.eco.savings")
+        }
+
+        let litersText = String.localizedStringWithFormat(
+            String(localized: "driving.eco.litersFormat"),
+            liters
+        )
+
+        if let settings {
+            let costMetric = TripMetricsCalculator.fuelCostMetric(
+                liters: liters,
+                settings: settings
+            )
+            if costMetric.value != nil {
+                let costText = DrivingValueFormatter.moneyText(costMetric, currency: settings.currency)
+                return "\(litersText) · \(costText)"
+            }
+        }
+
+        return litersText
     }
 }
 
@@ -306,13 +478,71 @@ private struct CompactInfoRow: View {
     }
 }
 
-private struct DrivingCriterionCard: View {
+private struct SpeedCriterionCard: View {
+    let metric: ReliableMetric<Int>
+    var animate = true
+
+    var body: some View {
+        ViimCard {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
+                    Label("driving.criteria.speed", systemImage: "speedometer")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(ViimColors.text)
+                    Spacer()
+                    if metric.value != nil {
+                        ViimChip(titleKey: "driving.score.partialChip", style: .neutral)
+                    }
+                }
+
+                if let score = metric.value {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text(String(score))
+                            .font(.system(size: 27, weight: .heavy, design: .rounded))
+                            .foregroundStyle(color(for: score))
+                            .contentTransition(.numericText())
+                        Text("driving.criteria.speed.unit")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(ViimColors.muted)
+                    }
+
+                    Text("driving.criteria.speed.detail.real")
+                        .font(.caption)
+                        .foregroundStyle(ViimColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    AnimatedProgressBar(
+                        progress: CGFloat(score) / 100,
+                        color: color(for: score),
+                        animate: animate
+                    )
+                } else {
+                    Text("format.score.empty")
+                        .font(.system(size: 27, weight: .heavy, design: .rounded))
+                        .foregroundStyle(ViimColors.muted)
+
+                    Text("driving.criteria.speed.detail")
+                        .font(.caption)
+                        .foregroundStyle(ViimColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func color(for score: Int) -> Color {
+        if score >= 80 { return ViimColors.success }
+        if score >= 60 { return ViimColors.warning }
+        return ViimColors.danger
+    }
+}
+
+private struct ScoreCriterionCard: View {
     let icon: String
     let titleKey: LocalizedStringKey
-    let valueKey: LocalizedStringKey
     let detailKey: LocalizedStringKey
-    let progress: CGFloat
-    let color: Color
+    let score: Int
+    var animate = true
 
     var body: some View {
         ViimCard {
@@ -322,63 +552,95 @@ private struct DrivingCriterionCard: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(ViimColors.text)
                     Spacer()
-                    Image(systemName: "info.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(ViimColors.blue)
+                    ViimChip(titleKey: "driving.score.partialChip", style: .neutral)
                 }
 
-                Text(valueKey)
-                    .font(.system(size: 27, weight: .heavy, design: .rounded))
-                    .foregroundStyle(color)
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(String(score))
+                        .font(.system(size: 27, weight: .heavy, design: .rounded))
+                        .foregroundStyle(color(for: score))
+                        .contentTransition(.numericText())
+                    Text("driving.criteria.speed.unit")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(ViimColors.muted)
+                }
 
                 Text(detailKey)
                     .font(.caption)
                     .foregroundStyle(ViimColors.muted)
                     .fixedSize(horizontal: false, vertical: true)
 
-                ProgressBar(progress: progress, color: color)
+                AnimatedProgressBar(
+                    progress: CGFloat(score) / 100,
+                    color: color(for: score),
+                    animate: animate
+                )
+            }
+        }
+    }
+
+    private func color(for score: Int) -> Color {
+        if score >= 80 { return ViimColors.success }
+        if score >= 60 { return ViimColors.warning }
+        return ViimColors.danger
+    }
+}
+
+private struct UpcomingCriterionCard: View {
+    let icon: String
+    let titleKey: LocalizedStringKey
+    let detailKey: LocalizedStringKey
+
+    var body: some View {
+        ViimCard {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
+                    Label(titleKey, systemImage: icon)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(ViimColors.text)
+                    Spacer()
+                    ViimChip(titleKey: "driving.criteria.comingSoon", style: .warning)
+                }
+
+                Text(detailKey)
+                    .font(.caption)
+                    .foregroundStyle(ViimColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 }
 
-private struct ProgressBar: View {
+struct AnimatedProgressBar: View {
     let progress: CGFloat
     let color: Color
+    var animate = true
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color(hex: 0xE3EAF1))
                 Capsule()
-                    .fill(color)
-                    .frame(width: max(8, proxy.size.width * min(max(progress, 0), 1)))
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.75), color],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: animate ? max(8, proxy.size.width * min(max(progress, 0), 1)) : 8)
             }
         }
         .frame(height: 8)
     }
 }
 
-private struct StatusPill: View {
-    let icon: String
-    let titleKey: LocalizedStringKey
-    let valueKey: LocalizedStringKey
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: icon)
-                .foregroundStyle(tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(titleKey)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(ViimColors.text)
-                Text(valueKey)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(tint)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(.spring(response: 0.28, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 

@@ -1,9 +1,20 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
+import { createAlertStore } from "../services/alertStore.js";
 import { sendWhatsAppMessage } from "../services/newagent.js";
 
-const burkinaPhonePattern = /^\+226\d{8}$/;
+// E.164 : indicatif international explicite, 8 a 15 chiffres au total.
+// Les numeros burkinabe (+226XXXXXXXX) restent valides ; les contacts des
+// utilisateurs hors Burkina (ex. +1 Canada) le deviennent aussi.
+const e164PhonePattern = /^\+[1-9]\d{6,14}$/;
+const maxContactsPerAlert = 4;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export function createAlertsRouter({ sendMessage = sendWhatsAppMessage } = {}) {
+export function createAlertsRouter({
+  sendMessage = sendWhatsAppMessage,
+  logger = console,
+  alertStore = createAlertStore()
+} = {}) {
   const router = Router();
 
   router.post("/test", async (request, response) => {
@@ -18,7 +29,7 @@ export function createAlertsRouter({ sendMessage = sendWhatsAppMessage } = {}) {
       "Si vous recevez ce message, son canal WhatsApp d'urgence est prêt."
     ].join(" ");
 
-    return dispatchWhatsApp(response, sendMessage, {
+    return dispatchWhatsApp(response, sendMessage, logger, alertStore, {
       kind: "alert_test",
       to: parsed.contact.phoneNumber,
       message,
@@ -47,7 +58,7 @@ export function createAlertsRouter({ sendMessage = sendWhatsAppMessage } = {}) {
       mapsUrl
     ].join(" ");
 
-    return dispatchWhatsApp(response, sendMessage, {
+    return dispatchWhatsApp(response, sendMessage, logger, alertStore, {
       kind: "location_share",
       to: parsed.contact.phoneNumber,
       message,
@@ -79,7 +90,7 @@ export function createAlertsRouter({ sendMessage = sendWhatsAppMessage } = {}) {
 
     const medicalProfile = parseMedicalProfile(request.body.medicalProfile);
 
-    return dispatchWhatsApp(response, sendMessage, {
+    return dispatchWhatsApp(response, sendMessage, logger, alertStore, {
       kind: "collision",
       to: contacts.value[0].phoneNumber,
       message,
@@ -94,20 +105,94 @@ export function createAlertsRouter({ sendMessage = sendWhatsAppMessage } = {}) {
     });
   });
 
+  router.get("/:id", async (request, response) => {
+    const alertId = cleanRequiredString(request.params.id);
+    if (!alertId || !uuidPattern.test(alertId)) {
+      return response.status(422).json({ error: "invalid_alert_id" });
+    }
+
+    try {
+      const alert = await alertStore.findById(alertId);
+      if (!alert) {
+        return response.status(404).json({ error: "not_found" });
+      }
+      return response.status(200).json(alert);
+    } catch (error) {
+      logger.warn("whatsapp.alert.lookup.failure", {
+        alertId,
+        providerCode: error.message ?? null
+      });
+      return response.status(503).json({ error: "alert_status_unavailable" });
+    }
+  });
+
   return router;
 }
 
-async function dispatchWhatsApp(response, sendMessage, payload) {
+async function dispatchWhatsApp(response, sendMessage, logger, alertStore, payload) {
+  const alertId = randomUUID();
+
+  try {
+    await alertStore.create({ id: alertId, ...payload });
+  } catch (error) {
+    logger.warn("whatsapp.alert.persist.failure", {
+      kind: payload.kind,
+      alertId,
+      providerCode: error.message ?? null
+    });
+    return response.status(503).json({
+      error: "alert_store_unavailable",
+      alertId
+    });
+  }
+
   try {
     const result = await sendMessage(payload);
+    try {
+      await alertStore.markSent(alertId, result);
+    } catch (error) {
+      logger.warn("whatsapp.alert.persist.failure", {
+        kind: payload.kind,
+        alertId,
+        providerCode: error.message ?? null
+      });
+    }
+
+    logger.info("whatsapp.dispatch.success", {
+      kind: payload.kind,
+      providerStatus: result.code ?? null,
+      providerCode: result.status ?? null,
+      providerMessageId: result.providerMessageId ?? null,
+      alertId
+    });
     return response.status(200).json({
       status: "sent",
-      providerStatus: result.status,
-      providerCode: result.code ?? null
+      alertId,
+      providerMessageId: result.providerMessageId,
+      providerStatus: result.code ?? null
     });
   } catch (error) {
+    try {
+      await alertStore.markFailed(alertId, error);
+    } catch (persistError) {
+      logger.warn("whatsapp.alert.persist.failure", {
+        kind: payload.kind,
+        alertId,
+        providerCode: persistError.message ?? null
+      });
+    }
+
+    logger.warn("whatsapp.dispatch.failure", {
+      kind: payload.kind,
+      providerStatus: error.providerStatus ?? null,
+      providerCode: error.providerCode ?? error.message ?? null,
+      providerBodySnippet: error.providerBodySnippet ?? null,
+      alertId
+    });
     return response.status(503).json({
-      error: "newagent_unavailable"
+      error: "newagent_unavailable",
+      alertId,
+      providerCode: error.providerCode ?? error.message ?? null
     });
   }
 }
@@ -121,7 +206,7 @@ function parseSingleContactRequest(body) {
 }
 
 function parseContacts(contacts) {
-  if (!Array.isArray(contacts) || contacts.length < 1 || contacts.length > 3) {
+  if (!Array.isArray(contacts) || contacts.length < 1 || contacts.length > maxContactsPerAlert) {
     return { ok: false, error: "invalid_contacts" };
   }
 
@@ -129,7 +214,7 @@ function parseContacts(contacts) {
   for (const contact of contacts) {
     const name = cleanRequiredString(contact?.name);
     const phoneNumber = cleanRequiredString(contact?.phoneNumber);
-    if (!name || !phoneNumber || !burkinaPhonePattern.test(phoneNumber)) {
+    if (!name || !phoneNumber || !e164PhonePattern.test(phoneNumber)) {
       return { ok: false, error: "invalid_contact" };
     }
     parsed.push({ name, phoneNumber });

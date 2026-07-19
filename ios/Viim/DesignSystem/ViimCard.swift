@@ -14,7 +14,58 @@ struct ViimCard<Content: View>: View {
             .foregroundStyle(ViimColors.text)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: ViimColors.text.opacity(0.08), radius: 4, x: 0, y: 1)
+            .shadow(color: ViimColors.text.opacity(0.08), radius: 6, x: 0, y: 2)
+    }
+}
+
+/// Apparition en cascade des cartes d'un ecran : chaque carte glisse et
+/// apparait avec un leger delai selon son rang, pour une entree premium sans
+/// ralentir l'acces au contenu.
+private struct StaggeredAppearModifier: ViewModifier {
+    let visible: Bool
+    let index: Int
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(visible ? 1 : 0)
+            .offset(y: visible ? 0 : 14)
+            .animation(
+                .spring(response: 0.5, dampingFraction: 0.85)
+                    .delay(Double(index) * 0.05),
+                value: visible
+            )
+    }
+}
+
+extension View {
+    func staggeredAppear(_ visible: Bool, index: Int) -> some View {
+        modifier(StaggeredAppearModifier(visible: visible, index: index))
+    }
+}
+
+/// Pastille d'etat qui pulse doucement : reservee aux etats reellement actifs
+/// (trajet en cours, detection GPS), jamais aux etats statiques.
+struct PulsingDot: View {
+    let color: Color
+    @State private var isPulsing = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(0.35))
+                .frame(width: 14, height: 14)
+                .scaleEffect(isPulsing ? 1.6 : 0.8)
+                .opacity(isPulsing ? 0 : 0.9)
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                isPulsing = true
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

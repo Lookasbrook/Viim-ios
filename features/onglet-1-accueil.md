@@ -14,7 +14,7 @@
 
 ### 2. Carte résumé du jour *(équivalent de la barre d'actions rapides BNA)*
 Mise à jour en temps réel dès la fin d'un trajet :
-- 📏 km parcourus · ⭐ score du jour (0-100, coloré vert/orange/rouge) · ⛽ conso estimée en FCFA · 🕐 temps de conduite · 🏍 nombre de trajets.
+- 📏 km parcourus · ⭐ score du jour (0-100, coloré vert/orange/rouge) · ⛽ coût carburant en FCFA seulement si conso/prix carburant sont renseignés · 🕐 temps de conduite · 🏍 nombre de trajets.
 - Pendant la calibration : "Calibration en cours (trajet X/5)" à la place du score.
 
 ### 3. Statut des fonctions actives *(équivalent des pastilles "Activé/Désactivé" BNA, ex. "Soutien en temps réel : Activé")*

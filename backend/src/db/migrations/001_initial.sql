@@ -51,3 +51,25 @@ CREATE TABLE IF NOT EXISTS daily_summaries (
   received_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, date)
 );
+
+CREATE TABLE IF NOT EXISTS alerts (
+  id uuid PRIMARY KEY,
+  kind text NOT NULL CHECK (kind IN ('alert_test', 'location_share', 'collision')),
+  to_e164 text NOT NULL,
+  message text NOT NULL,
+  status text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'delivered', 'failed')),
+  provider_message_id text,
+  provider_status integer,
+  provider_code text,
+  provider_error text,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS alerts_status_created_at_idx
+  ON alerts (status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS alerts_provider_message_id_idx
+  ON alerts (provider_message_id)
+  WHERE provider_message_id IS NOT NULL;

@@ -32,6 +32,16 @@ Base : `https://api.burktech-ia.com/v1` ([ADR sous-domaine](../decisions/2026-07
 | POST | `/alerts/collision` | Micro-sync collision (payload dans data-models.md). Déclenche la cascade WhatsApp : contact 1 → contact 2 si non-lu 5 min → contact 3. Réponse < 2 s attendue. |
 | POST | `/alerts/test` | Envoi d'un message WhatsApp de test à un contact (bouton "Envoyer un test") |
 | POST | `/alerts/location-share` | Partage de position ponctuel vers un contact choisi |
+| GET | `/alerts/{id}` | Statut interne d'une alerte : `queued`, `sent`, `delivered` ou `failed`. Réservé monitoring/support. |
+
+Contrat WhatsApp backend :
+
+- Une réponse `200` sur `POST /alerts/*` signifie que NEwAGENT-IA a retourné un identifiant provider exploitable (`providerMessageId`). Un simple `2xx` sans identifiant est traité comme échec.
+- Réponse succès : `{ "status": "sent", "alertId": "...", "providerMessageId": "...", "providerStatus": 202 }`.
+- Réponse échec provider : `503` avec `{ "error": "newagent_unavailable", "alertId": "...", "providerCode": "..." }`. Le client peut basculer en fallback SMS.
+- Si l'alerte ne peut pas être écrite en `queued` avant l'appel provider, le backend retourne `503 alert_store_unavailable` et n'appelle pas le provider.
+- Les preuves d'envoi sont persistées dans `alerts` : `alertId`, type, destinataire E.164, statut, code provider, identifiant provider et horodatages.
+- Déploiement backend : exécuter `npm run migrate` avant le test production pour créer/mettre à jour la table `alerts`.
 
 ## Prévention (données statiques versionnées)
 

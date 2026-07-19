@@ -33,6 +33,27 @@
 		600000000000000000000001 /* LocationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600000000000000000000101 /* LocationServiceTests.swift */; };
 		700000000000000000000001 /* BackendAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700000000000000000000101 /* BackendAPIClient.swift */; };
 		700000000000000000000002 /* MedicalVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700000000000000000000102 /* MedicalVault.swift */; };
+		800000000000000000000001 /* BurkinaPhoneNumber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000101 /* BurkinaPhoneNumber.swift */; };
+		800000000000000000000002 /* AssistanceDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000102 /* AssistanceDiagnosticsTests.swift */; };
+		900000000000000000000001 /* ScoreEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000101 /* ScoreEngine.swift */; };
+		900000000000000000000002 /* NetworkStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000102 /* NetworkStatusService.swift */; };
+		900000000000000000000003 /* ScoreEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000103 /* ScoreEngineTests.swift */; };
+		900000000000000000000004 /* NetworkStatusServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000104 /* NetworkStatusServiceTests.swift */; };
+		900000000000000000000005 /* TripManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000105 /* TripManagerTests.swift */; };
+		900000000000000000000006 /* TripReliability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000106 /* TripReliability.swift */; };
+		900000000000000000000007 /* TripReliabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000107 /* TripReliabilityTests.swift */; };
+		900000000000000000000008 /* VehicleFuelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000108 /* VehicleFuelCatalog.swift */; };
+		900000000000000000000009 /* VehicleFuelCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900000000000000000000109 /* VehicleFuelCatalogTests.swift */; };
+		90000000000000000000000A /* TripQualityEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90000000000000000000010A /* TripQualityEngine.swift */; };
+		90000000000000000000000B /* TripQualityEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90000000000000000000010B /* TripQualityEngineTests.swift */; };
+		910000000000000000000001 /* ActiveTripJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910000000000000000000101 /* ActiveTripJournal.swift */; };
+		910000000000000000000002 /* TripRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910000000000000000000102 /* TripRecorder.swift */; };
+		910000000000000000000003 /* ActiveTripJournalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910000000000000000000103 /* ActiveTripJournalTests.swift */; };
+		910000000000000000000004 /* TripRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910000000000000000000104 /* TripRecorderTests.swift */; };
+		920000000000000000000001 /* DrivingDynamics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920000000000000000000101 /* DrivingDynamics.swift */; };
+		920000000000000000000002 /* MaintenanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920000000000000000000102 /* MaintenanceStore.swift */; };
+		920000000000000000000003 /* DrivingDynamicsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920000000000000000000103 /* DrivingDynamicsTests.swift */; };
+		920000000000000000000004 /* MaintenanceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920000000000000000000104 /* MaintenanceStoreTests.swift */; };
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
@@ -84,6 +105,27 @@
 		600000000000000000000101 /* LocationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationServiceTests.swift; sourceTree = "<group>"; };
 		700000000000000000000101 /* BackendAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BackendAPIClient.swift; sourceTree = "<group>"; };
 		700000000000000000000102 /* MedicalVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/MedicalVault.swift; sourceTree = "<group>"; };
+		800000000000000000000101 /* BurkinaPhoneNumber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BurkinaPhoneNumber.swift; sourceTree = "<group>"; };
+		800000000000000000000102 /* AssistanceDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistanceDiagnosticsTests.swift; sourceTree = "<group>"; };
+		900000000000000000000101 /* ScoreEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/ScoreEngine.swift; sourceTree = "<group>"; };
+		900000000000000000000102 /* NetworkStatusService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/NetworkStatusService.swift; sourceTree = "<group>"; };
+		900000000000000000000103 /* ScoreEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreEngineTests.swift; sourceTree = "<group>"; };
+		900000000000000000000104 /* NetworkStatusServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkStatusServiceTests.swift; sourceTree = "<group>"; };
+		900000000000000000000105 /* TripManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripManagerTests.swift; sourceTree = "<group>"; };
+		900000000000000000000106 /* TripReliability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/TripReliability.swift; sourceTree = "<group>"; };
+		900000000000000000000107 /* TripReliabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripReliabilityTests.swift; sourceTree = "<group>"; };
+		900000000000000000000108 /* VehicleFuelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/VehicleFuelCatalog.swift; sourceTree = "<group>"; };
+		900000000000000000000109 /* VehicleFuelCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFuelCatalogTests.swift; sourceTree = "<group>"; };
+		90000000000000000000010A /* TripQualityEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/TripQualityEngine.swift; sourceTree = "<group>"; };
+		90000000000000000000010B /* TripQualityEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripQualityEngineTests.swift; sourceTree = "<group>"; };
+		910000000000000000000101 /* ActiveTripJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/ActiveTripJournal.swift; sourceTree = "<group>"; };
+		910000000000000000000102 /* TripRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/TripRecorder.swift; sourceTree = "<group>"; };
+		910000000000000000000103 /* ActiveTripJournalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveTripJournalTests.swift; sourceTree = "<group>"; };
+		910000000000000000000104 /* TripRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRecorderTests.swift; sourceTree = "<group>"; };
+		920000000000000000000101 /* DrivingDynamics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/DrivingDynamics.swift; sourceTree = "<group>"; };
+		920000000000000000000102 /* MaintenanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/MaintenanceStore.swift; sourceTree = "<group>"; };
+		920000000000000000000103 /* DrivingDynamicsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrivingDynamicsTests.swift; sourceTree = "<group>"; };
+		920000000000000000000104 /* MaintenanceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,9 +163,19 @@
 				500000000000000000000101 /* ViimDiagnostics.swift */,
 				700000000000000000000101 /* BackendAPIClient.swift */,
 				700000000000000000000102 /* MedicalVault.swift */,
+				800000000000000000000101 /* BurkinaPhoneNumber.swift */,
+				900000000000000000000101 /* ScoreEngine.swift */,
+				900000000000000000000102 /* NetworkStatusService.swift */,
+				900000000000000000000106 /* TripReliability.swift */,
+				90000000000000000000010A /* TripQualityEngine.swift */,
+				900000000000000000000108 /* VehicleFuelCatalog.swift */,
+				920000000000000000000101 /* DrivingDynamics.swift */,
+				920000000000000000000102 /* MaintenanceStore.swift */,
+				910000000000000000000102 /* TripRecorder.swift */,
 				10000000000000000000010B /* SensorFiltering.swift */,
 				10000000000000000000010C /* LocationService.swift */,
 				10000000000000000000010D /* PersistenceController.swift */,
+				910000000000000000000101 /* ActiveTripJournal.swift */,
 				300000000000000000000101 /* TripStore.swift */,
 				100000000000000000000304 /* Resources */,
 			);
@@ -168,6 +220,17 @@
 				300000000000000000000103 /* TripStoreTests.swift */,
 				400000000000000000000102 /* MotionActivityServiceTests.swift */,
 				600000000000000000000101 /* LocationServiceTests.swift */,
+				800000000000000000000102 /* AssistanceDiagnosticsTests.swift */,
+				900000000000000000000103 /* ScoreEngineTests.swift */,
+				900000000000000000000104 /* NetworkStatusServiceTests.swift */,
+				900000000000000000000105 /* TripManagerTests.swift */,
+				900000000000000000000107 /* TripReliabilityTests.swift */,
+				90000000000000000000010B /* TripQualityEngineTests.swift */,
+				900000000000000000000109 /* VehicleFuelCatalogTests.swift */,
+				910000000000000000000103 /* ActiveTripJournalTests.swift */,
+				910000000000000000000104 /* TripRecorderTests.swift */,
+				920000000000000000000103 /* DrivingDynamicsTests.swift */,
+				920000000000000000000104 /* MaintenanceStoreTests.swift */,
 			);
 			path = ViimTests;
 			sourceTree = "<group>";
@@ -302,6 +365,16 @@
 				500000000000000000000001 /* ViimDiagnostics.swift in Sources */,
 				700000000000000000000001 /* BackendAPIClient.swift in Sources */,
 				700000000000000000000002 /* MedicalVault.swift in Sources */,
+				800000000000000000000001 /* BurkinaPhoneNumber.swift in Sources */,
+				900000000000000000000001 /* ScoreEngine.swift in Sources */,
+				900000000000000000000002 /* NetworkStatusService.swift in Sources */,
+				900000000000000000000006 /* TripReliability.swift in Sources */,
+				90000000000000000000000A /* TripQualityEngine.swift in Sources */,
+				900000000000000000000008 /* VehicleFuelCatalog.swift in Sources */,
+				920000000000000000000001 /* DrivingDynamics.swift in Sources */,
+				920000000000000000000002 /* MaintenanceStore.swift in Sources */,
+				910000000000000000000001 /* ActiveTripJournal.swift in Sources */,
+				910000000000000000000002 /* TripRecorder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,6 +386,17 @@
 				300000000000000000000003 /* TripStoreTests.swift in Sources */,
 				400000000000000000000002 /* MotionActivityServiceTests.swift in Sources */,
 				600000000000000000000001 /* LocationServiceTests.swift in Sources */,
+				800000000000000000000002 /* AssistanceDiagnosticsTests.swift in Sources */,
+				900000000000000000000003 /* ScoreEngineTests.swift in Sources */,
+				900000000000000000000004 /* NetworkStatusServiceTests.swift in Sources */,
+				900000000000000000000005 /* TripManagerTests.swift in Sources */,
+				900000000000000000000007 /* TripReliabilityTests.swift in Sources */,
+				90000000000000000000000B /* TripQualityEngineTests.swift in Sources */,
+				900000000000000000000009 /* VehicleFuelCatalogTests.swift in Sources */,
+				910000000000000000000003 /* ActiveTripJournalTests.swift in Sources */,
+				910000000000000000000004 /* TripRecorderTests.swift in Sources */,
+				920000000000000000000003 /* DrivingDynamicsTests.swift in Sources */,
+				920000000000000000000004 /* MaintenanceStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -449,7 +533,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;
@@ -461,6 +545,8 @@
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				VIIM_BUILD_DATE = local;
+				VIIM_GIT_SHA = local;
 			};
 			name = Debug;
 		};
@@ -471,7 +557,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;
@@ -483,6 +569,8 @@
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				VIIM_BUILD_DATE = local;
+				VIIM_GIT_SHA = local;
 			};
 			name = Release;
 		};

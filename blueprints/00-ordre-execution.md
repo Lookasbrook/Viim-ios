@@ -2,6 +2,14 @@
 
 Tu es le builder du projet **Viim**. Ce dossier te donne la structure, les contraintes et les critères de validation — tu es libre de l'implémentation. Lis dans cet ordre : ce fichier → `01-ios-app.md` → `02-backend-coolify.md`, puis les références citées.
 
+## Priorité actuelle — 2026-07-14
+
+Le plan maître actif est [Fiabilité complète, véhicules, coûts et internationalisation](2026-07-14-fiabilite-vehicules-couts-internationalisation.md).
+
+Il remplace les règles contradictoires des anciens blueprints concernant le prix saisi manuellement, la consommation modifiée par le score, le véhicule identifié seulement par marque/modèle, la devise FCFA unique et la validation de dix trajets avant la build privée. Les anciens documents restent des preuves historiques et des diagnostics ; en cas de conflit, le blueprint du 2026-07-14 prévaut.
+
+Ordre actif : `P0 capture/indicateur et build privée` → `P1 catalogue` → `P2 prix/devises` → `P3 inscription/migration` → `P4 coût` → `P5 sync/écrans` → `P6 assistance` → `P7 validation externe`.
+
 ## Prérequis (à vérifier avant la première ligne de code)
 
 1. Accès au VPS Hetzner CX33 + Coolify (burktech-ia.com) — **identifiants sur le Mac de Guy, jamais dans le repo**. Tout secret passe par les variables d'environnement Coolify.

@@ -1,0 +1,66 @@
+{
+  "capturedAt": "2026-07-16T02:48:37Z",
+  "source": "physical-device-coredata-and-diagnostics",
+  "device": {
+    "model": "iPhone 16",
+    "os": "iOS 26.5.2"
+  },
+  "build": {
+    "version": "0.1.0",
+    "number": "7",
+    "gitSHA": "cf47617821a4-dirty"
+  },
+  "observedState": {
+    "tripsToday": 1,
+    "realDrivingBurstsRejected": 4,
+    "rejectionReason": "armingTimeout",
+    "latestPersistedTrip": {
+      "distanceKm": 8.2719,
+      "durationSec": 910,
+      "routePointCount": 45,
+      "qualityScore": 100,
+      "sampleGapsOver30Sec": [132.0, 140.026, 291.026, 290.038]
+    }
+  },
+  "rejectedDrivingBursts": [
+    {
+      "captureId": "8F4A1848-CC42-40C2-A1FC-47B3370450C3",
+      "sampleCount": 8,
+      "durationSec": 8.97,
+      "distanceMeters": 91.19,
+      "minSpeedKmh": 32.48,
+      "maxSpeedKmh": 36.79
+    },
+    {
+      "captureId": "0854A725-3048-4D4E-BD79-DF49EF705EA8",
+      "sampleCount": 10,
+      "durationSec": 9.97,
+      "distanceMeters": 129.42,
+      "minSpeedKmh": 32.11,
+      "maxSpeedKmh": 52.85
+    },
+    {
+      "captureId": "85884811-20EF-47B5-8A1A-458980DA457A",
+      "sampleCount": 11,
+      "durationSec": 9.97,
+      "distanceMeters": 132.76,
+      "minSpeedKmh": 43.01,
+      "maxSpeedKmh": 48.91
+    },
+    {
+      "captureId": "9E63787D-BBDA-48AD-8EA7-439ECEA6BB30",
+      "sampleCount": 11,
+      "durationSec": 9.97,
+      "distanceMeters": 120.75,
+      "minSpeedKmh": 34.11,
+      "maxSpeedKmh": 47.20
+    }
+  ],
+  "expectedAfterFix": {
+    "shortReliableBurstStartsCandidateOrTrip": true,
+    "suspensionDoesNotDeleteCandidate": true,
+    "invalidSpeedAccuracyCannotStartCandidate": true,
+    "routeWith291SecondGapCannotScore100": true,
+    "captureAlwaysHasTerminalOutcome": true
+  }
+}
