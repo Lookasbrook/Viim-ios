@@ -1,62 +1,71 @@
 # Fiabilite des donnees affichees
 
-Objectif: aucune valeur metier ne doit etre affichee sans source de verite, formule, condition de validite, et raison explicite quand la valeur manque.
+Objectif : aucune valeur metier ne doit etre affichee sans source de verite, formule, condition de validite et raison explicite quand la valeur manque.
 
-## Notes de fiabilite au 2026-07-17 (build 0.1.0 (10) installe)
+## Etat au 2026-07-19 — durcissement build 17 non deploye
 
-Bareme: /10. « Terrain » = preuve sur roulage reel avec la build qui contient le correctif.
+Preuves disponibles :
+
+- suite iOS : 160/160 tests reussis sur iPhone 17 Simulator, iOS 26.5 ;
+- backend : 15/15 tests reussis et verification syntaxique Node.js reussie ;
+- build Release 0.1.0 (17) signe pour l'iPhone reel, installe et lance sur l'iPhone de Guy ;
+- aucun deploiement backend/TestFlight, aucune modification de production, aucun roulage reel et aucun parcours manuel complet des champs clavier.
+
+Bareme : /10. « Terrain » signifie une preuve obtenue pendant un roulage reel avec exactement la build qui contient le correctif. Les notes restent volontairement prudentes tant que cette porte n'est pas franchie.
 
 | Donnee affichee | Note | Justification |
 |---|---|---|
-| Completude des trajets (aucun trajet oublie) | 6/10 provisoire | Toutes les causes racines prouvees (promotion a froid, GPS coupe en WhenInUse, moto mal classee, suspension iOS, fenetre candidat, arret des changements significatifs) sont corrigees et testees (123/123). Le build 10 est installe le 2026-07-17 ; la note passera a 8-9 apres la porte terrain 3/3 trajets (blueprint 2026-07-14 §14). Avant cette installation, l'iPhone roulait sur le build 6 defectueux : note reelle 3/10. |
-| Distance trajet | 8/10 | `trip-metrics-v2` : filtre par incertitude combinee + vitesse fiable, ancre cumulative, glitch isole saute. Valide sur 2 fixtures reelles (faux trajet 0,1077 km rejete). Reste l'ecart <= 5 % contre odometre a prouver sur build 10. |
-| Duree trajet | 8/10 | `trip-quality-v2` separe duree active et queue stationnaire (queues 682-11886 s reparees). Recalcul historique automatique. |
-| Vitesse moyenne | 8/10 | Derivee de distance/duree fiables uniquement ; indisponible sinon. |
-| Vitesse max | 7/10 | Filtree par `speedAccuracy`, zeros legacy repares, vitesse impossible par type de vehicule -> a verifier. Les polylines legacy sans `speedAccuracy` restent non scorables (choix assume). |
-| Carte / trace | 8/10 | Polyline seulement si >= 2 points GPS valides, sinon etat explicite. |
-| Score conduite | 5/10 | `score-speed-v1` : sous-score vitesse uniquement, affiche comme partiel. Honnete mais incomplet tant que fluidite/vigilance/eco n'existent pas. |
-| Score 30 jours | 5/10 | Moyenne de scores partiels ; reste partiel par construction. |
-| Cout carburant | 5/10 | Distance GPS validee x conso catalogue v4 (marque/modele generique, sans annee/motorisation) x prix du litre du profil (defaut XOF/CAD ou saisi). Marge estimee +/-20-30 %. Marque « Estime ». Montera a ~8 avec fiches techniques verifiees et prix regionaux backend (blueprint 2026-07-14 P1-P4). |
-| Statuts Accueil (reseau, detection, collision) | 9/10 | Sources reelles : `NWPathMonitor`, etat effectif de la detection, collision affichee « Pas encore actif » tant que le detecteur n'existe pas. |
-| Position Assistance | 8/10 | Position fraiche demandee a l'ouverture, erreurs explicites. |
-| Test WhatsApp | 4/10 | Backend exige `providerMessageId` et persiste les statuts (13/13 tests), mais aucun vrai message WhatsApp de production prouve (WA-103 ouvert). |
-| Synchronisation | N/A honnete | Aucun moteur de sync : aucun statut affiche, conforme a la regle. |
+| Completude des trajets | 6/10 provisoire | Les causes logicielles connues sont couvertes par tests, mais la porte terrain de 3 trajets consecutifs ecran verrouille reste obligatoire. |
+| Distance trajet | 8/10 | `trip-metrics-v2` filtre l'incertitude GPS, les vitesses non fiables et les segments impossibles. L'ecart <= 5 % contre une reference terrain reste a prouver. |
+| Duree trajet | 8/10 | Duree active separee de la queue stationnaire. La couverture GPS inclut maintenant le debut et la fin reels du trajet. |
+| Vitesse moyenne | 8/10 | Calculee seulement depuis une distance et une duree valides. |
+| Vitesse max | 7/10 | Filtree par precision GPS et limites physiques du type de vehicule. Sans `speedAccuracy`, la valeur n'est pas promue comme fiable. |
+| Carte / trace | 8/10 | Trace uniquement avec au moins deux points valides et jamais pour un trajet classe `a verifier` ou `rejete`. |
+| Score conduite | 7/10 | `score-v3` combine vitesse, fluidite et eco. La vigilance reste indisponible. Le score vitesse utilise un seuil technique fixe et ne pretend plus connaitre la limitation routiere reelle. |
+| Score 30 jours | 7/10 | Moyenne des trois composantes implementees sur les seuls trajets fiables ou partiels. Un critere agrege reste indisponible si un seul trajet inclus ne le possede pas. |
+| Cout carburant | 7/10 pour les nouveaux trajets eligibles | Instantane immuable : distance validee x consommation exacte du catalogue x prix saisi par l'utilisateur. Le total reste indisponible si un trajet inclus n'a pas de profil/prix ou si les devises different. |
+| Numeros d'urgence | 9/10 pour BF/CA | Catalogue explicite Burkina Faso (18/17) et Canada (911), avec source. Pour tout autre pays, l'app refuse de deviner et affiche « Numero non verifie ». |
+| Conseils Prevention | 7/10 | Region acceptee seulement avec une position recente et suffisamment precise. Les contenus statiques sont presentes comme conseils, jamais comme meteo ou etat routier en temps reel. |
+| Position Assistance | 8/10 | Position fraiche demandee, erreurs explicites et partage uniquement manuel. |
+| Test WhatsApp | 4/10 | Le backend exige une preuve fournisseur et persiste le statut, mais aucun message reel de production n'a ete prouve. Un succes partiel n'est plus affiche comme un succes total. |
+| Saisie clavier | 8/10 logiciel | Fermeture interactive au defilement, bouton clavier « Termine » et fermeture explicite apres sauvegarde. Il manque encore un test UI automatise de bout en bout. |
+| Synchronisation | N/A honnete | Aucun moteur de synchronisation : aucun faux statut de sync n'est affiche. |
 
 ## Etats UI obligatoires
 
 | Etat | Usage | Regle UI |
 |---|---|---|
 | fiable | Source validee, formule complete, seuils respectes | Afficher la valeur normalement |
-| partielle | Source presente, mais calcul incomplet | Afficher la valeur avec libelle explicite |
-| a renseigner | Donnee utilisateur manquante | Ne pas afficher de chiffre invente |
-| indisponible | Source absente ou insuffisante | Afficher la raison, pas une valeur par defaut |
-| a verifier | Incoherence detectee | Masquer la valeur et signaler le probleme |
+| partielle | Source presente, calcul limite ou estimation | Afficher la valeur avec un libelle explicite |
+| a renseigner | Donnee utilisateur manquante | Ne jamais injecter un chiffre par defaut |
+| indisponible | Source absente ou insuffisante | Afficher la raison, pas une valeur inventee |
+| a verifier | Incoherence detectee | Masquer distance, duree, carte, score et cout |
 
 ## Matrice source de verite
 
-| Donnee | Source de verite | Formule | Conditions de fiabilite | Si absent/invalide | Tests obligatoires |
-|---|---|---|---|---|---|
-| Distance trajet | Points GPS filtres par `LocationService` puis `TripMetricsCalculator` | Somme des segments valides | Duree >= 60 s, distance >= 80 m, au moins 2 points GPS valides | Trajet trop court ou GPS insuffisant | Unit distance, fallback trajet court, legacy CoreData |
-| Duree trajet | `endedAt - startedAt` | Difference dates, jamais depuis UI | Dates presentes, duree positive, seuil minimum respecte | Trajet incomplet ou trop court | Unit duree negative/zero/courte |
-| Vitesse moyenne | Distance fiable / duree fiable | `distanceKm / durationHours` | Distance et duree fiables | Indisponible si distance/duree invalides | Unit moyenne, division zero |
-| Vitesse max | Samples GPS valides | Maximum des vitesses GPS filtrees | Precision <= 50 m, vitesse finie, seuil impossible par type vehicule non depasse | GPS trop imprecis ou valeur a verifier | Unit GPS imprecis, vitesse impossible |
-| Route/carte | Polyline issue des points GPS valides | Trace des points valides | Au moins 2 points GPS valides | Carte indisponible, GPS insuffisant | Unit moins de 2 points, UI etat vide |
-| Score trajet | `ScoreEngine` versionne | Sous-scores connus selon version | Fiable seulement quand les sous-scores attendus sont disponibles | Partiel si vitesse seule, indisponible si aucun sous-score | Unit score partiel, aucun score, anti constante |
-| Score 30 jours | Synthese des scores trajets fiables/partiels | Moyenne des scores existants | Partiel tant que les scores sources sont partiels | Score indisponible | Unit moyenne, aucun score |
-| Cout FCFA | `VehicleFuelCatalog` v2 si vehicule reconnu par saisie canonisee/autocomplete, puis donnees utilisateur/plein manuel plus tard | Distance * conso catalogue ajustee par style de conduite * prix carburant catalogue | Estimation partielle si vehicule reconnu ; fiable seulement avec calibration utilisateur/plein manuel | A renseigner uniquement si vehicule non reconnu | Unit Toyota Corolla estimee, motos Burkina, voitures Afrique de l'Ouest, inconnu nil, typo canonisee |
-| Sync | Futur `SyncManager` reel | Etat file locale + reponse backend | Afficher sync seulement si moteur existe | Sync indisponible | Unit presenter, pas de faux statut |
-| Assistance position | `LocationService.latestLocation` ou demande fraiche | Coordonnees GPS | Autorisation iOS + position recente | Position indisponible | Unit erreur permission/reseau |
-| WhatsApp test | `BackendAPIClient` + contact Keychain valide | POST `/v1/alerts/test` | Contact normalise + reseau + serveur OK | A configurer ou erreur actionnable | Unit contact invalide/offline/503 |
+| Donnee | Source de verite | Formule / regle | Condition de validite | Si absent ou invalide |
+|---|---|---|---|---|
+| Distance | Points GPS filtres | Somme des segments valides | Trajet non rejete, au moins deux points et mouvement superieur a l'incertitude | `GPS insuffisant` ou `A verifier` |
+| Duree | Bornes actives du trajet | `activeEnd - startedAt` | Dates ordonnees et duree minimale | `Trajet trop court` |
+| Couverture GPS | Horodatage GPS et reception | Couverture depuis le debut actif jusqu'a la fin active | Trous sous les seuils du moteur qualite | `GPS insuffisant` |
+| Vitesse max | Samples avec precision de vitesse | Maximum filtre | Precision connue et valeur physiquement plausible | `GPS trop imprecis` ou `A verifier` |
+| Route | Polyline validee | Trace des points retenus | Trajet affichable et >= 2 points | Carte masquee avec cause |
+| Score | `ScoreEngine` `score-v3` | Moyenne vitesse + fluidite + eco | Les trois composantes implementees existent | Partiel ou indisponible |
+| Cout | Instantane CoreData du trajet | litres x prix utilisateur, arrondi en unite mineure | Profil vehicule exact + prix utilisateur + trajet affichable | `A renseigner`, `Vehicule a confirmer` ou `A verifier` |
+| Urgence | `EmergencyNumberCatalog` | Numero par pays et service | Pays BF ou CA connu | Bouton desactive, numero non verifie |
+| Region Prevention | Position iOS recente | Pays estime seulement si precision <= 10 km et age <= 15 min | Localisation autorisee et exploitable | Region inconnue |
+| WhatsApp | API + `providerMessageId` | Un resultat par contact | Reponse fournisseur prouvee et statut persiste | Erreur detaillee ou succes partiel |
 
 ## Regles non negociables
 
-- Pas de montant FCFA invente : un vehicule reconnu peut produire une estimation automatique marquee partielle/estimee.
-- A l'inscription, privilegier les suggestions du catalogue pour stocker `marque` et `modele` sous forme canonique.
-- Pas de statut de synchronisation sans vrai moteur de sync.
-- Pas de carte trajet si moins de 2 points GPS valides.
-- Pas de vitesse max si la precision GPS est trop mauvaise.
-- Pas de score global fiable si seuls des sous-scores partiels existent.
-- Toute absence de donnee doit expliquer la cause: a renseigner, trajet trop court, GPS insuffisant, GPS trop imprecis, a verifier.
+- Aucun cout historique n'est recalcule avec le prix ou le vehicule courant.
+- Aucun montant n'est affiche a partir d'un prix par defaut non verifie.
+- Aucun total de consommation, de cout ou de critere de score n'est publie comme complet si un trajet inclus manque la preuve correspondante.
+- Une saisie vehicule approximative propose des suggestions, mais ne selectionne jamais silencieusement un autre modele.
+- Un trajet `needsReview` ou `rejected` ne fournit ni distance, ni duree, ni carte, ni score, ni cout a l'interface.
+- Le score vitesse est un indicateur technique Viim, pas une preuve de respect de la limitation legale de la route.
+- Aucun numero d'urgence n'est devine pour un pays non pris en charge.
+- Aucun partage de position ou de fiche medicale n'est presente comme automatique.
 
 ## Politique legacy CoreData
 
@@ -64,9 +73,19 @@ Les anciens trajets sans preuve suffisante ne deviennent jamais fiables par defa
 
 | Cas legacy | Etat |
 |---|---|
+| Qualite `needsReview` ou `rejected` | Valeurs et carte masquees |
 | Polyline absente ou moins de 2 points valides | Carte indisponible |
-| `fuelFCFA` absent avec vehicule reconnu recalculable | Estime |
-| `fuelFCFA` absent avec vehicule inconnu | A renseigner |
+| Cout sans instantane prix/devise/source | Cout indisponible, aucun recalcul |
 | Score absent | Indisponible |
-| Score vitesse seul | Partiel |
+| Score incomplet | Partiel |
 | Vitesse max impossible | A verifier |
+
+## Portes restantes avant de qualifier les donnees de « grande fiabilite »
+
+1. Trois trajets reels consecutifs, ecran verrouille : 3/3 visibles, aucun brouillon orphelin, aucun indicateur GPS hors trajet.
+2. Comparaison distance Viim / odometre ou trace de reference avec ecart cible <= 5 %.
+3. Migration d'une copie du store CoreData reel vers les nouveaux champs optionnels, avec verification avant/apres du nombre de trajets.
+4. Parcours manuel de tous les champs clavier sur appareil et ajout d'une cible XCUITest pour prevenir la regression.
+5. Remplacement du seuil vitesse fixe par des limitations routieres map-matchees et sourcees.
+6. Catalogue vehicule par annee/motorisation ou calibration par pleins reels.
+7. Validation WhatsApp en production avec consentement, reception effective et `providerMessageId`.

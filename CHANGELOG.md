@@ -2,6 +2,16 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-07-19 (durcissement fiabilité — build 17, non déployé)
+
+- **[Données trajets]** Les trajets `needsReview`/`rejected` ne peuvent plus alimenter les chiffres, la carte, le score, la preuve carburant ou le coût affichés. La couverture GPS porte désormais sur toute la durée active, y compris les trous au départ et à la fin, avec double chronologie GPS/réception pour les rafales iOS.
+- **[Coût carburant]** Le coût devient un instantané immuable attaché au trajet : prix utilisateur, devise, date, source, profil véhicule exact, consommation et version de formule. Les prix par défaut non vérifiés, profils d'un autre type de véhicule et correspondances approximatives ne produisent plus de montant. Les totaux restent indisponibles si un trajet manque de preuve ou si les devises diffèrent.
+- **[Scores]** `score-v3` sépare le score global des sous-scores vitesse, fluidité et éco. L'interface décrit la vitesse comme un seuil technique Viim, pas comme la limitation légale de la route ; les séquences sont interrompues après un trou GPS supérieur à 30 secondes.
+- **[Internationalisation/sécurité]** Pays explicite dans le profil, cohérence BF/+226/XOF/18/17 et CA/+1/CAD/911, aucun numéro d'urgence deviné pour « Autre ». La détection de collision reste annoncée comme inactive et les descriptions de permissions ne la promettent plus.
+- **[Assistance/Prévention]** Succès WhatsApp partiel distingué du succès total ; partage de position et fiche médicale décrits comme manuels. La région Prévention exige une position récente/précise et les données embarquées sont présentées comme conseils statiques, jamais comme état temps réel.
+- **[UI]** Fermeture clavier harmonisée : glissement interactif, bouton « Terminé » et fermeture après les actions de sauvegarde/continuation sur les formulaires principaux. L'onboarding impose une sélection explicite du type de véhicule et valide les champs adaptés au type choisi.
+- **[QA]** 160/160 tests iOS et 15/15 tests backend réussis, vérification syntaxique Node.js réussie. Build Release 0.1.0 (17) signé, installé et lancé sur l'iPhone de Guy. Aucun déploiement backend/TestFlight ; le parcours clavier complet, la migration du store réel et les portes de roulage terrain restent ouverts.
+
 ## 2026-07-19 (soir — build 16, retours terrain sur le build 15)
 
 - **[Scores]** Les trajets historiques reçoivent enfin Fluidité et Éco : la passe de recalcul (formule `v6-dynamics-scores`) dérive la dynamique depuis les tracés stockés et remplit `scoreFluidite`/`scoreEco` + le score global moyenné, sans toucher au score vitesse d'origine (calculé avec la logique de pics soutenus au moment du trajet). Les anciens tracés sans `speedAccuracy` persistée (-1) sont acceptés — ils avaient déjà passé le filtre qualité à l'enregistrement. Les cartes Conduite s'allument donc dès l'installation, plus besoin d'attendre un nouveau trajet.
