@@ -50,7 +50,7 @@ export function buildProviderPayload(sendUrl, { to, message, kind, metadata = {}
         to: recipient,
         type: "template",
         template: {
-          name: "viim_alert_test_marketing",
+          name: "viim_alert_test",
           language: {
             code: "fr"
           }
