@@ -58,7 +58,7 @@ test("Meta WhatsApp Cloud test alerts use an approved template", () => {
     to: "22670123456",
     type: "template",
     template: {
-      name: "viim_alert_test",
+      name: "viim_alert_test_marketing",
       language: {
         code: "fr"
       }
