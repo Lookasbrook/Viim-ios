@@ -42,10 +42,26 @@ export async function sendWhatsAppMessage({ to, message, kind, metadata = {} }) 
 
 export function buildProviderPayload(sendUrl, { to, message, kind, metadata = {} }) {
   if (isMetaWhatsAppSendUrl(sendUrl)) {
+    const recipient = to.replace(/^\+/, "");
+    if (kind === "alert_test") {
+      return {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: recipient,
+        type: "template",
+        template: {
+          name: "viim_alert_test",
+          language: {
+            code: "fr"
+          }
+        }
+      };
+    }
+
     return {
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to: to.replace(/^\+/, ""),
+      to: recipient,
       type: "text",
       text: {
         preview_url: false,

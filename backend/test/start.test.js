@@ -41,7 +41,7 @@ test("Docker starts through the migration-aware entrypoint", async () => {
   assert.match(dockerfile, /CMD \["node", "src\/start\.js"\]/);
 });
 
-test("Meta WhatsApp Cloud requests use the provider contract", () => {
+test("Meta WhatsApp Cloud test alerts use an approved template", () => {
   const payload = buildProviderPayload(
     "https://graph.facebook.com/v21.0/123456/messages",
     {
@@ -56,10 +56,12 @@ test("Meta WhatsApp Cloud requests use the provider contract", () => {
     messaging_product: "whatsapp",
     recipient_type: "individual",
     to: "22670123456",
-    type: "text",
-    text: {
-      preview_url: false,
-      body: "Test Viim"
+    type: "template",
+    template: {
+      name: "viim_alert_test",
+      language: {
+        code: "fr"
+      }
     }
   });
 });
