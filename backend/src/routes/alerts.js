@@ -90,18 +90,32 @@ export function createAlertsRouter({
 
     const medicalProfile = parseMedicalProfile(request.body.medicalProfile);
 
-    return dispatchWhatsApp(response, sendMessage, logger, alertStore, {
-      kind: "collision",
-      to: contacts.value[0].phoneNumber,
-      message,
-      metadata: {
-        contactName: contacts.value[0].name,
-        contactsCount: contacts.value.length,
-        location: location.value,
-        incidentId: cleanOptionalString(request.body.incidentId),
-        occurredAt: cleanOptionalString(request.body.occurredAt),
-        medicalProfile: medicalProfile.value
-      }
+    const deliveries = [];
+    for (const contact of contacts.value) {
+      deliveries.push(await dispatchWhatsAppResult(sendMessage, logger, alertStore, {
+        kind: "collision",
+        to: contact.phoneNumber,
+        message,
+        metadata: {
+          contactName: contact.name,
+          contactsCount: contacts.value.length,
+          location: location.value,
+          incidentId: cleanOptionalString(request.body.incidentId),
+          occurredAt: cleanOptionalString(request.body.occurredAt),
+          medicalProfile: medicalProfile.value
+        }
+      }));
+    }
+
+    const sentCount = deliveries.filter((delivery) => delivery.statusCode === 200).length;
+    if (sentCount === 0) {
+      return response.status(deliveries[0].statusCode).json(deliveries[0].body);
+    }
+    return response.status(200).json({
+      status: sentCount === deliveries.length ? "sent" : "partial",
+      sentCount,
+      failedCount: deliveries.length - sentCount,
+      deliveries: deliveries.map((delivery) => delivery.body)
     });
   });
 
@@ -130,6 +144,11 @@ export function createAlertsRouter({
 }
 
 async function dispatchWhatsApp(response, sendMessage, logger, alertStore, payload) {
+  const result = await dispatchWhatsAppResult(sendMessage, logger, alertStore, payload);
+  return response.status(result.statusCode).json(result.body);
+}
+
+async function dispatchWhatsAppResult(sendMessage, logger, alertStore, payload) {
   const alertId = randomUUID();
 
   try {
@@ -140,10 +159,10 @@ async function dispatchWhatsApp(response, sendMessage, logger, alertStore, paylo
       alertId,
       providerCode: error.message ?? null
     });
-    return response.status(503).json({
-      error: "alert_store_unavailable",
-      alertId
-    });
+    return {
+      statusCode: 503,
+      body: { error: "alert_store_unavailable", alertId }
+    };
   }
 
   try {
@@ -165,12 +184,15 @@ async function dispatchWhatsApp(response, sendMessage, logger, alertStore, paylo
       providerMessageId: result.providerMessageId ?? null,
       alertId
     });
-    return response.status(200).json({
-      status: "sent",
-      alertId,
-      providerMessageId: result.providerMessageId,
-      providerStatus: result.code ?? null
-    });
+    return {
+      statusCode: 200,
+      body: {
+        status: "sent",
+        alertId,
+        providerMessageId: result.providerMessageId,
+        providerStatus: result.code ?? null
+      }
+    };
   } catch (error) {
     try {
       await alertStore.markFailed(alertId, error);
@@ -189,11 +211,14 @@ async function dispatchWhatsApp(response, sendMessage, logger, alertStore, paylo
       providerBodySnippet: error.providerBodySnippet ?? null,
       alertId
     });
-    return response.status(503).json({
-      error: "newagent_unavailable",
-      alertId,
-      providerCode: error.providerCode ?? error.message ?? null
-    });
+    return {
+      statusCode: 503,
+      body: {
+        error: "newagent_unavailable",
+        alertId,
+        providerCode: error.providerCode ?? error.message ?? null
+      }
+    };
   }
 }
 

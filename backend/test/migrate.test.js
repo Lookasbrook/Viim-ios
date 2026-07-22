@@ -19,6 +19,8 @@ test("runMigrations applies SQL migrations", async () => {
   assert.ok(queries.length > 0);
   assert.match(queries.join("\n"), /CREATE TABLE IF NOT EXISTS alerts/);
   assert.match(queries.join("\n"), /provider_message_id/);
+  assert.match(queries.join("\n"), /CREATE TABLE IF NOT EXISTS circle_relationships/);
+  assert.match(queries.join("\n"), /CREATE TABLE IF NOT EXISTS circle_notifications/);
 });
 
 test("runMigrations requires a database", async () => {

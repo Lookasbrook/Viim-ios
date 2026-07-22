@@ -181,7 +181,7 @@ test("POST /v1/alerts/location-share validates location and dispatches message",
   }
 });
 
-test("POST /v1/alerts/collision sends only the first contact immediately", async () => {
+test("POST /v1/alerts/collision sends every configured contact", async () => {
   const sentPayloads = [];
   const { server, baseUrl } = await startTestServer({
     sendMessage: async (payload) => {
@@ -212,8 +212,15 @@ test("POST /v1/alerts/collision sends only the first contact immediately", async
     });
 
     assert.equal(response.status, 200);
-    assert.equal(sentPayloads.length, 1);
-    assert.equal(sentPayloads[0].to, "+22670000000");
+    const body = await response.json();
+    assert.equal(body.status, "sent");
+    assert.equal(body.sentCount, 2);
+    assert.equal(body.failedCount, 0);
+    assert.equal(sentPayloads.length, 2);
+    assert.deepEqual(sentPayloads.map((payload) => payload.to), [
+      "+22670000000",
+      "+22671000000"
+    ]);
     assert.equal(sentPayloads[0].metadata.contactsCount, 2);
     assert.equal(sentPayloads[0].metadata.medicalProfile.bloodType, "O+");
   } finally {
