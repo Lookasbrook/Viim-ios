@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Accès admin · Viim</title>
+    <link rel="stylesheet" href="/admin/assets/admin.css?v=20260722-2">
+  </head>
+  <body class="login-page">
+    <main class="login-shell">
+      <section class="login-brand" aria-labelledby="login-brand-title">
+        <div class="brand-lockup brand-lockup--large">
+          <span class="brand-mark" aria-hidden="true"><i></i></span>
+          <span><strong>VIIM</strong><small>Poste de contrôle</small></span>
+        </div>
+        <div class="login-thesis">
+          <p class="eyebrow">Administration privée</p>
+          <h1 id="login-brand-title">Voir la route.<br>Agir au bon moment.</h1>
+          <p>Utilisateurs, alertes et santé des services réunis dans un cockpit protégé.</p>
+        </div>
+        <div class="road-rule" aria-hidden="true"><span></span><span></span><span></span></div>
+      </section>
+
+      <section class="login-form-wrap" aria-labelledby="login-title">
+        <form class="login-form" id="login-form">
+          <p class="eyebrow">Espace réservé</p>
+          <h2 id="login-title">Connexion</h2>
+          <p class="form-intro">Saisissez les identifiants configurés sur le serveur Viim.</p>
+
+          <label for="username">Identifiant</label>
+          <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+
+          <label for="password">Mot de passe</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+          <p class="form-error" id="login-error" role="alert" hidden></p>
+          <button class="button button--primary button--wide" type="submit" id="login-button">
+            Ouvrir le poste de contrôle
+          </button>
+          <p class="privacy-note"><span aria-hidden="true">●</span> Session privée, limitée dans le temps.</p>
+        </form>
+      </section>
+    </main>
+    <script src="/admin/assets/login.js?v=20260722-2" defer></script>
+  </body>
+</html>

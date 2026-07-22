@@ -3,8 +3,25 @@ import { once } from "node:events";
 import { test } from "node:test";
 import express from "express";
 import { createAlertsRouter } from "../src/routes/alerts.js";
+import { sanitizeAlertMetadata } from "../src/services/alertStore.js";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+test("medical collision details are excluded from persisted alert metadata", () => {
+  const safeMetadata = sanitizeAlertMetadata({
+    contactName: "Awa",
+    incidentId: "incident-1",
+    medicalProfile: {
+      bloodType: "O+",
+      allergies: "Arachides"
+    }
+  });
+
+  assert.deepEqual(safeMetadata, {
+    contactName: "Awa",
+    incidentId: "incident-1"
+  });
+});
 
 test("POST /v1/alerts/test sends a WhatsApp payload", async () => {
   const sentPayloads = [];

@@ -34,7 +34,7 @@ L’utilisateur peut refuser ou retirer à tout moment les autorisations de loca
 
 ## Conservation et suppression
 
-Les données locales restent sur l’appareil jusqu’à leur suppression par l’utilisateur, la suppression de l’application ou une opération de réinitialisation prévue dans Viim. Les données d’alerte côté serveur sont limitées à ce qui est nécessaire pour acheminer, diagnostiquer et prouver l’état d’envoi du message.
+Les données locales restent sur l’appareil jusqu’à leur suppression par l’utilisateur, la suppression de l’application ou une opération de réinitialisation prévue dans Viim. Les données d’alerte côté serveur sont limitées à ce qui est nécessaire pour acheminer, diagnostiquer et prouver l’état d’envoi du message. La fiche médicale transmise lors d’une collision n’est pas conservée dans la preuve d’envoi. Les numéros nécessaires à cette preuve sont masqués dans le dashboard d’administration.
 
 L’utilisateur peut demander l’accès, la correction ou la suppression de ses données en contactant l’éditeur.
 

@@ -40,6 +40,7 @@ Au Burkina Faso, un accident de la route survient toutes les 23 minutes ; 65 % d
 - Algorithmes capteurs (critique) : [architecture/sensor-algorithms.md](architecture/sensor-algorithms.md)
 - Modèles de données : [architecture/data-models.md](architecture/data-models.md)
 - API backend : [architecture/api-endpoints.md](architecture/api-endpoints.md)
+- Dashboard admin : [architecture/admin-dashboard.md](architecture/admin-dashboard.md)
 - Inscription & véhicule adaptatif : [features/inscription-onboarding.md](features/inscription-onboarding.md)
 - Spécifications par onglet : [features/](features/)
 - Branding & vocabulaire : [design/branding-vocabulaire.md](design/branding-vocabulaire.md)

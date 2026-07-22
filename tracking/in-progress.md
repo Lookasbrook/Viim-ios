@@ -1,5 +1,17 @@
 # En cours
 
+## Backend — Dashboard admin privé
+- Démarré le : 2026-07-22
+- Terminé le : 2026-07-22
+- Par : Codex builder
+- Référence : [architecture/admin-dashboard.md](../architecture/admin-dashboard.md)
+- Notes d'avancement :
+  - Cockpit web sécurisé livré sous `/admin` pour suivre comptes serveur, trajets disponibles, alertes, incidents, couverture des données et santé des services.
+  - Authentification fermée par défaut, cookie signé, limitation des tentatives et routes de données en lecture seule.
+  - Téléphones masqués, coordonnées d'incident arrondies, fiche médicale exclue de la persistance et migration de nettoyage prévue.
+  - Politique actuelle respectée : aucune synchronisation silencieuse des trajets ou profils iOS.
+  - Vérifié : 32/32 tests backend, syntaxe et diff ; parcours navigateur desktop/tablette/mobile sans erreur console.
+
 ## Phase 0 — Vérification des prérequis externes
 - Démarré le : 2026-07-01
 - Par : Codex builder

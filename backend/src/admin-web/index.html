@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Poste de contrôle · Viim</title>
+    <link rel="stylesheet" href="/admin/assets/admin.css?v=20260722-2">
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true"><i></i></span>
+          <span><strong>VIIM</strong><small>Poste de contrôle</small></span>
+        </div>
+
+        <nav class="main-nav" aria-label="Navigation principale">
+          <button class="nav-item is-active" type="button" data-view="overview">
+            <span class="nav-glyph" aria-hidden="true">⌁</span><span>Vue d’ensemble</span>
+          </button>
+          <button class="nav-item" type="button" data-view="users">
+            <span class="nav-glyph" aria-hidden="true">◎</span><span>Utilisateurs</span>
+          </button>
+          <button class="nav-item" type="button" data-view="trips">
+            <span class="nav-glyph" aria-hidden="true">↗</span><span>Trajets</span>
+          </button>
+          <button class="nav-item" type="button" data-view="safety">
+            <span class="nav-glyph" aria-hidden="true">△</span><span>Sécurité</span>
+            <span class="nav-count" id="nav-intervention-count" hidden>0</span>
+          </button>
+          <button class="nav-item" type="button" data-view="system">
+            <span class="nav-glyph" aria-hidden="true">◇</span><span>Système</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-foot">
+          <p><span class="privacy-shield" aria-hidden="true">◆</span> Données serveur uniquement</p>
+          <small>La fiche médicale et le contenu des messages ne sont jamais exposés dans ce tableau de bord.</small>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="view-kicker">Cockpit opérationnel</p>
+            <h1 id="view-title">Vue d’ensemble</h1>
+          </div>
+          <div class="topbar-actions">
+            <span class="refresh-status" id="refresh-status">Actualisation en cours…</span>
+            <button class="icon-button" id="refresh-button" type="button" aria-label="Actualiser les données" title="Actualiser">↻</button>
+            <button class="button button--quiet" id="logout-button" type="button">Déconnexion</button>
+          </div>
+        </header>
+
+        <div class="global-error" id="global-error" role="alert" hidden></div>
+
+        <section class="view is-active" id="view-overview" aria-labelledby="view-title">
+          <article class="command-strip">
+            <div class="command-status">
+              <span class="live-dot" id="server-dot" aria-hidden="true"></span>
+              <span id="server-status">Connexion aux données</span>
+            </div>
+            <p class="command-label">Sur la route, ces 30 derniers jours</p>
+            <p class="command-headline" id="command-headline">Lecture du trafic Viim…</p>
+            <p class="command-note" id="command-note">Les données sont calculées à partir du serveur.</p>
+          </article>
+
+          <div class="metric-grid" aria-label="Indicateurs principaux">
+            <article class="metric-card">
+              <p>Comptes du cercle</p><strong id="metric-users">—</strong>
+              <span id="metric-users-note">Profils connectés</span>
+            </article>
+            <article class="metric-card">
+              <p>Trajets reçus</p><strong id="metric-trips">—</strong>
+              <span>Sur les 30 derniers jours</span>
+            </article>
+            <article class="metric-card">
+              <p>Distance analysée</p><strong id="metric-distance">—</strong>
+              <span>Sur les 30 derniers jours</span>
+            </article>
+            <article class="metric-card metric-card--accent">
+              <p>Alertes acheminées</p><strong id="metric-alerts">—</strong>
+              <span>Réussite sur 7 jours</span>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="panel panel--wide">
+              <div class="panel-heading">
+                <div><p class="eyebrow">Cadence</p><h2>Activité des 14 derniers jours</h2></div>
+                <div class="legend" aria-label="Légende">
+                  <span><i class="legend-trip"></i>Trajets</span>
+                  <span><i class="legend-safety"></i>Sécurité</span>
+                  <span><i class="legend-user"></i>Inscriptions</span>
+                </div>
+              </div>
+              <div class="road-chart" id="activity-chart" aria-label="Graphique de l’activité"></div>
+            </article>
+
+            <article class="panel intervention-panel">
+              <div class="panel-heading">
+                <div><p class="eyebrow eyebrow--danger">À surveiller</p><h2>File d’intervention</h2></div>
+                <span class="count-badge" id="intervention-total">0</span>
+              </div>
+              <div class="intervention-list" id="intervention-list"></div>
+            </article>
+
+            <article class="panel panel--wide">
+              <div class="panel-heading">
+                <div><p class="eyebrow">Fil serveur</p><h2>Ce qui vient de se passer</h2></div>
+                <button class="text-button" type="button" data-go-view="safety">Voir la sécurité →</button>
+              </div>
+              <ol class="activity-feed" id="activity-feed"></ol>
+            </article>
+
+            <article class="panel coverage-panel">
+              <div class="panel-heading">
+                <div><p class="eyebrow">Transparence</p><h2>Couverture des données</h2></div>
+              </div>
+              <div class="coverage-list" id="coverage-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-users" aria-labelledby="view-title">
+          <div class="section-intro">
+            <div><p class="eyebrow">Répertoire</p><h2>Qui utilise les services connectés</h2><p>Comptes du cercle et profils synchronisés, sans exposer les numéros complets.</p></div>
+            <label class="search-field"><span class="sr-only">Rechercher</span><input id="user-search" type="search" placeholder="Rechercher un nom, véhicule…"><i aria-hidden="true">⌕</i></label>
+          </div>
+          <article class="table-panel">
+            <div class="table-meta"><span id="users-total">— utilisateur</span><button class="text-button" type="button" data-export="users">Exporter en CSV ↓</button></div>
+            <div class="table-scroll">
+              <table>
+                <caption class="sr-only">Utilisateurs connus du serveur Viim</caption>
+                <thead><tr><th>Utilisateur</th><th>Source</th><th>Activité</th><th>Trajets</th><th>Distance</th><th>Score</th><th>Contact</th></tr></thead>
+                <tbody id="users-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="view" id="view-trips" aria-labelledby="view-title">
+          <div class="section-intro">
+            <div><p class="eyebrow">Données routières</p><h2>Trajets reçus par le serveur</h2><p>Cette vue reste vide tant que la synchronisation des trajets n’est pas activée avec information utilisateur.</p></div>
+          </div>
+          <article class="table-panel">
+            <div class="table-meta"><span id="trips-total">— trajet</span><button class="text-button" type="button" data-export="trips">Exporter en CSV ↓</button></div>
+            <div class="table-scroll">
+              <table>
+                <caption class="sr-only">Trajets reçus par le serveur Viim</caption>
+                <thead><tr><th>Conducteur</th><th>Départ</th><th>Durée</th><th>Distance</th><th>Vitesse moy.</th><th>Score</th><th>État</th></tr></thead>
+                <tbody id="trips-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="view" id="view-safety" aria-labelledby="view-title">
+          <div class="section-intro">
+            <div><p class="eyebrow eyebrow--danger">Assistance</p><h2>Alertes et incidents</h2><p>Suivez l’acheminement WhatsApp et les incidents du cercle sans afficher les contenus médicaux.</p></div>
+          </div>
+          <div class="safety-grid">
+            <article class="table-panel">
+              <div class="table-meta"><strong>Alertes WhatsApp</strong><span id="alerts-total">—</span></div>
+              <div class="table-scroll compact-table"><table><caption class="sr-only">Alertes WhatsApp</caption><thead><tr><th>Type</th><th>Destinataire</th><th>Créée</th><th>État</th></tr></thead><tbody id="alerts-table-body"></tbody></table></div>
+            </article>
+            <article class="table-panel">
+              <div class="table-meta"><strong>Incidents du cercle</strong><span id="incidents-total">—</span></div>
+              <div class="table-scroll compact-table"><table><caption class="sr-only">Incidents du cercle</caption><thead><tr><th>Utilisateur</th><th>Date</th><th>Position approx.</th><th>Lecture</th><th>État</th></tr></thead><tbody id="incidents-table-body"></tbody></table></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-system" aria-labelledby="view-title">
+          <div class="section-intro">
+            <div><p class="eyebrow">Exploitation</p><h2>Santé des services</h2><p>État instantané de l’API, de PostgreSQL et du canal WhatsApp.</p></div>
+          </div>
+          <div class="system-grid" id="system-grid"></div>
+          <article class="privacy-manifesto">
+            <p class="eyebrow">Limite volontaire</p>
+            <h2>Ce dashboard ne doit pas tout savoir.</h2>
+            <p>La fiche médicale et la photo du véhicule restent hors de la base. Les numéros nécessaires aux preuves d’acheminement sont masqués dans l’interface.</p>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/admin.js?v=20260722-2" defer></script>
+  </body>
+</html>

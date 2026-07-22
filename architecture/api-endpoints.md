@@ -60,3 +60,21 @@ Contrat WhatsApp backend :
 ## Codes d'erreur communs
 
 `401` token invalide · `409` trajet déjà synchronisé (ignoré, succès logique) · `422` payload invalide · `503` NEwAGENT-IA indisponible → le client bascule en SMS fallback pour les alertes.
+
+## Administration privée
+
+Base : `https://api.burktech-ia.com/admin`. Ces routes utilisent une session admin signée distincte des jetons des appareils et ne doivent jamais être appelées par l'app iOS.
+
+| Méthode | Endpoint | Description |
+|---|---|---|
+| GET | `/admin` | Interface du poste de contrôle ; redirection vers la connexion sans session valide. |
+| POST | `/admin/api/login` | Ouvre une session `HttpOnly`, `SameSite=Strict`, limitée dans le temps. |
+| POST | `/admin/api/logout` | Ferme la session admin. |
+| GET | `/admin/api/overview` | Indicateurs, série 14 jours, activité récente, interventions et couverture. |
+| GET | `/admin/api/users` | Comptes du cercle et futurs profils synchronisés ; téléphones masqués. |
+| GET | `/admin/api/trips` | Trajets présents côté serveur. |
+| GET | `/admin/api/alerts` | Preuves d'acheminement WhatsApp ; destinataires masqués. |
+| GET | `/admin/api/incidents` | Incidents du cercle ; coordonnées arrondies à trois décimales. |
+| GET | `/admin/api/system` | État de l'API, PostgreSQL, WhatsApp et de l'accès admin. |
+
+Configuration et limites : [admin-dashboard.md](admin-dashboard.md).

@@ -11,6 +11,10 @@ export const config = {
   apnsKeyId: process.env.APNS_KEY_ID ?? "",
   apnsBundleId: process.env.APNS_BUNDLE_ID ?? "com.yamstack.viim",
   apnsPrivateKey: process.env.APNS_PRIVATE_KEY ?? "",
+  adminUsername: process.env.ADMIN_USERNAME ?? "",
+  adminPassword: process.env.ADMIN_PASSWORD ?? "",
+  adminSessionSecret: process.env.ADMIN_SESSION_SECRET ?? "",
+  adminSessionHours: Number(process.env.ADMIN_SESSION_HOURS ?? 8),
   version: process.env.npm_package_version ?? "0.1.0"
 };
 

@@ -20,7 +20,7 @@ export function createAlertStore(database = pool) {
           alert.kind,
           alert.to,
           alert.message,
-          JSON.stringify(alert.metadata ?? {})
+          JSON.stringify(sanitizeAlertMetadata(alert.metadata))
         ]
       );
     },
@@ -94,6 +94,14 @@ export function createAlertStore(database = pool) {
       };
     }
   };
+}
+
+export function sanitizeAlertMetadata(metadata) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return {};
+  }
+  const { medicalProfile: _medicalProfile, ...safeMetadata } = metadata;
+  return safeMetadata;
 }
 
 function createNoopAlertStore() {
