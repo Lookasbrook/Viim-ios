@@ -214,6 +214,59 @@ test("trip sync requires consent, validates payloads and is idempotent per insta
   }
 });
 
+test("trip sync does not reject UUIDs only because PostgreSQL normalizes their case", async () => {
+  const store = createMemoryCircleStore();
+  const upsertTrips = store.upsertTrips.bind(store);
+  store.upsertTrips = async (...args) => (await upsertTrips(...args)).map((id) => id.toLowerCase());
+  const context = await startCircleServer({ store });
+  try {
+    const driver = await register(
+      context.baseUrl,
+      "Guy",
+      "12121212-1212-4121-8121-121212121212"
+    );
+    const tripId = "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA";
+
+    let response = await authedFetch(context.baseUrl, driver.authToken, "/v1/circle/me", {
+      method: "PATCH",
+      body: JSON.stringify({ tripSyncEnabled: true })
+    });
+    assert.equal(response.status, 200);
+
+    response = await authedFetch(
+      context.baseUrl,
+      driver.authToken,
+      "/v1/circle/trips/batch",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          trips: [{
+            id: tripId,
+            startDate: "2026-07-18T23:07:03.000Z",
+            endDate: "2026-07-18T23:12:13.000Z",
+            distanceKm: 4.191,
+            durationSec: 310,
+            averageSpeedKmh: 48.67,
+            maxSpeedKmh: 45.55,
+            score: 82,
+            isCalibration: false,
+            vehicleType: "voiture",
+            role: "conducteur"
+          }]
+        })
+      }
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      acceptedTripIds: [tripId.toLowerCase()],
+      rejectedTripIds: []
+    });
+  } finally {
+    context.server.close();
+  }
+});
+
 test("collision incident is stored in every member inbox even when only one APNs push is possible", async () => {
   const pushed = [];
   const context = await startCircleServer({
@@ -335,12 +388,15 @@ test("Apple Universal Links association only opens Viim invitation paths", async
   }
 });
 
-async function startCircleServer({ notifier = { async sendIncident() { return { status: "skipped" }; } } } = {}) {
+async function startCircleServer({
+  notifier = { async sendIncident() { return { status: "skipped" }; } },
+  store = createMemoryCircleStore()
+} = {}) {
   const app = express();
   app.use(express.json());
   app.get(["/.well-known/apple-app-site-association", "/apple-app-site-association"], appleAppSiteAssociation);
   app.use("/v1/circle", createCircleRouter({
-    store: createMemoryCircleStore(),
+    store,
     notifier,
     publicBaseUrl: "http://example.test",
     logger: { info() {}, warn() {} }

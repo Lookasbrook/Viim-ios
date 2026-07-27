@@ -207,12 +207,12 @@ export function createCircleRouter({
         request.circleUser.installationId ?? request.circleUser.id,
         parsed.value
       );
-      const accepted = new Set(acceptedTripIds);
+      const accepted = new Set(acceptedTripIds.map((id) => id.toLowerCase()));
       return response.status(200).json({
         acceptedTripIds,
         rejectedTripIds: parsed.value
           .map((trip) => trip.id)
-          .filter((id) => !accepted.has(id))
+          .filter((id) => !accepted.has(id.toLowerCase()))
       });
     } catch (error) {
       logger.warn("circle.trips.sync.failure", { code: error.message ?? null });
