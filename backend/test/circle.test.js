@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { test } from "node:test";
 import express from "express";
+import { appleAppSiteAssociation } from "../src/routes/appleAppSiteAssociation.js";
 import { createCircleRouter, createJoinRouter } from "../src/routes/circle.js";
 import { createMemoryCircleStore } from "../src/services/circleStore.js";
 
@@ -112,6 +113,107 @@ test("stats stay private until sharing is enabled and can be used for a circle c
   }
 });
 
+test("trip sync requires consent, validates payloads and is idempotent per installation", async () => {
+  const context = await startCircleServer();
+  try {
+    const driver = await register(
+      context.baseUrl,
+      "Guy",
+      "99999999-9999-4999-8999-999999999999"
+    );
+    const tripId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const payload = {
+      trips: [{
+        id: tripId,
+        startDate: "2026-07-18T23:07:03.000Z",
+        endDate: "2026-07-18T23:12:13.000Z",
+        distanceKm: 4.191,
+        durationSec: 310,
+        averageSpeedKmh: 48.67,
+        maxSpeedKmh: 45.55,
+        score: 82,
+        isCalibration: false,
+        vehicleType: "voiture",
+        role: "conducteur"
+      }]
+    };
+
+    let response = await authedFetch(
+      context.baseUrl,
+      driver.authToken,
+      "/v1/circle/trips/batch",
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).error, "trip_sync_not_enabled");
+
+    response = await authedFetch(context.baseUrl, driver.authToken, "/v1/circle/me", {
+      method: "PATCH",
+      body: JSON.stringify({ tripSyncEnabled: true })
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).tripSyncEnabled, true);
+
+    response = await authedFetch(
+      context.baseUrl,
+      driver.authToken,
+      "/v1/circle/trips/batch",
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()), {
+      acceptedTripIds: [tripId],
+      rejectedTripIds: []
+    });
+
+    response = await authedFetch(
+      context.baseUrl,
+      driver.authToken,
+      "/v1/circle/trips/batch",
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).acceptedTripIds, [tripId]);
+
+    const other = await register(
+      context.baseUrl,
+      "Awa",
+      "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+    );
+    await authedFetch(context.baseUrl, other.authToken, "/v1/circle/me", {
+      method: "PATCH",
+      body: JSON.stringify({ tripSyncEnabled: true })
+    });
+    response = await authedFetch(
+      context.baseUrl,
+      other.authToken,
+      "/v1/circle/trips/batch",
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()), {
+      acceptedTripIds: [],
+      rejectedTripIds: [tripId]
+    });
+
+    response = await authedFetch(
+      context.baseUrl,
+      driver.authToken,
+      "/v1/circle/trips/batch",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          trips: [{ ...payload.trips[0], distanceKm: -1 }]
+        })
+      }
+    );
+    assert.equal(response.status, 422);
+    assert.equal((await response.json()).error, "invalid_trip");
+  } finally {
+    context.server.close();
+  }
+});
+
 test("collision incident is stored in every member inbox even when only one APNs push is possible", async () => {
   const pushed = [];
   const context = await startCircleServer({
@@ -212,9 +314,31 @@ test("public invitation link only exposes a deliberate open-in-app action", asyn
   }
 });
 
+test("Apple Universal Links association only opens Viim invitation paths", async () => {
+  const context = await startCircleServer();
+  try {
+    const response = await fetch(`${context.baseUrl}/.well-known/apple-app-site-association`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /^application\/json/);
+    const association = await response.json();
+    assert.deepEqual(association, {
+      applinks: {
+        apps: [],
+        details: [{
+          appID: "MJJ6A56JHS.com.yamstack.viim",
+          components: [{ "/": "/join/*" }]
+        }]
+      }
+    });
+  } finally {
+    context.server.close();
+  }
+});
+
 async function startCircleServer({ notifier = { async sendIncident() { return { status: "skipped" }; } } } = {}) {
   const app = express();
   app.use(express.json());
+  app.get(["/.well-known/apple-app-site-association", "/apple-app-site-association"], appleAppSiteAssociation);
   app.use("/v1/circle", createCircleRouter({
     store: createMemoryCircleStore(),
     notifier,

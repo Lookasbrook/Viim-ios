@@ -3,6 +3,7 @@ import { config } from "./config.js";
 import { logScrubber } from "./middleware/logScrubber.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { createAlertsRouter } from "./routes/alerts.js";
+import { appleAppSiteAssociation } from "./routes/appleAppSiteAssociation.js";
 import { createCircleRouter, createJoinRouter } from "./routes/circle.js";
 import { healthRouter } from "./routes/health.js";
 
@@ -11,6 +12,8 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "256kb" }));
 app.use(logScrubber);
+
+app.get(["/.well-known/apple-app-site-association", "/apple-app-site-association"], appleAppSiteAssociation);
 
 app.use("/health", healthRouter);
 app.use("/v1/health", healthRouter);

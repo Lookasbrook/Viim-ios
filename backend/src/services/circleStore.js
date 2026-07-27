@@ -19,7 +19,7 @@ function createPostgresCircleStore(database) {
           push_environment = EXCLUDED.push_environment,
           updated_at = now()
         WHERE circle_users.auth_token_hash = EXCLUDED.auth_token_hash
-        RETURNING id, display_name, stats_sharing
+        RETURNING id, installation_id, display_name, stats_sharing, trip_sync_enabled
         `,
         [id, installationId, displayName, authTokenHash, pushEnvironment]
       );
@@ -29,7 +29,8 @@ function createPostgresCircleStore(database) {
     async authenticate(authTokenHash) {
       const result = await database.query(
         `
-        SELECT id, display_name, push_token, push_environment, stats_sharing
+        SELECT id, installation_id, display_name, push_token, push_environment,
+               stats_sharing, trip_sync_enabled
         FROM circle_users
         WHERE auth_token_hash = $1
         `,
@@ -38,7 +39,10 @@ function createPostgresCircleStore(database) {
       return result.rows[0] ? mapUser(result.rows[0]) : null;
     },
 
-    async updateProfile(userId, { displayName, pushToken, pushEnvironment, statsSharing }) {
+    async updateProfile(
+      userId,
+      { displayName, pushToken, pushEnvironment, statsSharing, tripSyncEnabled }
+    ) {
       const result = await database.query(
         `
         UPDATE circle_users
@@ -46,9 +50,15 @@ function createPostgresCircleStore(database) {
             push_token = CASE WHEN $3::boolean THEN $4 ELSE push_token END,
             push_environment = COALESCE($5, push_environment),
             stats_sharing = COALESCE($6, stats_sharing),
+            trip_sync_enabled = COALESCE($7, trip_sync_enabled),
+            trip_sync_consent_at = CASE
+              WHEN $7::boolean IS TRUE THEN COALESCE(trip_sync_consent_at, now())
+              ELSE trip_sync_consent_at
+            END,
             updated_at = now()
         WHERE id = $1
-        RETURNING id, display_name, push_token, push_environment, stats_sharing
+        RETURNING id, installation_id, display_name, push_token, push_environment,
+                  stats_sharing, trip_sync_enabled
         `,
         [
           userId,
@@ -56,7 +66,8 @@ function createPostgresCircleStore(database) {
           pushToken !== undefined,
           pushToken ?? null,
           pushEnvironment ?? null,
-          statsSharing ?? null
+          statsSharing ?? null,
+          tripSyncEnabled ?? null
         ]
       );
       return mapUser(result.rows[0]);
@@ -173,6 +184,58 @@ function createPostgresCircleStore(database) {
       );
     },
 
+    async upsertTrips(userId, installationId, trips) {
+      const client = await database.connect();
+      const acceptedTripIds = [];
+      try {
+        await client.query("BEGIN");
+        for (const trip of trips) {
+          const result = await client.query(
+            `
+            INSERT INTO trips (
+              id, user_id, circle_user_id, device_id, start_date, end_date,
+              distance_km, duration_sec, avg_speed_kmh, max_speed_kmh,
+              score, is_calibration, vehicle_type, role
+            )
+            VALUES (
+              $1, NULL, $2, $3, $4, $5,
+              $6, $7, $8, $9,
+              $10, $11, $12, $13
+            )
+            ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id
+            WHERE trips.circle_user_id = EXCLUDED.circle_user_id
+            RETURNING id
+            `,
+            [
+              trip.id,
+              userId,
+              installationId,
+              trip.startDate,
+              trip.endDate,
+              trip.distanceKm,
+              trip.durationSec,
+              trip.averageSpeedKmh,
+              trip.maxSpeedKmh,
+              trip.score,
+              trip.isCalibration,
+              trip.vehicleType,
+              trip.role
+            ]
+          );
+          if (result.rows[0]?.id) {
+            acceptedTripIds.push(String(result.rows[0].id));
+          }
+        }
+        await client.query("COMMIT");
+        return acceptedTripIds;
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+
     async createIncident({ incident, recipientIds }) {
       const client = await database.connect();
       try {
@@ -270,6 +333,7 @@ export function createMemoryCircleStore() {
   const invitations = new Map();
   const relationships = new Map();
   const stats = new Map();
+  const trips = new Map();
   const incidents = new Map();
   const notifications = new Map();
 
@@ -293,7 +357,8 @@ export function createMemoryCircleStore() {
         authTokenHash: input.authTokenHash,
         pushToken: null,
         pushEnvironment: input.pushEnvironment,
-        statsSharing: false
+        statsSharing: false,
+        tripSyncEnabled: false
       };
       users.set(user.id, user);
       usersByToken.set(user.authTokenHash, user.id);
@@ -310,6 +375,7 @@ export function createMemoryCircleStore() {
       if (changes.pushToken !== undefined) user.pushToken = changes.pushToken;
       if (changes.pushEnvironment !== undefined) user.pushEnvironment = changes.pushEnvironment;
       if (changes.statsSharing !== undefined) user.statsSharing = changes.statsSharing;
+      if (changes.tripSyncEnabled !== undefined) user.tripSyncEnabled = changes.tripSyncEnabled;
       return { ...user };
     },
     async createInvitation(invitation) {
@@ -357,6 +423,19 @@ export function createMemoryCircleStore() {
     },
     async upsertStats(userId, value) {
       stats.set(userId, { ...value, updatedAt: new Date() });
+    },
+    async upsertTrips(userId, _installationId, values) {
+      const acceptedTripIds = [];
+      for (const value of values) {
+        const existing = trips.get(value.id);
+        if (!existing) {
+          trips.set(value.id, { ...value, userId });
+          acceptedTripIds.push(value.id);
+        } else if (existing.userId === userId) {
+          acceptedTripIds.push(value.id);
+        }
+      }
+      return acceptedTripIds;
     },
     async listIncidentRecipients(userId) {
       const memberIds = [...relationships.values()]
@@ -412,10 +491,12 @@ export function createMemoryCircleStore() {
 function mapUser(row) {
   return {
     id: row.id,
+    installationId: row.installation_id,
     displayName: row.display_name,
     pushToken: row.push_token ?? null,
     pushEnvironment: row.push_environment,
-    statsSharing: row.stats_sharing
+    statsSharing: row.stats_sharing,
+    tripSyncEnabled: row.trip_sync_enabled
   };
 }
 

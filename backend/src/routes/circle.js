@@ -9,6 +9,8 @@ const apnsTokenPattern = /^[0-9a-f]{32,256}$/i;
 const invitationLifetimeMs = 7 * 24 * 60 * 60 * 1_000;
 const incidentRateWindowMs = 10 * 60 * 1_000;
 const maxIncidentsPerWindow = 5;
+const maxTripsPerBatch = 50;
+const maxTripDurationSec = 7 * 24 * 60 * 60;
 
 export function createCircleRouter({
   store = createCircleStore(),
@@ -49,7 +51,8 @@ export function createCircleRouter({
         userId: user.id,
         authToken,
         displayName: user.displayName,
-        statsSharing: user.statsSharing
+        statsSharing: user.statsSharing,
+        tripSyncEnabled: user.tripSyncEnabled
       });
     } catch (error) {
       if (error.code === "23505") {
@@ -187,6 +190,33 @@ export function createCircleRouter({
     } catch (error) {
       logger.warn("circle.stats.failure", { code: error.message ?? null });
       return response.status(503).json({ error: "circle_unavailable" });
+    }
+  });
+
+  router.post("/trips/batch", async (request, response) => {
+    if (!request.circleUser.tripSyncEnabled) {
+      return response.status(403).json({ error: "trip_sync_not_enabled" });
+    }
+    const parsed = parseTripBatch(request.body);
+    if (!parsed.ok) {
+      return response.status(422).json({ error: parsed.error });
+    }
+    try {
+      const acceptedTripIds = await store.upsertTrips(
+        request.circleUser.id,
+        request.circleUser.installationId ?? request.circleUser.id,
+        parsed.value
+      );
+      const accepted = new Set(acceptedTripIds);
+      return response.status(200).json({
+        acceptedTripIds,
+        rejectedTripIds: parsed.value
+          .map((trip) => trip.id)
+          .filter((id) => !accepted.has(id))
+      });
+    } catch (error) {
+      logger.warn("circle.trips.sync.failure", { code: error.message ?? null });
+      return response.status(503).json({ error: "trip_sync_unavailable" });
     }
   });
 
@@ -349,10 +379,76 @@ function parseProfileChanges(body) {
     }
     value.statsSharing = body.statsSharing;
   }
+  if (body.tripSyncEnabled !== undefined) {
+    if (typeof body.tripSyncEnabled !== "boolean") {
+      return { ok: false, error: "invalid_trip_sync_consent" };
+    }
+    value.tripSyncEnabled = body.tripSyncEnabled;
+  }
   if (Object.keys(value).length === 0) {
     return { ok: false, error: "empty_profile_update" };
   }
   return { ok: true, value };
+}
+
+function parseTripBatch(body) {
+  if (!Array.isArray(body?.trips) ||
+      body.trips.length === 0 ||
+      body.trips.length > maxTripsPerBatch) {
+    return { ok: false, error: "invalid_trip_batch" };
+  }
+  const trips = [];
+  for (const rawTrip of body.trips) {
+    const id = cleanRequiredString(rawTrip?.id, 64);
+    const startDate = typeof rawTrip?.startDate === "string"
+      ? new Date(rawTrip.startDate)
+      : new Date(Number.NaN);
+    const endDate = typeof rawTrip?.endDate === "string"
+      ? new Date(rawTrip.endDate)
+      : new Date(Number.NaN);
+    const distanceKm = rawTrip?.distanceKm;
+    const durationSec = rawTrip?.durationSec;
+    const averageSpeedKmh = rawTrip?.averageSpeedKmh;
+    const maxSpeedKmh = rawTrip?.maxSpeedKmh;
+    const score = rawTrip?.score ?? null;
+    const isCalibration = rawTrip?.isCalibration;
+    const vehicleType = ["moto", "voiture", "velo"].includes(rawTrip?.vehicleType)
+      ? rawTrip.vehicleType
+      : null;
+    const role = ["conducteur", "passager", "bus"].includes(rawTrip?.role)
+      ? rawTrip.role
+      : null;
+
+    if (!id || !uuidPattern.test(id) ||
+        Number.isNaN(startDate.getTime()) ||
+        Number.isNaN(endDate.getTime()) ||
+        endDate < startDate ||
+        !Number.isFinite(distanceKm) || distanceKm < 0 || distanceKm > 20_000 ||
+        !Number.isInteger(durationSec) || durationSec < 0 || durationSec > maxTripDurationSec ||
+        endDate.getTime() - startDate.getTime() > maxTripDurationSec * 1_000 ||
+        !Number.isFinite(averageSpeedKmh) || averageSpeedKmh < 0 || averageSpeedKmh > 500 ||
+        !Number.isFinite(maxSpeedKmh) || maxSpeedKmh < 0 || maxSpeedKmh > 500 ||
+        (score !== null && (!Number.isInteger(score) || score < 0 || score > 100)) ||
+        typeof isCalibration !== "boolean" ||
+        !vehicleType ||
+        !role) {
+      return { ok: false, error: "invalid_trip" };
+    }
+    trips.push({
+      id,
+      startDate,
+      endDate,
+      distanceKm,
+      durationSec,
+      averageSpeedKmh,
+      maxSpeedKmh,
+      score,
+      isCalibration,
+      vehicleType,
+      role
+    });
+  }
+  return { ok: true, value: trips };
 }
 
 function parseStats(body) {
@@ -435,6 +531,7 @@ function publicUser(user) {
     userId: user.id,
     displayName: user.displayName,
     statsSharing: user.statsSharing,
+    tripSyncEnabled: user.tripSyncEnabled,
     pushConfigured: Boolean(user.pushToken)
   };
 }

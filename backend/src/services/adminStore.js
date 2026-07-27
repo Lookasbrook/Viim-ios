@@ -16,7 +16,10 @@ function createPostgresAdminStore(database) {
               WHERE received_at >= now() - interval '30 days') AS trips_30d,
             (SELECT COALESCE(SUM(distance_km), 0)::float8 FROM trips
               WHERE received_at >= now() - interval '30 days') AS distance_30d,
-            (SELECT COUNT(DISTINCT user_id)::int FROM trips
+            (SELECT COUNT(DISTINCT CASE
+                WHEN circle_user_id IS NOT NULL THEN 'circle:' || circle_user_id::text
+                ELSE 'profile:' || user_id::text
+              END)::int FROM trips
               WHERE received_at >= now() - interval '30 days') AS active_drivers_30d,
             (SELECT COUNT(*)::int FROM alerts
               WHERE created_at >= now() - interval '7 days') AS alerts_7d,
@@ -62,7 +65,8 @@ function createPostgresAdminStore(database) {
         database.query(`
           SELECT kind, id, actor, metadata, occurred_at
           FROM (
-            SELECT 'trip' AS kind, t.id::text AS id, u.first_name AS actor,
+            SELECT 'trip' AS kind, t.id::text AS id,
+              COALESCE(u.first_name, cu.display_name) AS actor,
               json_build_object(
                 'distanceKm', t.distance_km,
                 'score', t.score,
@@ -70,7 +74,8 @@ function createPostgresAdminStore(database) {
               ) AS metadata,
               t.received_at AS occurred_at
             FROM trips t
-            JOIN users u ON u.id = t.user_id
+            LEFT JOIN users u ON u.id = t.user_id
+            LEFT JOIN circle_users cu ON cu.id = t.circle_user_id
 
             UNION ALL
 
@@ -166,14 +171,24 @@ function createPostgresAdminStore(database) {
 
     async listUsers({ search = "", limit = 50, offset = 0 } = {}) {
       const result = await database.query(`
-        WITH trip_totals AS (
+        WITH profile_trip_totals AS (
           SELECT user_id,
             COUNT(*)::int AS trips_count,
             COALESCE(SUM(distance_km), 0)::float8 AS distance_km,
             ROUND(AVG(score))::int AS average_score,
             MAX(received_at) AS last_trip_at
           FROM trips
+          WHERE user_id IS NOT NULL
           GROUP BY user_id
+        ), circle_trip_totals AS (
+          SELECT circle_user_id,
+            COUNT(*)::int AS trips_count,
+            COALESCE(SUM(distance_km), 0)::float8 AS distance_km,
+            ROUND(AVG(score))::int AS average_score,
+            MAX(received_at) AS last_trip_at
+          FROM trips
+          WHERE circle_user_id IS NOT NULL
+          GROUP BY circle_user_id
         ), combined AS (
           SELECT
             'circle'::text AS source,
@@ -183,13 +198,18 @@ function createPostgresAdminStore(database) {
             NULL::text AS vehicle,
             cu.stats_sharing,
             (cu.push_token IS NOT NULL) AS push_ready,
-            COALESCE(cs.trips_count, 0)::int AS trips_count,
-            COALESCE(cs.distance_km, 0)::float8 AS distance_km,
-            cs.score::int AS average_score,
+            COALESCE(ct.trips_count, cs.trips_count, 0)::int AS trips_count,
+            COALESCE(ct.distance_km, cs.distance_km, 0)::float8 AS distance_km,
+            COALESCE(ct.average_score, cs.score)::int AS average_score,
             cu.created_at,
-            GREATEST(cu.updated_at, COALESCE(cs.updated_at, cu.updated_at)) AS last_activity
+            GREATEST(
+              cu.updated_at,
+              COALESCE(cs.updated_at, cu.updated_at),
+              COALESCE(ct.last_trip_at, cu.updated_at)
+            ) AS last_activity
           FROM circle_users cu
           LEFT JOIN circle_stats cs ON cs.user_id = cu.id
+          LEFT JOIN circle_trip_totals ct ON ct.circle_user_id = cu.id
 
           UNION ALL
 
@@ -207,7 +227,7 @@ function createPostgresAdminStore(database) {
             u.created_at,
             COALESCE(tt.last_trip_at, u.created_at) AS last_activity
           FROM users u
-          LEFT JOIN trip_totals tt ON tt.user_id = u.id
+          LEFT JOIN profile_trip_totals tt ON tt.user_id = u.id
         )
         SELECT *, COUNT(*) OVER()::int AS total_count
         FROM combined
@@ -243,10 +263,12 @@ function createPostgresAdminStore(database) {
         SELECT
           t.id, t.start_date, t.end_date, t.distance_km, t.duration_sec,
           t.avg_speed_kmh, t.max_speed_kmh, t.score, t.is_calibration,
-          t.vehicle_type, t.role, t.received_at, u.first_name,
+          t.vehicle_type, t.role, t.received_at,
+          COALESCE(u.first_name, cu.display_name) AS first_name,
           COUNT(*) OVER()::int AS total_count
         FROM trips t
-        JOIN users u ON u.id = t.user_id
+        LEFT JOIN users u ON u.id = t.user_id
+        LEFT JOIN circle_users cu ON cu.id = t.circle_user_id
         ORDER BY t.start_date DESC
         LIMIT $1 OFFSET $2
       `, [clampLimit(limit), Math.max(0, number(offset))]);
