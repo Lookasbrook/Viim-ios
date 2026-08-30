@@ -6,6 +6,13 @@ export const config = {
   newagentHealthUrl: process.env.NEWAGENT_HEALTH_URL ?? process.env.NEWAGENT_URL ?? "",
   newagentSendUrl: process.env.NEWAGENT_SEND_URL ?? process.env.NEWAGENT_URL ?? "",
   newagentToken: process.env.NEWAGENT_TOKEN ?? "",
+  // Webhook WhatsApp entrant (STOP + statuts de livraison).
+  whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN ?? "",
+  whatsappAppSecret: process.env.WHATSAPP_APP_SECRET ?? "",
+  whatsappWebhookSharedToken: process.env.WHATSAPP_WEBHOOK_SHARED_TOKEN ?? "",
+  // Quand true, une alerte est refusée (422) si le conducteur n'a pas attesté le consentement
+  // de ses contacts. Laisser false tant que l'app iOS n'envoie pas encore l'attestation.
+  requireContactsConsent: (process.env.REQUIRE_CONTACTS_CONSENT ?? "false") === "true",
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "https://api.burktech-ia.com",
   apnsTeamId: process.env.APNS_TEAM_ID ?? "",
   apnsKeyId: process.env.APNS_KEY_ID ?? "",

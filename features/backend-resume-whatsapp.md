@@ -1,5 +1,12 @@
 # Backend — Résumé journalier WhatsApp
 
+> **CADUC — décision 2026-08-29.** Ce résumé ne sera pas envoyé sur WhatsApp : doublon avec l'écran
+> stats du cercle déjà dans l'app, et catégorie marketing (coût par message, opt-in requis, risque
+> de dégrader le score qualité du numéro qui sert aussi aux alertes d'urgence). Si un rappel
+> d'engagement est voulu plus tard : notification push (APNs, déjà branché). La colonne
+> `users.daily_summary_opt_out` et le traitement `STOP` du webhook restent, comme opt-out générique
+> des messages non urgents. Document conservé pour historique.
+
 Chaque soir à **20h00 (UTC+0, heure Ouagadougou)**, le backend envoie via **NEwAGENT-IA** un résumé à chaque utilisateur ayant conduit dans la journée. Aucun envoi si 0 trajet.
 
 ## Template du message

@@ -10,9 +10,9 @@ export function createAlertStore(database = pool) {
       await database.query(
         `
         INSERT INTO alerts (
-          id, kind, to_e164, message, status, metadata
+          id, kind, to_e164, message, status, metadata, incident_id, contact_index, contacts_consent
         )
-        VALUES ($1, $2, $3, $4, 'queued', $5::jsonb)
+        VALUES ($1, $2, $3, $4, 'queued', $5::jsonb, $6, $7, $8)
         ON CONFLICT (id) DO NOTHING
         `,
         [
@@ -20,7 +20,10 @@ export function createAlertStore(database = pool) {
           alert.kind,
           alert.to,
           alert.message,
-          JSON.stringify(sanitizeAlertMetadata(alert.metadata))
+          JSON.stringify(sanitizeAlertMetadata(alert.metadata)),
+          alert.incidentId ?? null,
+          alert.contactIndex ?? null,
+          alert.contactsConsent ?? null
         ]
       );
     },

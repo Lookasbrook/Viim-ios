@@ -16,7 +16,7 @@ export async function checkNewagent() {
   return { status: response.ok ? "ok" : "error", code: response.status };
 }
 
-export async function sendWhatsAppMessage({ to, message, kind, metadata = {} }) {
+export async function sendWhatsAppMessage({ to, message, kind, metadata = {}, params = {} }) {
   if (!config.newagentSendUrl || !config.newagentToken) {
     throw new Error("newagent_not_configured");
   }
@@ -25,7 +25,8 @@ export async function sendWhatsAppMessage({ to, message, kind, metadata = {} }) 
     to,
     message,
     kind,
-    metadata
+    metadata,
+    params
   });
   const response = await fetch(config.newagentSendUrl, {
     method: "POST",
@@ -40,24 +41,29 @@ export async function sendWhatsAppMessage({ to, message, kind, metadata = {} }) 
   return parseProviderSendResponse(response);
 }
 
-export function buildProviderPayload(sendUrl, { to, message, kind, metadata = {} }) {
+// Langue des modèles Meta approuvés (WhatsApp attend un code générique, pas `fr_FR`).
+const META_TEMPLATE_LANGUAGE = "fr";
+
+// Modèles Meta approuvés requis pour les messages initiés par l'entreprise. Un contact d'urgence
+// n'a jamais ouvert de conversation : hors de la fenêtre de service de 24 h, WhatsApp n'accepte
+// qu'un modèle approuvé, jamais un `type: "text"`. Voir architecture/meta-mcp-et-whatsapp.md §4.1.
+// Les noms doivent correspondre aux modèles créés dans WhatsApp Manager
+// (cf. backend/scripts/create-whatsapp-templates.mjs).
+const META_TEMPLATES = {
+  alert_test: { name: "viim_alert_test", body: "none", locationButton: false },
+  collision: { name: "viim_collision_alert", body: "driver_location", locationButton: true },
+  location_share: { name: "viim_location_share", body: "driver_location", locationButton: true }
+};
+
+export function buildProviderPayload(sendUrl, { to, message, kind, metadata = {}, params = {} }) {
   if (isMetaWhatsAppSendUrl(sendUrl)) {
     const recipient = to.replace(/^\+/, "");
-    if (kind === "alert_test") {
-      return {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: recipient,
-        type: "template",
-        template: {
-          name: "viim_alert_test",
-          language: {
-            code: "fr"
-          }
-        }
-      };
+    const templatePayload = buildMetaTemplatePayload(recipient, kind, params);
+    if (templatePayload) {
+      return templatePayload;
     }
 
+    // Repli : uniquement valide dans une fenêtre de service ouverte par l'utilisateur.
     return {
       messaging_product: "whatsapp",
       recipient_type: "individual",
@@ -70,6 +76,8 @@ export function buildProviderPayload(sendUrl, { to, message, kind, metadata = {}
     };
   }
 
+  // Passerelle NEwAGENT-IA : contrat inchangé. `params` est ignoré côté passerelle tant qu'elle
+  // n'est pas mise à jour pour construire les modèles elle-même.
   return {
     source: "viim",
     channel: "whatsapp",
@@ -78,6 +86,99 @@ export function buildProviderPayload(sendUrl, { to, message, kind, metadata = {}
     message,
     metadata
   };
+}
+
+function buildMetaTemplatePayload(recipient, kind, params = {}) {
+  const template = META_TEMPLATES[kind];
+  if (!template) {
+    return null;
+  }
+
+  const components = [];
+
+  if (template.body === "driver_location") {
+    const coordinates = coordinatesText(params.location);
+    if (!coordinates) {
+      // Paramètres incomplets : laisser le repli texte gérer plutôt que d'émettre un modèle
+      // dont le nombre de variables ne correspondrait pas.
+      return null;
+    }
+    const driverName = textParameter(params.driverName) ?? "Un utilisateur Viim";
+    components.push({
+      type: "body",
+      parameters: [
+        { type: "text", text: driverName },
+        { type: "text", text: coordinates }
+      ]
+    });
+  }
+
+  if (template.locationButton) {
+    const query = coordinatesQuery(params.location);
+    if (!query) {
+      return null;
+    }
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [{ type: "text", text: query }]
+    });
+  }
+
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: recipient,
+    type: "template",
+    template: {
+      name: template.name,
+      language: { code: META_TEMPLATE_LANGUAGE }
+    }
+  };
+  if (components.length > 0) {
+    payload.template.components = components;
+  }
+  return payload;
+}
+
+function readCoordinates(location) {
+  if (!location || typeof location !== "object") {
+    return null;
+  }
+  const latitude = Number(location.latitude);
+  const longitude = Number(location.longitude);
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+    return null;
+  }
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    return null;
+  }
+  return { latitude, longitude };
+}
+
+// Texte lisible pour le corps du modèle, ex. « 12.371800, -1.519600 ».
+function coordinatesText(location) {
+  const coordinates = readCoordinates(location);
+  return coordinates
+    ? `${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}`
+    : null;
+}
+
+// Suffixe d'URL pour le bouton `https://maps.google.com/?q={{1}}`, sans espace.
+function coordinatesQuery(location) {
+  const coordinates = readCoordinates(location);
+  return coordinates
+    ? `${coordinates.latitude.toFixed(6)},${coordinates.longitude.toFixed(6)}`
+    : null;
+}
+
+function textParameter(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, 120) : null;
 }
 
 export async function parseProviderSendResponse(response) {

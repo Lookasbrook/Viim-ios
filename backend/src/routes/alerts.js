@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import { config } from "../config.js";
 import { createAlertStore } from "../services/alertStore.js";
+import { buildCollisionMessage } from "../services/collisionMessage.js";
+import { createCollisionEscalationStore } from "../services/collisionEscalationStore.js";
 import { sendWhatsAppMessage } from "../services/newagent.js";
 
 // E.164 : indicatif international explicite, 8 a 15 chiffres au total.
@@ -13,14 +16,36 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 export function createAlertsRouter({
   sendMessage = sendWhatsAppMessage,
   logger = console,
-  alertStore = createAlertStore()
+  alertStore = createAlertStore(),
+  escalationStore = createCollisionEscalationStore(),
+  requireContactsConsent = config.requireContactsConsent
 } = {}) {
   const router = Router();
+
+  // Politique WhatsApp : le destinataire doit avoir consenti. L'app iOS atteste ce consentement
+  // (le conducteur confirme, sur l'écran contacts, que ses proches acceptent d'être prévenus).
+  // Tant que `requireContactsConsent` est faux, l'absence d'attestation est seulement journalisée.
+  function consentGate(body, kind, response) {
+    const consent = parseContactsConsent(body);
+    if (consent !== true) {
+      if (requireContactsConsent) {
+        response.status(422).json({ error: "contacts_consent_required" });
+        return { blocked: true };
+      }
+      logger.warn("whatsapp.contacts_consent.missing", { kind, consent });
+    }
+    return { blocked: false, consent };
+  }
 
   router.post("/test", async (request, response) => {
     const parsed = parseSingleContactRequest(request.body);
     if (!parsed.ok) {
       return response.status(422).json({ error: parsed.error });
+    }
+
+    const gate = consentGate(request.body, "alert_test", response);
+    if (gate.blocked) {
+      return undefined;
     }
 
     const driverName = cleanOptionalString(request.body.driverName) ?? "Viim";
@@ -33,6 +58,7 @@ export function createAlertsRouter({
       kind: "alert_test",
       to: parsed.contact.phoneNumber,
       message,
+      contactsConsent: gate.consent,
       metadata: {
         contactName: parsed.contact.name
       }
@@ -50,6 +76,11 @@ export function createAlertsRouter({
       return response.status(422).json({ error: location.error });
     }
 
+    const gate = consentGate(request.body, "location_share", response);
+    if (gate.blocked) {
+      return undefined;
+    }
+
     const driverName = cleanOptionalString(request.body.driverName) ?? "Votre proche";
     const mapsUrl = `https://maps.google.com/?q=${location.value.latitude},${location.value.longitude}`;
     const message = [
@@ -62,6 +93,11 @@ export function createAlertsRouter({
       kind: "location_share",
       to: parsed.contact.phoneNumber,
       message,
+      contactsConsent: gate.consent,
+      params: {
+        driverName,
+        location: location.value
+      },
       metadata: {
         contactName: parsed.contact.name,
         location: location.value
@@ -80,22 +116,33 @@ export function createAlertsRouter({
       return response.status(422).json({ error: location.error });
     }
 
+    const gate = consentGate(request.body, "collision", response);
+    if (gate.blocked) {
+      return undefined;
+    }
+
     const driverName = cleanOptionalString(request.body.driverName) ?? "Un utilisateur Viim";
-    const mapsUrl = `https://maps.google.com/?q=${location.value.latitude},${location.value.longitude}`;
-    const message = [
-      `Alerte Viim : collision confirmée pour ${driverName}.`,
-      `Position : ${location.value.latitude.toFixed(6)}, ${location.value.longitude.toFixed(6)}.`,
-      mapsUrl
-    ].join(" ");
-
+    const message = buildCollisionMessage({ driverName, location: location.value });
     const medicalProfile = parseMedicalProfile(request.body.medicalProfile);
+    const incidentRef = randomUUID();
 
+    // Envoi immédiat : essayer les contacts dans l'ordre, s'arrêter au premier accepté par
+    // le fournisseur. Les contacts restants sont relancés par la cascade si personne ne lit.
     const deliveries = [];
-    for (const contact of contacts.value) {
-      deliveries.push(await dispatchWhatsAppResult(sendMessage, logger, alertStore, {
+    let reachedIndex = -1;
+    for (let index = 0; index < contacts.value.length; index += 1) {
+      const contact = contacts.value[index];
+      const delivery = await dispatchWhatsAppResult(sendMessage, logger, alertStore, {
         kind: "collision",
         to: contact.phoneNumber,
         message,
+        contactsConsent: gate.consent,
+        params: {
+          driverName,
+          location: location.value
+        },
+        incidentId: incidentRef,
+        contactIndex: index,
         metadata: {
           contactName: contact.name,
           contactsCount: contacts.value.length,
@@ -104,17 +151,45 @@ export function createAlertsRouter({
           occurredAt: cleanOptionalString(request.body.occurredAt),
           medicalProfile: medicalProfile.value
         }
-      }));
+      });
+      deliveries.push(delivery);
+      if (delivery.statusCode === 200) {
+        reachedIndex = index;
+        break;
+      }
     }
 
-    const sentCount = deliveries.filter((delivery) => delivery.statusCode === 200).length;
-    if (sentCount === 0) {
-      return response.status(deliveries[0].statusCode).json(deliveries[0].body);
+    if (reachedIndex === -1) {
+      const last = deliveries[deliveries.length - 1];
+      return response.status(last.statusCode).json(last.body);
     }
+
+    const pendingContacts = contacts.value.length - (reachedIndex + 1);
+    if (pendingContacts > 0) {
+      try {
+        await escalationStore.createIncident({
+          incidentId: incidentRef,
+          driverName,
+          location: location.value,
+          contacts: contacts.value,
+          nextIndex: reachedIndex + 1
+        });
+      } catch (error) {
+        logger.warn("whatsapp.escalation.persist.failure", {
+          incidentId: incidentRef,
+          providerCode: error?.message ?? null
+        });
+      }
+    }
+
     return response.status(200).json({
-      status: sentCount === deliveries.length ? "sent" : "partial",
-      sentCount,
-      failedCount: deliveries.length - sentCount,
+      status: "sent",
+      incidentId: incidentRef,
+      sentCount: 1,
+      failedCount: deliveries.length - 1,
+      escalation: pendingContacts > 0
+        ? { pendingContacts, escalateAfterMinutes: 5 }
+        : null,
       deliveries: deliveries.map((delivery) => delivery.body)
     });
   });
@@ -288,6 +363,19 @@ function parseMedicalProfile(profile) {
       cnib: cleanOptionalString(profile.cnib)
     }
   };
+}
+
+// Attestation d'opt-in des contacts, envoyée par l'app. Accepte `true`/`false` ou
+// `{ acknowledged: bool }`. Toute autre valeur -> null (non renseigné).
+function parseContactsConsent(body) {
+  const raw = body?.contactsConsent;
+  if (raw === true || raw === false) {
+    return raw;
+  }
+  if (raw && typeof raw === "object" && typeof raw.acknowledged === "boolean") {
+    return raw.acknowledged;
+  }
+  return null;
 }
 
 function cleanRequiredString(value) {

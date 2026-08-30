@@ -24,7 +24,8 @@ Viim transmet uniquement les informations nécessaires lorsqu’un utilisateur d
 
 - pour un test d’alerte WhatsApp : prénom du conducteur et coordonnées du contact choisi ;
 - pour un partage de position : prénom du conducteur, coordonnées du contact choisi et position au moment du partage ;
-- pour une alerte de collision confirmée : coordonnées des contacts choisis, position et informations médicales facultatives nécessaires à l’assistance.
+- pour une alerte de collision confirmée : coordonnées des contacts choisis, position et informations médicales facultatives nécessaires à l’assistance ;
+- l’attestation du conducteur selon laquelle les contacts choisis acceptent d’être prévenus par messagerie.
 
 Ces données sont envoyées par connexion HTTPS à l’API Viim, puis au fournisseur de messagerie chargé d’acheminer l’alerte. Viim ne vend pas de données personnelles et n’utilise pas les données pour de la publicité ou du suivi entre applications.
 
