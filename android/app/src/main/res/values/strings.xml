@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Viim</string>
+    <string name="tracking_channel">Suivi des trajets</string>
+    <string name="tracking_notification_title">Suivi Viim actif</string>
+    <string name="tracking_notification_body">Viim enregistre votre trajet avec votre accord.</string>
+</resources>

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "carburant-contract-v1",
+  "fuelCostStates": [
+    "pending",
+    "unavailable",
+    "estimated",
+    "confirmed"
+  ],
+  "priceEvidenceKinds": [
+    "administered_exact",
+    "official_average",
+    "cached_stale"
+  ],
+  "tripRoles": [
+    "conducteur",
+    "passager_transport",
+    "inconnu"
+  ],
+  "legacyTripRoleAliases": {
+    "passager": "passager_transport",
+    "bus": "passager_transport"
+  },
+  "featureFlags": [
+    "gpsSessionSplit",
+    "physicalFuelModel",
+    "transitClassifier"
+  ],
+  "rules": {
+    "modeledCostCanBeConfirmed": false,
+    "unknownTripIsPersisted": true,
+    "motorizationMayBeInferredFromSensors": false
+  }
+}

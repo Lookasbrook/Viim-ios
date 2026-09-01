@@ -15,3 +15,5 @@ ios/build/
 *.xcresult
 .derivedData-device/
 .playwright-mcp/
+android/.gradle/
+android/**/build/

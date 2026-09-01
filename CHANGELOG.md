@@ -2,6 +2,19 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-08-30 (reconstruction Android depuis APK)
+
+- **[Android]** Base Kotlin/Jetpack Compose restaurée dans `android/` depuis l’inventaire d’une APK debug Viim retrouvée sur le Pixel 8 : navigation à quatre onglets, contrat carburant partagé, seuils GPS et score vitesse alignés avec iOS.
+- **[Sécurité]** Aucune donnée privée de l’application installée (positions, contacts, dossier médical ou base locale) n’a été lue ni importée. Les anciens modules Firebase, collision et cercle de confiance restent désactivés en attente de validation backend/sécurité.
+- **[QA]** Tests unitaires Android : 4/4 réussis. APK debug reproductible sur le SSD externe.
+
+## 2026-08-11 (carburant modélisé — Phase 0)
+
+- **[Contrats]** Ajout du contrat multiplateforme `carburant-contract-v1` : états de coût, qualité du prix, rôles de trajet canoniques et alias historiques explicites.
+- **[Sécurité de rollout]** Trois flags expérimentaux indépendants (`gpsSessionSplit`, `physicalFuelModel`, `transitClassifier`) sont définis et désactivés par défaut.
+- **[ADR]** Le futur dataset véhicule structuré devient la source canonique à la place de l'extraction regex depuis Swift. La motorisation ne peut pas être inférée des capteurs.
+- **[Traçabilité]** Un prix administré exact ne transforme pas des litres modélisés en mesure réelle : le coût v1 reste `estimated`, et `confirmed` est réservé à une preuve future hors périmètre.
+
 ## 2026-07-19 (durcissement fiabilité — build 17, non déployé)
 
 - **[Données trajets]** Les trajets `needsReview`/`rejected` ne peuvent plus alimenter les chiffres, la carte, le score, la preuve carburant ou le coût affichés. La couverture GPS porte désormais sur toute la durée active, y compris les trous au départ et à la fin, avec double chronologie GPS/réception pour les rafales iOS.

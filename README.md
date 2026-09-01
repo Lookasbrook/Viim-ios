@@ -1,4 +1,4 @@
-# Viim — Application iOS de suivi de conduite et sécurité routière
+# Viim — Application mobile de suivi de conduite et sécurité routière
 
 **Viim** (« la vie » en mooré) — éditée par YAMSTACK TECHNOLOGIE (SARL, Ouagadougou, Burkina Faso).
 
@@ -14,7 +14,8 @@ Au Burkina Faso, un accident de la route survient toutes les 23 minutes ; 65 % d
 
 | Couche | Technologie |
 |---|---|
-| Mobile | Swift 5.9+ / iOS 16+ / SwiftUI |
+| iOS | Swift 5.9+ / iOS 16+ / SwiftUI |
+| Android | Kotlin / Android 8+ / Jetpack Compose — base reconstruite dans `android/` |
 | Capteurs | CoreMotion (CMMotionManager) |
 | Localisation | CoreLocation — background mode `location` obligatoire |
 | Cartographie | **MapKit natif, affiché dans l'app** (jamais d'app externe pour la consultation) |
@@ -36,6 +37,7 @@ Au Burkina Faso, un accident de la route survient toutes les 23 minutes ; 65 % d
 ## Liens rapides
 
 - **Blueprints d'exécution (Codex commence ici)** : [blueprints/](blueprints/)
+- Base Android et guide de validation : [android/README.md](android/README.md)
 - Architecture globale : [architecture/overview.md](architecture/overview.md)
 - Algorithmes capteurs (critique) : [architecture/sensor-algorithms.md](architecture/sensor-algorithms.md)
 - Modèles de données : [architecture/data-models.md](architecture/data-models.md)
