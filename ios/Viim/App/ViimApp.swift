@@ -8,7 +8,8 @@ struct ViimApp: App {
     @StateObject private var onboardingStore: OnboardingStore
     @StateObject private var locationService: LocationService
     @StateObject private var motionActivityService = MotionActivityService()
-    @StateObject private var networkStatusService = NetworkStatusService()
+    @StateObject private var networkStatusService: NetworkStatusService
+    @StateObject private var protectionReadinessService: ProtectionReadinessService
     @StateObject private var tripManager: TripManager
     @StateObject private var tripRecorder: TripRecorder
     @StateObject private var tripDetectionCoordinator: TripDetectionCoordinator
@@ -47,6 +48,11 @@ struct ViimApp: App {
             carburantFeatureFlags: carburantFeatureFlags
         )
         let motionActivityService = MotionActivityService()
+        let networkStatusService = NetworkStatusService()
+        let protectionReadinessService = ProtectionReadinessService(
+            locationService: locationService,
+            networkStatusService: networkStatusService
+        )
         let collisionShadowJournal = CollisionShadowJournal()
         let collisionShadowCoverageJournal = CollisionShadowCoverageJournal()
         let collisionShadowMonitor = CollisionShadowMonitor(
@@ -83,6 +89,8 @@ struct ViimApp: App {
         _onboardingStore = StateObject(wrappedValue: onboardingStore)
         _locationService = StateObject(wrappedValue: locationService)
         _motionActivityService = StateObject(wrappedValue: motionActivityService)
+        _networkStatusService = StateObject(wrappedValue: networkStatusService)
+        _protectionReadinessService = StateObject(wrappedValue: protectionReadinessService)
         _tripManager = StateObject(
             wrappedValue: tripManager
         )
@@ -99,7 +107,7 @@ struct ViimApp: App {
                 .environmentObject(onboardingStore)
                 .environmentObject(locationService)
                 .environmentObject(motionActivityService)
-                .environmentObject(networkStatusService)
+                .environmentObject(protectionReadinessService)
                 .environmentObject(tripManager)
                 .environmentObject(tripRecorder)
                 .environmentObject(tripDetectionCoordinator)
@@ -121,6 +129,7 @@ private struct AppLaunchView: View {
     @EnvironmentObject private var tripManager: TripManager
     @EnvironmentObject private var tripRecorder: TripRecorder
     @EnvironmentObject private var tripDetectionCoordinator: TripDetectionCoordinator
+    @EnvironmentObject private var protectionReadinessService: ProtectionReadinessService
 
     var body: some View {
         Group {
@@ -144,6 +153,12 @@ private struct AppLaunchView: View {
             guard phase == .active, onboardingStore.isCompleted else {
                 return
             }
+            locationService.prepareForForegroundUse()
+            protectionReadinessService.refreshEmergencyContacts()
+        }
+        .onChange(of: onboardingStore.isCompleted) { isCompleted in
+            guard isCompleted else { return }
+            protectionReadinessService.refreshEmergencyContacts()
             locationService.prepareForForegroundUse()
         }
     }

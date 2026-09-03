@@ -126,6 +126,8 @@
 "home.status.collisionDetection.unavailable" = "Non disponible — alertes manuelles uniquement";
 "home.status.familyAlert" = "Alerte famille";
 "home.status.familyAlert.empty" = "À configurer";
+"home.status.familyAlert.unavailable" = "Contacts indisponibles";
+"home.status.familyAlert.unverified" = "Configurée — livraison non vérifiée";
 "home.status.network" = "Connexion réseau";
 "home.todayTrips.title" = "Trajets d'aujourd'hui";
 "home.todayTrips.viewAll" = "Voir tout";
@@ -306,7 +308,7 @@
 "assistance.manualAlerts.title" = "Alertes manuelles";
 "assistance.manualAlerts.detail" = "Le bouton ci-dessous envoie uniquement un message de test à vos contacts configurés. Il ne confirme pas qu'une détection automatique est active.";
 "assistance.collisionCalibration.title" = "Calibration collision — recherche";
-"assistance.collisionCalibration.noAlerts" = "Aucune alerte";
+"assistance.collisionCalibration.noAlerts" = "Alertes automatiques indisponibles";
 "assistance.collisionCalibration.detail" = "Pendant certains trajets motorisés, Viim observe localement des événements capteur afin d'évaluer un futur système. Ces observations ne déclenchent ni SOS, ni message, ni appel.";
 "assistance.collisionCalibration.reviewAction" = "Vérifier les observations capteur";
 "assistance.collisionCalibration.reviewTitle" = "Observations capteur";
@@ -341,8 +343,8 @@
 "assistance.location.copied.detail" = "Les coordonnées GPS sont prêtes à être partagées.";
 "assistance.location.share" = "Partager ma position";
 "assistance.location.sharing" = "Partage en cours";
-"assistance.location.shared.title" = "Position envoyée";
-"assistance.location.shared.detail" = "Votre contact d'urgence reçoit votre position par WhatsApp.";
+"assistance.location.shared.title" = "Demande de partage transmise";
+"assistance.location.shared.detail" = "Le serveur a accepté la demande. Vérifiez auprès de votre contact que le message WhatsApp a bien été reçu.";
 "assistance.location.shared.error" = "La position n'a pas pu être envoyée. Vérifiez le réseau puis réessayez.";
 "assistance.location.searching.title" = "Recherche de position";
 "assistance.location.searching.detail" = "Viim demande une position GPS fraîche pour l'afficher ici.";
@@ -354,7 +356,9 @@
 "assistance.location.waiting.detail" = "Ouvrez l'Accueil ou autorisez la position pour afficher votre localisation actuelle.";
 "assistance.contacts.title" = "Mes contacts d'urgence";
 "assistance.contacts.status" = "À configurer";
+"assistance.contacts.unavailable" = "Contacts indisponibles";
 "assistance.contacts.configured" = "Configuré";
+"assistance.contacts.configuredUnverified" = "Configurés — livraison non vérifiée";
 "assistance.contacts.configuredCount %lld" = "%lld contact(s)";
 "assistance.contacts.needsCorrection" = "Contact à corriger";
 "assistance.contacts.name.placeholder" = "Nom du contact";
@@ -411,12 +415,12 @@
 "assistance.footer.publisher" = "Viim est édité par YAMSTACK TECHNOLOGIE — Ouagadougou, Burkina Faso";
 "assistance.test.action" = "Envoyer un test WhatsApp";
 "assistance.test.sending" = "Envoi en cours";
-"assistance.test.success.title" = "Test envoyé";
-"assistance.test.success.detail" = "Le contact d'urgence doit recevoir un message WhatsApp de test.";
+"assistance.test.success.title" = "Demande de test transmise";
+"assistance.test.success.detail" = "Le serveur a accepté la demande. Confirmez avec votre contact que le message WhatsApp a bien été reçu.";
 "assistance.test.error" = "Le test WhatsApp n'a pas abouti. Vérifiez le réseau et la configuration du serveur.";
 "assistance.test.missingContact" = "Ajoutez d'abord un contact d'urgence.";
-"assistance.send.partial.title" = "Envoi partiel";
-"assistance.send.partial.detail" = "Au moins un contact n'a pas reçu le message. Vérifiez chaque destinataire et réessayez.";
+"assistance.send.partial.title" = "Transmission partielle";
+"assistance.send.partial.detail" = "Le serveur n'a pas accepté toutes les demandes. Vérifiez chaque contact et réessayez ; la réception WhatsApp reste à confirmer.";
 "assistance.error.title" = "Action impossible";
 "assistance.error.invalidContact" = "Numéro refusé par le serveur. Utilisez le format international +indicatif (ex. +226XXXXXXXX, +1XXXXXXXXXX).";
 "assistance.error.whatsappUnavailable" = "Serveur WhatsApp indisponible. Réessayez ou utilisez SMS.";

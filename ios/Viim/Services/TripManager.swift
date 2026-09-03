@@ -37,7 +37,6 @@ final class TripManager: ObservableObject {
     @Published private(set) var todaySummary: DrivingSummary = .empty
     @Published private(set) var last30DaysSummary: DrivingSummary = .empty
     @Published private(set) var hasPersistenceError = false
-    @Published private(set) var collisionDetectionEnabled = false
     @Published private(set) var lastPersistenceOutcome: TripPersistenceOutcome?
 
     private let store: TripStore

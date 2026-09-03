@@ -6,9 +6,8 @@ struct AccueilView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
     @EnvironmentObject private var motionActivityService: MotionActivityService
-    @EnvironmentObject private var networkStatusService: NetworkStatusService
+    @EnvironmentObject private var protectionReadinessService: ProtectionReadinessService
     @EnvironmentObject private var tripManager: TripManager
-    @State private var emergencyContact: EmergencyContact?
     @State private var hasAppeared = false
 
     var body: some View {
@@ -125,9 +124,6 @@ struct AccueilView: View {
                 }
             }
         }
-        .task {
-            emergencyContact = (try? SecureEmergencyContactStore.shared.load()).flatMap(BurkinaPhoneNumber.normalizedContact)
-        }
         .onAppear {
             guard !hasAppeared else { return }
             hasAppeared = true
@@ -152,8 +148,8 @@ struct AccueilView: View {
                 HomeStatusRow(
                     icon: "person.2.fill",
                     titleKey: "home.status.familyAlert",
-                    detailKey: emergencyContact == nil ? "home.status.familyAlert.empty" : "status.enabled",
-                    tint: emergencyContact == nil ? ViimColors.blue : ViimColors.success
+                    detailKey: familyAlertStatus.localizedDetailKey,
+                    tint: familyAlertStatus.tint
                 )
                 HomeStatusRow(
                     icon: "wifi",
@@ -167,13 +163,14 @@ struct AccueilView: View {
     }
 
     private var tripDetectionDetailKey: LocalizedStringKey {
-        guard locationService.collectionReadiness.isReadyForBackground else {
-            return locationService.collectionReadiness.statusKey
-        }
-        if !locationService.isMonitoring, locationService.isPassiveWakeupMonitoring {
+        switch protectionReadinessService.snapshot.tripCollection {
+        case .configurationRequired(let readiness):
+            return readiness.statusKey
+        case .standby:
             return "home.monitoring.status.passiveWakeup"
+        case .collecting:
+            return locationService.tripPhase.statusKey
         }
-        return locationService.isMonitoring ? locationService.tripPhase.statusKey : motionActivityService.phase.statusKey
     }
 
     private var tripDetectionStyle: ViimChip.Style {
@@ -190,19 +187,25 @@ struct AccueilView: View {
     }
 
     private var tripDetectionTone: HomeStatusTone {
-        HomeStatusPresenter.tripDetectionTone(
-            readiness: locationService.collectionReadiness,
-            isMonitoring: locationService.isMonitoring,
-            isPassiveWakeupMonitoring: locationService.isPassiveWakeupMonitoring
-        )
+        HomeStatusPresenter.tripCollection(
+            protectionReadinessService.snapshot.tripCollection
+        ).tone
     }
 
     private var collisionDetectionStatus: HomeStatusPresentation {
-        HomeStatusPresenter.collisionDetection()
+        HomeStatusPresenter.collisionDetection(
+            protectionReadinessService.snapshot.automaticCollision
+        )
+    }
+
+    private var familyAlertStatus: HomeStatusPresentation {
+        HomeStatusPresenter.manualAlerts(
+            protectionReadinessService.snapshot.manualAlerts
+        )
     }
 
     private var networkStatus: HomeStatusPresentation {
-        HomeStatusPresenter.network(isOnline: networkStatusService.isOnline)
+        HomeStatusPresenter.network(protectionReadinessService.snapshot.network)
     }
 }
 
@@ -297,28 +300,89 @@ enum HomeStatusTone: Equatable {
 }
 
 enum HomeStatusPresenter {
+    static func tripCollection(
+        _ state: TripCollectionProtectionState
+    ) -> HomeStatusPresentation {
+        switch state {
+        case .configurationRequired(let readiness):
+            return HomeStatusPresentation(
+                detailKey: readiness.statusKeyString,
+                tone: readiness.isPermissionBlocked ? .danger : .warning
+            )
+        case .standby:
+            return HomeStatusPresentation(
+                detailKey: "home.monitoring.status.passiveWakeup",
+                tone: .success
+            )
+        case .collecting:
+            return HomeStatusPresentation(
+                detailKey: "home.monitoring.status.gpsConfirming",
+                tone: .success
+            )
+        }
+    }
+
     static func tripDetectionTone(
         readiness: LocationCollectionReadiness,
         isMonitoring: Bool,
         isPassiveWakeupMonitoring: Bool
     ) -> HomeStatusTone {
-        guard readiness.isReadyForBackground else {
-            return readiness.isPermissionBlocked ? .danger : .warning
+        let state: TripCollectionProtectionState
+        if !readiness.isReadyForBackground {
+            state = .configurationRequired(readiness)
+        } else if isMonitoring {
+            state = .collecting
+        } else if isPassiveWakeupMonitoring {
+            state = .standby
+        } else {
+            state = .configurationRequired(.passiveWakeupPending)
         }
-        return isMonitoring || isPassiveWakeupMonitoring ? .success : .blue
+        return tripCollection(state).tone
     }
 
-    static func collisionDetection() -> HomeStatusPresentation {
-        HomeStatusPresentation(
-            detailKey: "home.status.collisionDetection.unavailable",
-            tone: .warning
-        )
+    static func collisionDetection(
+        _ state: AutomaticCollisionProtectionState
+    ) -> HomeStatusPresentation {
+        switch state {
+        case .unavailable:
+            return HomeStatusPresentation(
+                detailKey: "home.status.collisionDetection.unavailable",
+                tone: .warning
+            )
+        }
     }
 
-    static func network(isOnline: Bool) -> HomeStatusPresentation {
+    static func manualAlerts(
+        _ state: ManualAlertProtectionState
+    ) -> HomeStatusPresentation {
+        switch state {
+        case .unavailable:
+            return HomeStatusPresentation(
+                detailKey: "home.status.familyAlert.unavailable",
+                tone: .danger
+            )
+        case .notConfigured:
+            return HomeStatusPresentation(
+                detailKey: "home.status.familyAlert.empty",
+                tone: .blue
+            )
+        case .needsCorrection:
+            return HomeStatusPresentation(
+                detailKey: "assistance.contacts.needsCorrection",
+                tone: .danger
+            )
+        case .configuredUnverified:
+            return HomeStatusPresentation(
+                detailKey: "home.status.familyAlert.unverified",
+                tone: .warning
+            )
+        }
+    }
+
+    static func network(_ state: ProtectionNetworkState) -> HomeStatusPresentation {
         HomeStatusPresentation(
-            detailKey: isOnline ? "status.online" : "status.offlineReady",
-            tone: isOnline ? .success : .warning
+            detailKey: state == .online ? "status.online" : "status.offlineReady",
+            tone: state == .online ? .success : .warning
         )
     }
 }
@@ -1816,6 +1880,10 @@ private extension LocationCollectionReadiness {
     }
 
     var statusKey: LocalizedStringKey {
+        LocalizedStringKey(statusKeyString)
+    }
+
+    var statusKeyString: String {
         switch self {
         case .ready:
             return "home.monitoring.status.passiveWakeup"

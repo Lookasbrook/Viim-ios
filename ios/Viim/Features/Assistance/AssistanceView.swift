@@ -96,8 +96,8 @@ struct AssistanceView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
     @EnvironmentObject private var collisionCalibrationReviewStore: CollisionCalibrationReviewStore
+    @EnvironmentObject private var protectionReadinessService: ProtectionReadinessService
     @State private var emergencyContacts: [EmergencyContact] = []
-    @State private var hasInvalidEmergencyContact = false
     @State private var medicalProfile: MedicalProfile?
     @State private var isSendingTest = false
     @State private var alertMessage: AssistanceAlertMessage?
@@ -132,7 +132,7 @@ struct AssistanceView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(ViimColors.red)
-                            .disabled(emergencyContacts.isEmpty || isSendingTest)
+                            .disabled(!canUseManualAlerts || isSendingTest)
                         }
                     }
 
@@ -143,7 +143,10 @@ struct AssistanceView: View {
                                     .font(.system(size: 14, weight: .bold))
                                     .foregroundStyle(ViimColors.text)
                                 Spacer(minLength: 8)
-                                ViimChip(titleKey: "assistance.collisionCalibration.noAlerts", style: .warning)
+                                ViimChip(
+                                    titleKey: automaticCollisionStatusKey,
+                                    style: automaticCollisionStatusStyle
+                                )
                             }
 
                             Text("assistance.collisionCalibration.detail")
@@ -266,9 +269,15 @@ struct AssistanceView: View {
     }
 
     private func reloadSecureData() {
-        let storedContacts = (try? SecureEmergencyContactStore.shared.loadAll()) ?? []
-        emergencyContacts = storedContacts.compactMap(BurkinaPhoneNumber.normalizedContact)
-        hasInvalidEmergencyContact = !storedContacts.isEmpty && emergencyContacts.isEmpty
+        do {
+            let storedContacts = try SecureEmergencyContactStore.shared.loadAll()
+            emergencyContacts = storedContacts.compactMap(BurkinaPhoneNumber.normalizedContact)
+            protectionReadinessService.updateEmergencyContacts(storedContacts)
+        } catch {
+            emergencyContacts = []
+            protectionReadinessService.markEmergencyContactsUnavailable()
+            ViimDiagnostics.log("protection.contacts.load failed=true")
+        }
         medicalProfile = try? SecureMedicalProfileStore.shared.load()
         collisionCalibrationReviewStore.reload()
     }
@@ -280,32 +289,64 @@ struct AssistanceView: View {
     }
 
     private var emergencyContactStatusKey: LocalizedStringKey {
-        if hasInvalidEmergencyContact {
+        switch protectionReadinessService.snapshot.manualAlerts {
+        case .unavailable:
+            return "assistance.contacts.unavailable"
+        case .notConfigured:
+            return "assistance.contacts.status"
+        case .needsCorrection:
             return "assistance.contacts.needsCorrection"
+        case .configuredUnverified:
+            return "assistance.contacts.configuredUnverified"
         }
-        return emergencyContacts.isEmpty ? "assistance.contacts.status" : "assistance.contacts.configured"
     }
 
     private var emergencyContactDetailKey: LocalizedStringKey {
-        if hasInvalidEmergencyContact {
+        switch protectionReadinessService.snapshot.manualAlerts {
+        case .unavailable:
+            return "assistance.contacts.unavailable"
+        case .needsCorrection:
             return "assistance.contacts.needsCorrection"
-        }
-        if emergencyContacts.isEmpty {
+        case .notConfigured:
             return "assistance.contacts.status"
+        case .configuredUnverified:
+            return "assistance.contacts.configuredCount \(emergencyContacts.count)"
         }
-        return "assistance.contacts.configuredCount \(emergencyContacts.count)"
     }
 
     private var emergencyContactStatusStyle: ViimChip.Style {
-        if hasInvalidEmergencyContact {
+        switch protectionReadinessService.snapshot.manualAlerts {
+        case .unavailable:
             return .danger
+        case .notConfigured:
+            return .neutral
+        case .needsCorrection:
+            return .danger
+        case .configuredUnverified:
+            return .warning
         }
-        return emergencyContacts.isEmpty ? .neutral : .success
+    }
+
+    private var automaticCollisionStatusKey: LocalizedStringKey {
+        switch protectionReadinessService.snapshot.automaticCollision {
+        case .unavailable:
+            return "assistance.collisionCalibration.noAlerts"
+        }
+    }
+
+    private var automaticCollisionStatusStyle: ViimChip.Style {
+        switch protectionReadinessService.snapshot.automaticCollision {
+        case .unavailable:
+            return .warning
+        }
     }
 
     private func sendTestWhatsApp() {
-        guard !emergencyContacts.isEmpty else {
-            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: hasInvalidEmergencyContact ? "assistance.contacts.correctRequired" : "assistance.test.missingContact")
+        guard canUseManualAlerts else {
+            alertMessage = AssistanceAlertMessage(
+                titleKey: "assistance.error.title",
+                detailKey: manualAlertsBlockingDetailKey
+            )
             return
         }
 
@@ -340,6 +381,24 @@ struct AssistanceView: View {
             } else if let firstError {
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: AssistanceAPIErrorPresenter.detailKey(for: firstError, fallbackKey: "assistance.test.error"))
             }
+        }
+    }
+
+    private var canUseManualAlerts: Bool {
+        if case .configuredUnverified = protectionReadinessService.snapshot.manualAlerts {
+            return !emergencyContacts.isEmpty
+        }
+        return false
+    }
+
+    private var manualAlertsBlockingDetailKey: LocalizedStringKey {
+        switch protectionReadinessService.snapshot.manualAlerts {
+        case .unavailable:
+            return "assistance.contacts.unavailable"
+        case .needsCorrection:
+            return "assistance.contacts.correctRequired"
+        case .notConfigured, .configuredUnverified:
+            return "assistance.test.missingContact"
         }
     }
 }
@@ -685,8 +744,8 @@ private struct EmergencyButton: View {
 private struct AssistanceLocationView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
+    @EnvironmentObject private var protectionReadinessService: ProtectionReadinessService
     @State private var emergencyContacts: [EmergencyContact] = []
-    @State private var hasInvalidEmergencyContact = false
     @State private var isSharing = false
     @State private var locationRequestState: AssistanceLocationRequestState = .searching
     @State private var alertMessage: AssistanceAlertMessage?
@@ -735,7 +794,7 @@ private struct AssistanceLocationView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(ViimColors.blue)
-                    .disabled(emergencyContacts.isEmpty || isSharing)
+                    .disabled(!canUseManualAlerts || isSharing)
                 } else {
                     AssistanceDetailView(
                         icon: locationRequestState.icon,
@@ -781,9 +840,15 @@ private struct AssistanceLocationView: View {
     }
 
     private func reloadContact() {
-        let storedContacts = (try? SecureEmergencyContactStore.shared.loadAll()) ?? []
-        emergencyContacts = storedContacts.compactMap(BurkinaPhoneNumber.normalizedContact)
-        hasInvalidEmergencyContact = !storedContacts.isEmpty && emergencyContacts.isEmpty
+        do {
+            let storedContacts = try SecureEmergencyContactStore.shared.loadAll()
+            emergencyContacts = storedContacts.compactMap(BurkinaPhoneNumber.normalizedContact)
+            protectionReadinessService.updateEmergencyContacts(storedContacts)
+        } catch {
+            emergencyContacts = []
+            protectionReadinessService.markEmergencyContactsUnavailable()
+            ViimDiagnostics.log("protection.contacts.load context=locationShare failed=true")
+        }
     }
 
     private func requestFreshLocation() {
@@ -792,8 +857,11 @@ private struct AssistanceLocationView: View {
     }
 
     private func shareLocation(_ location: CLLocation) {
-        guard !emergencyContacts.isEmpty else {
-            alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: hasInvalidEmergencyContact ? "assistance.contacts.correctRequired" : "assistance.test.missingContact")
+        guard canUseManualAlerts else {
+            alertMessage = AssistanceAlertMessage(
+                titleKey: "assistance.error.title",
+                detailKey: manualAlertsBlockingDetailKey
+            )
             return
         }
 
@@ -835,11 +903,31 @@ private struct AssistanceLocationView: View {
     private func coordinatesText(_ location: CLLocation) -> String {
         String(format: "%.6f, %.6f", location.coordinate.latitude, location.coordinate.longitude)
     }
+
+    private var canUseManualAlerts: Bool {
+        if case .configuredUnverified = protectionReadinessService.snapshot.manualAlerts {
+            return !emergencyContacts.isEmpty
+        }
+        return false
+    }
+
+    private var manualAlertsBlockingDetailKey: LocalizedStringKey {
+        switch protectionReadinessService.snapshot.manualAlerts {
+        case .unavailable:
+            return "assistance.contacts.unavailable"
+        case .needsCorrection:
+            return "assistance.contacts.correctRequired"
+        case .notConfigured, .configuredUnverified:
+            return "assistance.test.missingContact"
+        }
+    }
 }
 
 private struct EmergencyContactsView: View {
     let onChange: () -> Void
+    @EnvironmentObject private var protectionReadinessService: ProtectionReadinessService
     @State private var contacts: [EmergencyContact] = []
+    @State private var isContactStoreAvailable = true
     @State private var name = ""
     @State private var phoneNumber = ""
     @State private var alertMessage: AssistanceAlertMessage?
@@ -876,7 +964,7 @@ private struct EmergencyContactsView: View {
                     Button("assistance.contacts.add") {
                         addContact()
                     }
-                    .disabled(!isValidContact)
+                    .disabled(!isContactStoreAvailable || !isValidContact)
                 } header: {
                     Text("assistance.contacts.addHeader")
                 } footer: {
@@ -910,10 +998,24 @@ private struct EmergencyContactsView: View {
     }
 
     private func loadContacts() {
-        contacts = (try? SecureEmergencyContactStore.shared.loadAll()) ?? []
+        do {
+            contacts = try SecureEmergencyContactStore.shared.loadAll()
+            isContactStoreAvailable = true
+            protectionReadinessService.updateEmergencyContacts(contacts)
+        } catch {
+            contacts = []
+            isContactStoreAvailable = false
+            protectionReadinessService.markEmergencyContactsUnavailable()
+            ViimDiagnostics.log("protection.contacts.load context=editor failed=true")
+            alertMessage = AssistanceAlertMessage(
+                titleKey: "assistance.error.title",
+                detailKey: "assistance.contacts.unavailable"
+            )
+        }
     }
 
     private func addContact() {
+        guard isContactStoreAvailable else { return }
         guard let normalizedPhoneNumber = BurkinaPhoneNumber.normalize(phoneNumber) else {
             alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: "assistance.contacts.invalidPhone")
             return
@@ -940,6 +1042,7 @@ private struct EmergencyContactsView: View {
     }
 
     private func deleteContacts(at offsets: IndexSet) {
+        guard isContactStoreAvailable else { return }
         var updatedContacts = contacts
         updatedContacts.remove(atOffsets: offsets)
 

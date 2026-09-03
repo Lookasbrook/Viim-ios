@@ -32,7 +32,7 @@ etre presente comme plus fiable que les litres estimes qui le produisent.
 
 ## P0-A — Retablir et prouver la collecte de trajets
 
-Etat logiciel : implemente dans le build 31 ; validation terrain bloquee par
+Etat logiciel : implemente depuis le build 31 et conserve dans le build 32 ; validation terrain bloquee par
 `authorizedWhenInUse` tant que l'utilisateur n'accorde pas `Toujours`.
 
 1. Accorder `Toujours` et la position precise dans les reglages iOS.
@@ -138,6 +138,23 @@ disponibilite a partir d'un sous-ensemble de permissions.
 4. Ajouter un test d'interface pour chaque combinaison P0 : `WhenInUse`, `Always`,
    position approximative, actualisation desactivee, capteur indisponible, backend
    en panne et livraison non accusee.
+
+Lot build 32 : `ProtectionReadinessSnapshot` devient l'unique contrat consomme par
+Accueil et Assistance pour le suivi de trajet, la collision automatique, les
+contacts et le reseau. Le snapshot distingue configuration requise, veille passive
+et collecte active. Il maintient la collision automatique a `unavailable` et refuse
+de transformer des contacts valides en livraison prouvee : ils restent
+`configuredUnverified` sans accuse fournisseur. Une configuration melant contacts
+valides et invalides est maintenant signalee. Chaque changement semantique produit
+une ligne locale `protection.readiness` sans position ni numero de telephone.
+Les echecs de lecture Keychain sont maintenant `unavailable` au lieu d'etre
+confondus avec une liste vide, une configuration mixte bloque le test manuel et
+les reponses HTTP positives sont presentees comme des demandes acceptees par le
+serveur, jamais comme une preuve de reception WhatsApp.
+
+Restent dans P0-C : la sante persistante sur 7 jours, la preuve fournisseur et les
+tests d'interface sur appareil. Le snapshot est le socle de ces ajouts, pas leur
+substitut.
 
 Porte de sortie : le meme snapshot produit le meme statut sur tous les ecrans ; tout
 etat rassurant possede une preuve fraiche ; une panne silencieuse de plus de 24 h
@@ -276,8 +293,9 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Ordre d'execution recommande
 
-1. Validation terrain P0-A sur le build 31.
-2. Unification du statut et de la sante de collecte P0-C, sans activer d'alerte.
+1. Validation terrain P0-A sur le build 32.
+2. Completer la sante persistante P0-C a partir du snapshot unifie du build 32,
+   sans activer d'alerte.
 3. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
    comme instrumentation secondaire.
 4. Socle Core Data versionne P1-D avant d'ajouter de nouvelles entites persistantes.
@@ -290,13 +308,13 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Etat d'execution verifie
 
-- Build 31 signe, installe et confirme `0.1.0 (31)` dans le bundle sur l'iPhone 16. Son lancement
+- Build 32 signe, installe et confirme `0.1.0 (32)` dans le bundle sur l'iPhone 16. Son lancement
   est refuse uniquement parce que l'iPhone est verrouille.
-  Avant installation, Application Support a ete sauvegarde et son SQLite controle
-  `ok`. Apres installation sans lancement, SQLite, WAL et SHM sont identiques octet
-  pour octet, y compris apres l'installation finale du build 27 : la migration du
-  store reel attend encore le deverrouillage.
-- 267/267 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
+  Avant installation, le SQLite appareil a ete sauvegarde et controle `ok`. Apres
+  l'installation finale du build 32, sa copie est identique octet pour octet au
+  meme SHA-256 et contient toujours 126 trajets. Le lancement du store reel attend
+  encore le deverrouillage.
+- 272/272 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
   SQLite reelle d'un store sans les nouveaux champs de preuve carburant.
 - Permission appareil encore `authorizedWhenInUse` : la porte terrain P0-A reste
   ouverte et exige une action utilisateur dans les reglages iOS.
@@ -309,7 +327,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   transmission de ville, controles de transport et de preuve, moyenne provinciale
   de repli et conservation du dernier prix encore valide. Le CSV reel et sa
   redirection officielle ont ete controles ; les tests complets sont verts.
-- Apres installation du build 31, les copies non destructives du store appareil
+- Apres installation du build 32, les copies non destructives du store appareil
   avant/apres sont identiques au SHA-256, passent `PRAGMA integrity_check=ok` et
   contiennent toujours 126 trajets. Le demarrage et les ecrans Assistance/prix sur
   appareil restent a verifier apres deverrouillage.
@@ -321,7 +339,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   les frames Core Motion, la couverture GPS qualifiee, les interruptions, erreurs,
   candidats et sessions non cloturees, sans coordonnees. L'interface ne presente plus un contact
   configure comme une detection active et maintient le statut « Aucune alerte ».
-  La suite iOS passe 267/267 ; aucune alerte automatique n'est activee.
+  La suite iOS passe 272/272 ; aucune alerte automatique n'est activee.
 
 ## References primaires — architecture collision
 
@@ -336,7 +354,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 31 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 32 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le
