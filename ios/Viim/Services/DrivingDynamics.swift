@@ -4,15 +4,15 @@ import Foundation
 /// Resume de la dynamique reelle d'un trajet, derive des vitesses GPS
 /// horodatees. Sert a moduler l'estimation carburant et a calculer les
 /// scores de fluidite et d'eco-conduite : un meme kilometrage ne coute
-/// pas pareil selon les accelerations, freinages et temps de ralenti.
+/// pas pareil selon les variations de vitesse et le temps a tres basse vitesse.
 struct DrivingDynamics: Equatable {
     /// Vitesse moyenne pendant les phases de deplacement (km/h).
     let meanMovingSpeedKmh: Double
     /// Fraction du temps analyse passee quasi a l'arret. L'etat moteur est inconnu.
     let idleRatio: Double
-    /// Accelerations franches (> seuil) detectees sur le trajet.
+    /// Variations positives de vitesse GPS compatibles avec une acceleration franche.
     let hardAccelerationCount: Int
-    /// Freinages brusques (< seuil) detectes sur le trajet.
+    /// Variations negatives de vitesse GPS compatibles avec un freinage brusque.
     let hardBrakingCount: Int
     /// RMS des accelerations positives (m/s2) : agressivite globale.
     let accelerationRms: Double

@@ -308,10 +308,10 @@
 "driving.criteria.comingSoon" = "À venir";
 "driving.criteria.smoothness" = "Fluidité";
 "driving.criteria.smoothness.value" = "--";
-"driving.criteria.smoothness.detail" = "Les freinages et accélérations brusques seront analysés dès vos prochains trajets.";
-"driving.criteria.smoothness.detail.real" = "Accélérations franches et freinages brusques détectés par GPS sur vos trajets des 30 derniers jours.";
+"driving.criteria.smoothness.detail" = "Les variations rapides de vitesse GPS seront analysées dès vos prochains trajets.";
+"driving.criteria.smoothness.detail.real" = "Variations de vitesse GPS compatibles avec des accélérations ou freinages francs ; ce sont des estimations, pas des mesures du véhicule.";
 "driving.criteria.eco" = "Éco-conduite";
-"driving.criteria.eco.detail.real" = "Impact de votre style de conduite sur la consommation estimée (ralenti, à-coups, profil de vitesse).";
+"driving.criteria.eco.detail.real" = "Impact estimé du profil de vitesse, des à-coups GPS et du temps à très basse vitesse ; l'état du moteur n'est pas connu.";
 "driving.criteria.vigilance" = "Vigilance";
 "driving.criteria.vigilance.value" = "--";
 "driving.criteria.vigilance.detail" = "Les distractions au volant seront détectées ici dans une prochaine version.";
