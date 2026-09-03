@@ -695,6 +695,41 @@ final class CollisionDetectionEngineTests: XCTestCase {
         XCTAssertEqual(try reviewJournal.load(), [])
     }
 
+    @MainActor
+    func testReviewStoreExportsAnIntegrityCheckedAggregateWithoutCoordinates() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollisionCalibrationReviewStore(
+            candidateJournal: CollisionShadowJournal(
+                fileURL: directory.appendingPathComponent("collision-shadow.json")
+            ),
+            reviewJournal: CollisionShadowReviewJournal(
+                fileURL: directory.appendingPathComponent("collision-reviews.json")
+            ),
+            coverageJournal: CollisionShadowCoverageJournal(
+                fileURL: directory.appendingPathComponent("collision-coverage.json")
+            )
+        )
+
+        store.reload(trips: [])
+        let fileURL = try store.createCalibrationReportExport()
+        let data = try Data(contentsOf: fileURL)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .millisecondsSince1970
+        let report = try decoder.decode(
+            CollisionShadowCalibrationReportEnvelope.self,
+            from: data
+        )
+        let text = try XCTUnwrap(String(data: data, encoding: .utf8))
+
+        XCTAssertTrue(report.hasValidIntegrity)
+        XCTAssertEqual(report.payload.instrumentationStatus, .insufficientEvidence)
+        XCTAssertFalse(text.contains("latitude"))
+        XCTAssertFalse(text.contains("longitude"))
+        XCTAssertFalse(text.contains("tripID"))
+    }
+
     func testReviewJournalQuarantinesMalformedAnnotationsAndKeepsRecording() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -1231,6 +1266,82 @@ final class CollisionDetectionEngineTests: XCTestCase {
         XCTAssertEqual(summary.monitoringCoverageRatio, 0)
     }
 
+    func testCalibrationPolicyPassesOnlyWithPredeclaredVolumeAndQuality() throws {
+        let passingSummary = calibrationSummary()
+        let generatedAt = Date(timeIntervalSinceReferenceDate: 500_000)
+        let report = try CollisionShadowCalibrationReportEnvelope.make(
+            summary: passingSummary,
+            algorithmVersion: CollisionDetectionEngine.algorithmVersion,
+            generatedAt: generatedAt
+        )
+
+        XCTAssertEqual(report.payload.instrumentationStatus, .passed)
+        XCTAssertEqual(report.payload.candidateReviewStatus, .passed)
+        XCTAssertEqual(report.payload.policyVersion, CollisionShadowCalibrationPolicy.version)
+        XCTAssertEqual(report.payload.metrics.eligibleTripCount, 100)
+        XCTAssertEqual(report.payload.metrics.estimatedMonitoredDistanceKm, 1_000, accuracy: 0.001)
+        XCTAssertEqual(report.payload.metrics.matchedCandidateCount, 30)
+        XCTAssertEqual(report.payload.metrics.reviewedCandidateCount, 27)
+        XCTAssertTrue(report.hasValidIntegrity)
+
+        let insufficient = CollisionShadowCoverageSummary.summarize([])
+        XCTAssertEqual(
+            CollisionShadowCalibrationPolicy.current.instrumentationStatus(for: insufficient),
+            .insufficientEvidence
+        )
+        XCTAssertEqual(
+            CollisionShadowCalibrationPolicy.current.candidateReviewStatus(for: insufficient),
+            .insufficientEvidence
+        )
+    }
+
+    func testCalibrationPolicyFailsClosedAfterEnoughPoorQualityEvidence() {
+        let poorGPSSummary = calibrationSummary(qualifiedGPSRatio: 0.5)
+
+        XCTAssertEqual(
+            CollisionShadowCalibrationPolicy.current.instrumentationStatus(for: poorGPSSummary),
+            .failed
+        )
+        XCTAssertEqual(
+            CollisionShadowCalibrationPolicy.current.candidateReviewStatus(for: poorGPSSummary),
+            .passed
+        )
+    }
+
+    func testCalibrationReportContainsNoTripIdentifiersAndDetectsTampering() throws {
+        let report = try CollisionShadowCalibrationReportEnvelope.make(
+            summary: calibrationSummary(),
+            algorithmVersion: CollisionDetectionEngine.algorithmVersion,
+            generatedAt: Date(timeIntervalSinceReferenceDate: 600_000)
+        )
+        let data = try report.encodedData()
+        let text = try XCTUnwrap(String(data: data, encoding: .utf8))
+
+        XCTAssertFalse(text.contains("tripID"))
+        XCTAssertFalse(text.contains("latitude"))
+        XCTAssertFalse(text.contains("longitude"))
+        XCTAssertFalse(text.contains("routePoints"))
+        XCTAssertTrue(text.contains("sha256_integrity_is_not_authenticity"))
+
+        var root = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        var payload = try XCTUnwrap(root["payload"] as? [String: Any])
+        var metrics = try XCTUnwrap(payload["metrics"] as? [String: Any])
+        metrics["sessionCount"] = 999
+        payload["metrics"] = metrics
+        root["payload"] = payload
+        let tamperedData = try JSONSerialization.data(withJSONObject: root)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .millisecondsSince1970
+        let tampered = try decoder.decode(
+            CollisionShadowCalibrationReportEnvelope.self,
+            from: tamperedData
+        )
+
+        XCTAssertFalse(tampered.hasValidIntegrity)
+    }
+
     private func shadowCandidate(at impactAt: Date) -> CollisionShadowCandidate {
         CollisionShadowCandidate(
             id: UUID(),
@@ -1251,7 +1362,8 @@ final class CollisionDetectionEngineTests: XCTestCase {
         vehicleType: VehicleType,
         startedAt: Date,
         endedAt: Date,
-        candidateCount: Int
+        candidateCount: Int,
+        qualifiedGPSRatio: Double = 1
     ) -> CollisionShadowCoverageRecord {
         let frameCount = max(
             candidateCount,
@@ -1269,13 +1381,73 @@ final class CollisionDetectionEngineTests: XCTestCase {
             endedAt: endedAt,
             endReason: .tripEnded,
             frameCount: frameCount,
-            qualifiedGPSFrameCount: frameCount,
+            qualifiedGPSFrameCount: Int(Double(frameCount) * qualifiedGPSRatio),
             gapCount: 0,
             missingMotionDuration: 0,
             maximumMotionGap: 0,
             candidateCount: candidateCount,
             motionErrorCount: 0,
             version: CollisionShadowCoverageRecord.schemaVersion
+        )
+    }
+
+    private func calibrationSummary(
+        qualifiedGPSRatio: Double = 1
+    ) -> CollisionShadowCoverageSummary {
+        let origin = Date(timeIntervalSinceReferenceDate: 100_000)
+        var records: [CollisionShadowCoverageRecord] = []
+        var trips: [CollisionShadowFinalizedTripEvidence] = []
+        var candidates: [CollisionShadowCandidate] = []
+        var annotations: [CollisionShadowReviewAnnotation] = []
+
+        for index in 0..<100 {
+            let startedAt = origin.addingTimeInterval(Double(index) * 1_000)
+            let endedAt = startedAt.addingTimeInterval(600)
+            let tripID = UUID()
+            let hasCandidate = index < 30
+            records.append(
+                coverageRecord(
+                    tripID: tripID,
+                    tripStartedAt: startedAt,
+                    vehicleType: .voiture,
+                    startedAt: startedAt,
+                    endedAt: endedAt,
+                    candidateCount: hasCandidate ? 1 : 0,
+                    qualifiedGPSRatio: qualifiedGPSRatio
+                )
+            )
+            trips.append(
+                CollisionShadowFinalizedTripEvidence(
+                    id: tripID,
+                    startDate: startedAt,
+                    endDate: endedAt,
+                    drivingDuration: 600,
+                    distanceKm: 10,
+                    vehicleType: .voiture
+                )
+            )
+            if hasCandidate {
+                let candidate = shadowCandidate(at: startedAt.addingTimeInterval(300))
+                    .contextualized(tripID: tripID, vehicleType: .voiture)
+                candidates.append(candidate)
+                if index < 27 {
+                    annotations.append(
+                        CollisionShadowReviewAnnotation(
+                            candidateID: candidate.id,
+                            label: .roadImpact,
+                            reviewedAt: endedAt.addingTimeInterval(1)
+                        )
+                    )
+                }
+            }
+        }
+
+        return CollisionShadowCoverageSummary.summarize(
+            records,
+            finalizedTrips: trips,
+            candidates: candidates,
+            annotations: annotations,
+            observationEndedAt: origin.addingTimeInterval(100_000)
         )
     }
 

@@ -2,6 +2,13 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (portes de calibration collision et rapport agrégé — build 46 privé)
+
+- **[Calibration]** Une politique versionnée et pré-déclarée sépare désormais deux portes : continuité de l’instrumentation et complétude de la revue des candidats. La première exige au moins 100 trajets éligibles, 1 000 km suivis estimés, 95 % de temps couvert, 90 % de frames GPS qualifiées, au plus 2 % de sessions inachevées, 1 % de sessions orphelines et 0,01 erreur Core Motion par session. La seconde exige au moins 30 candidats appariés et 90 % revus.
+- **[Sécurité]** Ces portes ne mesurent ni rappel, ni faux négatifs, ni capacité de protection. Leur réussite ne peut pas activer les alertes : un corpus terrain annoté, SafetyKit et une preuve de livraison bout en bout restent indispensables.
+- **[Auditabilité]** Assistance affiche séparément les deux états et exporte un JSON local agrégé, versionné et sans coordonnées, trace GPS ni identifiant de trajet. Son SHA-256 détecte une altération du contenu ; ce n’est pas une signature d’authenticité.
+- **[QA/Appareil]** Suite iOS complète 355/355, zéro échec ou test ignoré. Le build 46 est signé, installé et confirmé sur l’iPhone 16 ; la base avant/après est identique (126 trajets, intégrité `ok`). L’ouverture automatisée expire toujours et le dernier lancement prouvé reste le build 23 en `authorizedWhenInUse` : aucune collecte arrière-plan ni migration récente n’est encore prouvée.
+
 ## 2026-09-03 (couverture collision shadow reliée aux trajets — build 45 privé)
 
 - **[Mesure]** Les sessions locales de recherche collision sont désormais jointes aux trajets motorisés finalisés et fiables. Les intervalles sont rognés aux bornes du trajet puis fusionnés : un redémarrage ou deux sessions qui se chevauchent ne gonflent plus la durée suivie.

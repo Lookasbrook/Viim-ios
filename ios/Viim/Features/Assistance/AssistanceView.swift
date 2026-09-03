@@ -7,11 +7,13 @@ import UIKit
 final class CollisionCalibrationReviewStore: ObservableObject {
     enum ReviewError: Error, Equatable {
         case candidateMissing
+        case reportUnavailable
     }
 
     @Published private(set) var pendingCandidates: [CollisionShadowCandidate] = []
     @Published private(set) var isUnavailable = false
     @Published private(set) var coverageSummary: CollisionShadowCoverageSummary?
+    @Published private(set) var calibrationReport: CollisionShadowCalibrationReportEnvelope?
     @Published private(set) var isCoverageUnavailable = false
 
     private let candidateJournal: CollisionShadowJournal
@@ -60,22 +62,50 @@ final class CollisionCalibrationReviewStore: ObservableObject {
             let currentAlgorithmRecords = try coverageJournal.load().filter {
                 $0.algorithmVersion == CollisionDetectionEngine.algorithmVersion
             }
-            coverageSummary = CollisionShadowCoverageSummary.summarize(
+            let summary = CollisionShadowCoverageSummary.summarize(
                 currentAlgorithmRecords,
                 finalizedTrips: finalizedTrips,
                 candidates: loadedCandidates,
                 annotations: loadedAnnotations,
                 candidateEvidenceAvailable: candidateEvidenceAvailable
             )
+            coverageSummary = summary
+            calibrationReport = try CollisionShadowCalibrationReportEnvelope.make(
+                summary: summary,
+                algorithmVersion: CollisionDetectionEngine.algorithmVersion
+            )
             isCoverageUnavailable = false
         } catch {
             coverageSummary = nil
+            calibrationReport = nil
             isCoverageUnavailable = true
             let nsError = error as NSError
             ViimDiagnostics.log(
                 "collision.shadow.coverage.load failed=true errorDomain=\(nsError.domain) errorCode=\(nsError.code)"
             )
         }
+    }
+
+    func createCalibrationReportExport() throws -> URL {
+        guard let calibrationReport else { throw ReviewError.reportUnavailable }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ViimCollisionCalibration", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        let fileURL = directory.appendingPathComponent(
+            "Viim-Collision-Calibration-v1.json"
+        )
+        try calibrationReport.encodedData().write(to: fileURL, options: .atomic)
+        try FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+            ofItemAtPath: fileURL.path
+        )
+        ViimDiagnostics.log(
+            "collision.shadow.report.export created=true integrityValid=\(calibrationReport.hasValidIntegrity)"
+        )
+        return fileURL
     }
 
     func review(
@@ -489,6 +519,7 @@ private struct CollisionCalibrationReviewView: View {
     @EnvironmentObject private var store: CollisionCalibrationReviewStore
     @EnvironmentObject private var tripManager: TripManager
     @State private var alertMessage: AssistanceAlertMessage?
+    @State private var reportExport: CollisionCalibrationReportExport?
 
     var body: some View {
         ScrollView {
@@ -506,8 +537,23 @@ private struct CollisionCalibrationReviewView: View {
 
                 CollisionCalibrationCoverageCard(
                     summary: store.coverageSummary,
+                    report: store.calibrationReport,
                     isUnavailable: store.isCoverageUnavailable
                 )
+
+                if store.calibrationReport != nil {
+                    Button {
+                        exportCalibrationReport()
+                    } label: {
+                        Label(
+                            "assistance.collisionCalibration.report.export",
+                            systemImage: "square.and.arrow.up"
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(ViimColors.blue)
+                }
 
                 if store.isUnavailable {
                     AssistanceDetailView(
@@ -545,6 +591,9 @@ private struct CollisionCalibrationReviewView: View {
         .background(ViimColors.background.ignoresSafeArea())
         .navigationTitle("assistance.collisionCalibration.reviewTitle")
         .task { store.reload(trips: tripManager.recentTrips) }
+        .sheet(item: $reportExport) { export in
+            CollisionCalibrationShareSheet(activityItems: [export.fileURL])
+        }
         .alert(item: $alertMessage) { message in
             Alert(
                 title: Text(message.titleKey),
@@ -553,10 +602,24 @@ private struct CollisionCalibrationReviewView: View {
             )
         }
     }
+
+    private func exportCalibrationReport() {
+        do {
+            reportExport = CollisionCalibrationReportExport(
+                fileURL: try store.createCalibrationReportExport()
+            )
+        } catch {
+            alertMessage = AssistanceAlertMessage(
+                titleKey: "assistance.error.title",
+                detailKey: "assistance.collisionCalibration.report.exportError"
+            )
+        }
+    }
 }
 
 private struct CollisionCalibrationCoverageCard: View {
     let summary: CollisionShadowCoverageSummary?
+    let report: CollisionShadowCalibrationReportEnvelope?
     let isUnavailable: Bool
 
     var body: some View {
@@ -584,6 +647,18 @@ private struct CollisionCalibrationCoverageCard: View {
                             value: "\(summary.gapCount)",
                             labelKey: "assistance.collisionCalibration.coverage.gaps"
                         )
+                    }
+                    if let report {
+                        HStack(spacing: 8) {
+                            CollisionCoverageMetric(
+                                value: gateLabel(report.payload.instrumentationStatus),
+                                labelKey: "assistance.collisionCalibration.coverage.instrumentationGate"
+                            )
+                            CollisionCoverageMetric(
+                                value: gateLabel(report.payload.candidateReviewStatus),
+                                labelKey: "assistance.collisionCalibration.coverage.reviewGate"
+                            )
+                        }
                     }
                     HStack(spacing: 8) {
                         CollisionCoverageMetric(
@@ -636,6 +711,32 @@ private struct CollisionCalibrationCoverageCard: View {
         guard let ratio = summary.realCollisionRatioAmongReviewed else { return "--" }
         return ratio.formatted(.percent.precision(.fractionLength(0)))
     }
+
+    private func gateLabel(_ status: CollisionShadowCalibrationGateStatus) -> String {
+        switch status {
+        case .insufficientEvidence:
+            String(localized: "assistance.collisionCalibration.gate.insufficient")
+        case .passed:
+            String(localized: "assistance.collisionCalibration.gate.passed")
+        case .failed:
+            String(localized: "assistance.collisionCalibration.gate.failed")
+        }
+    }
+}
+
+private struct CollisionCalibrationReportExport: Identifiable {
+    let fileURL: URL
+    var id: URL { fileURL }
+}
+
+private struct CollisionCalibrationShareSheet: UIViewControllerRepresentable {
+    let activityItems: [URL]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private struct CollisionCoverageMetric: View {

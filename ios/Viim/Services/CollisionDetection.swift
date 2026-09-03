@@ -1,5 +1,6 @@
 import CoreLocation
 import CoreMotion
+import CryptoKit
 import Foundation
 
 enum CollisionActivationBlocker: String, CaseIterable, Hashable {
@@ -854,6 +855,8 @@ struct CollisionShadowCoverageRecord: Codable, Equatable, Identifiable {
 }
 
 struct CollisionShadowCoverageSummary: Equatable {
+    let observationStartedAt: Date?
+    let observationEndedAt: Date?
     let sessionCount: Int
     let completedSessionCount: Int
     let unfinishedSessionCount: Int
@@ -894,6 +897,26 @@ struct CollisionShadowCoverageSummary: Equatable {
     var realCollisionRatioAmongReviewed: Double? {
         guard reviewedCandidateCount > 0 else { return nil }
         return Double(realCollisionReviewCount) / Double(reviewedCandidateCount)
+    }
+
+    var candidateReviewCoverageRatio: Double? {
+        guard isCandidateEvidenceAvailable, matchedCandidateCount > 0 else { return nil }
+        return Double(reviewedCandidateCount) / Double(matchedCandidateCount)
+    }
+
+    var unfinishedSessionRatio: Double? {
+        guard sessionCount > 0 else { return nil }
+        return Double(unfinishedSessionCount) / Double(sessionCount)
+    }
+
+    var unmatchedSessionRatio: Double? {
+        guard sessionCount > 0 else { return nil }
+        return Double(unmatchedSessionCount) / Double(sessionCount)
+    }
+
+    var motionErrorsPerSession: Double? {
+        guard sessionCount > 0 else { return nil }
+        return Double(motionErrorCount) / Double(sessionCount)
     }
 
     static func summarize(
@@ -969,6 +992,8 @@ struct CollisionShadowCoverageSummary: Equatable {
         }
 
         return Self(
+            observationStartedAt: observationStartedAt,
+            observationEndedAt: validRecords.isEmpty ? nil : observationEndedAt,
             sessionCount: validRecords.count,
             completedSessionCount: validRecords.lazy.filter { $0.endedAt != nil }.count,
             unfinishedSessionCount: validRecords.lazy.filter { $0.endedAt == nil }.count,
@@ -1008,6 +1033,207 @@ struct CollisionShadowCoverageSummary: Equatable {
             }
         }
         return total + current.duration
+    }
+}
+
+enum CollisionShadowCalibrationGateStatus: String, Codable, Equatable {
+    case insufficientEvidence
+    case passed
+    case failed
+}
+
+/// Seuils figes avant le pilote terrain. Ils qualifient la continuite de
+/// l'instrumentation et la completude de la revue, jamais la detection elle-meme.
+struct CollisionShadowCalibrationPolicy: Codable, Equatable {
+    static let version = "collision-shadow-calibration-policy-v1"
+    static let current = Self(
+        minimumEligibleTrips: 100,
+        minimumMonitoredDistanceKm: 1_000,
+        minimumMonitoringCoverageRatio: 0.95,
+        minimumQualifiedGPSRatio: 0.90,
+        maximumUnfinishedSessionRatio: 0.02,
+        maximumUnmatchedSessionRatio: 0.01,
+        maximumMotionErrorsPerSession: 0.01,
+        minimumMatchedCandidates: 30,
+        minimumCandidateReviewCoverageRatio: 0.90
+    )
+
+    let minimumEligibleTrips: Int
+    let minimumMonitoredDistanceKm: Double
+    let minimumMonitoringCoverageRatio: Double
+    let minimumQualifiedGPSRatio: Double
+    let maximumUnfinishedSessionRatio: Double
+    let maximumUnmatchedSessionRatio: Double
+    let maximumMotionErrorsPerSession: Double
+    let minimumMatchedCandidates: Int
+    let minimumCandidateReviewCoverageRatio: Double
+
+    func instrumentationStatus(
+        for summary: CollisionShadowCoverageSummary
+    ) -> CollisionShadowCalibrationGateStatus {
+        guard summary.eligibleTripCount >= minimumEligibleTrips,
+              summary.estimatedMonitoredDistanceKm >= minimumMonitoredDistanceKm else {
+            return .insufficientEvidence
+        }
+        guard let monitoringCoverageRatio = summary.monitoringCoverageRatio,
+              let qualifiedGPSRatio = summary.qualifiedGPSRatio,
+              let unfinishedSessionRatio = summary.unfinishedSessionRatio,
+              let unmatchedSessionRatio = summary.unmatchedSessionRatio,
+              let motionErrorsPerSession = summary.motionErrorsPerSession else {
+            return .failed
+        }
+        return monitoringCoverageRatio >= minimumMonitoringCoverageRatio &&
+            qualifiedGPSRatio >= minimumQualifiedGPSRatio &&
+            unfinishedSessionRatio <= maximumUnfinishedSessionRatio &&
+            unmatchedSessionRatio <= maximumUnmatchedSessionRatio &&
+            motionErrorsPerSession <= maximumMotionErrorsPerSession ? .passed : .failed
+    }
+
+    func candidateReviewStatus(
+        for summary: CollisionShadowCoverageSummary
+    ) -> CollisionShadowCalibrationGateStatus {
+        guard summary.isCandidateEvidenceAvailable,
+              summary.matchedCandidateCount >= minimumMatchedCandidates else {
+            return .insufficientEvidence
+        }
+        guard let ratio = summary.candidateReviewCoverageRatio else { return .failed }
+        return ratio >= minimumCandidateReviewCoverageRatio ? .passed : .failed
+    }
+}
+
+struct CollisionShadowCalibrationReportMetrics: Codable, Equatable {
+    let sessionCount: Int
+    let completedSessionCount: Int
+    let unfinishedSessionCount: Int
+    let unmatchedSessionCount: Int
+    let frameCount: Int
+    let qualifiedGPSFrameCount: Int
+    let gapCount: Int
+    let motionErrorCount: Int
+    let eligibleTripCount: Int
+    let coveredTripCount: Int
+    let eligibleDrivingDurationSeconds: TimeInterval
+    let monitoredDrivingDurationSeconds: TimeInterval
+    let estimatedMonitoredDistanceKm: Double
+    let matchedCandidateCount: Int
+    let reviewedCandidateCount: Int
+    let realCollisionReviewCount: Int
+    let monitoringCoverageRatio: Double?
+    let qualifiedGPSRatio: Double?
+    let candidateReviewCoverageRatio: Double?
+    let candidatesPerThousandMonitoredKm: Double?
+    let realCollisionRatioAmongReviewed: Double?
+    let motionErrorsPerSession: Double?
+
+    init(summary: CollisionShadowCoverageSummary) {
+        sessionCount = summary.sessionCount
+        completedSessionCount = summary.completedSessionCount
+        unfinishedSessionCount = summary.unfinishedSessionCount
+        unmatchedSessionCount = summary.unmatchedSessionCount
+        frameCount = summary.frameCount
+        qualifiedGPSFrameCount = summary.qualifiedGPSFrameCount
+        gapCount = summary.gapCount
+        motionErrorCount = summary.motionErrorCount
+        eligibleTripCount = summary.eligibleTripCount
+        coveredTripCount = summary.coveredTripCount
+        eligibleDrivingDurationSeconds = summary.eligibleDrivingDuration
+        monitoredDrivingDurationSeconds = summary.monitoredDrivingDuration
+        estimatedMonitoredDistanceKm = summary.estimatedMonitoredDistanceKm
+        matchedCandidateCount = summary.matchedCandidateCount
+        reviewedCandidateCount = summary.reviewedCandidateCount
+        realCollisionReviewCount = summary.realCollisionReviewCount
+        monitoringCoverageRatio = summary.monitoringCoverageRatio
+        qualifiedGPSRatio = summary.qualifiedGPSRatio
+        candidateReviewCoverageRatio = summary.candidateReviewCoverageRatio
+        candidatesPerThousandMonitoredKm = summary.candidatesPerThousandMonitoredKm
+        realCollisionRatioAmongReviewed = summary.realCollisionRatioAmongReviewed
+        motionErrorsPerSession = summary.motionErrorsPerSession
+    }
+}
+
+struct CollisionShadowCalibrationReportPayload: Codable, Equatable {
+    static let schemaVersion = 1
+
+    let schemaVersion: Int
+    let generatedAt: Date
+    let observationStartedAt: Date?
+    let observationEndedAt: Date?
+    let algorithmVersion: String
+    let policyVersion: String
+    let scope: String
+    let instrumentationStatus: CollisionShadowCalibrationGateStatus
+    let candidateReviewStatus: CollisionShadowCalibrationGateStatus
+    let policy: CollisionShadowCalibrationPolicy
+    let metrics: CollisionShadowCalibrationReportMetrics
+    let limitations: [String]
+}
+
+/// L'empreinte detecte une alteration accidentelle du payload. Elle n'est pas
+/// une signature d'authenticite et ne contient aucune cle privee.
+struct CollisionShadowCalibrationReportEnvelope: Codable, Equatable {
+    let payload: CollisionShadowCalibrationReportPayload
+    let integritySHA256: String
+
+    static func make(
+        summary: CollisionShadowCoverageSummary,
+        algorithmVersion: String,
+        generatedAt: Date = Date(),
+        policy: CollisionShadowCalibrationPolicy = .current
+    ) throws -> Self {
+        let payload = CollisionShadowCalibrationReportPayload(
+            schemaVersion: CollisionShadowCalibrationReportPayload.schemaVersion,
+            generatedAt: generatedAt,
+            observationStartedAt: summary.observationStartedAt,
+            observationEndedAt: summary.observationEndedAt,
+            algorithmVersion: algorithmVersion,
+            policyVersion: CollisionShadowCalibrationPolicy.version,
+            scope: "local_aggregate_without_coordinates",
+            instrumentationStatus: policy.instrumentationStatus(for: summary),
+            candidateReviewStatus: policy.candidateReviewStatus(for: summary),
+            policy: policy,
+            metrics: CollisionShadowCalibrationReportMetrics(summary: summary),
+            limitations: [
+                "not_collision_recall",
+                "not_false_negative_rate",
+                "not_protection_readiness",
+                "monitored_distance_is_time_prorated",
+                "sha256_integrity_is_not_authenticity"
+            ]
+        )
+        return Self(
+            payload: payload,
+            integritySHA256: sha256Hex(try canonicalData(for: payload))
+        )
+    }
+
+    var hasValidIntegrity: Bool {
+        guard let data = try? Self.canonicalData(for: payload) else { return false }
+        return Self.sha256Hex(data) == integritySHA256
+    }
+
+    func encodedData(prettyPrinted: Bool = true) throws -> Data {
+        let encoder = Self.encoder
+        if prettyPrinted {
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        }
+        return try encoder.encode(self)
+    }
+
+    private static var encoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .millisecondsSince1970
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        return encoder
+    }
+
+    private static func canonicalData(
+        for payload: CollisionShadowCalibrationReportPayload
+    ) throws -> Data {
+        try encoder.encode(payload)
+    }
+
+    private static func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }
 

@@ -359,6 +359,13 @@
 "assistance.collisionCalibration.coverage.driving" = "Temps de conduite suivi";
 "assistance.collisionCalibration.coverage.candidateRate" = "Candidats / 1 000 km suivis";
 "assistance.collisionCalibration.coverage.reviewedRatio" = "Collisions parmi les cas revus";
+"assistance.collisionCalibration.coverage.instrumentationGate" = "Porte instrumentation";
+"assistance.collisionCalibration.coverage.reviewGate" = "Porte revue candidats";
+"assistance.collisionCalibration.gate.insufficient" = "Preuves insuffisantes";
+"assistance.collisionCalibration.gate.passed" = "Seuils atteints";
+"assistance.collisionCalibration.gate.failed" = "Seuils non atteints";
+"assistance.collisionCalibration.report.export" = "Exporter le rapport agrégé";
+"assistance.collisionCalibration.report.exportError" = "Le rapport local n’a pas pu être exporté.";
 "assistance.collisionCalibration.coverage.detail %lld %lld %lld" = "%lld session(s) clôturée(s), %lld non clôturée(s), %lld erreur(s) capteur. Ces chiffres mesurent la collecte, pas la détection des collisions.";
 "assistance.collisionCalibration.coverage.tripDetail %lld %lld %lld %.1f" = "%lld trajet(s) couvert(s) sur %lld éligible(s), %lld session(s) sans trajet finalisé correspondant, %.1f km suivis estimés. Aucun de ces chiffres ne mesure les collisions manquées.";
 "assistance.collisionCalibration.coverage.empty" = "Aucune session mesurée sur ce build. Cela ne prouve pas que la détection fonctionne.";

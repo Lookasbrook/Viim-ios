@@ -363,7 +363,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Ordre d'execution recommande
 
-1. Deverrouillage puis validation terrain P0-A sur le build 45.
+1. Deverrouillage puis validation terrain P0-A sur le build 46.
 2. Valider sur appareil la sante persistante P0-C livree depuis le build 33,
    sans activer d'alerte.
 3. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
@@ -380,7 +380,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 | Lot | Delivrable | Depend de | Verification exigee | Bloque la diffusion si |
 |---|---|---|---|---|
-| P0.1 | Permission et collecte build 45 | action utilisateur `Toujours` | 3 trajets verrouilles + hors ligne + terminaison systeme | un trajet ordinaire manque ou ecart distance > 5 % |
+| P0.1 | Permission et collecte build 46 | action utilisateur `Toujours` | 3 trajets verrouilles + hors ligne + terminaison systeme | un trajet ordinaire manque ou ecart distance > 5 % |
 | P0.2 | Sante de collecte 7 j | P0.1 pour preuve terrain | journal present, pas de PII, panne mouvement/GPS visible en < 10 min a la reouverture | un etat vert existe sans sample recent |
 | P0.3 | Persistance versionnee | fixtures des stores historiques | migration interrompue/reprise, sauvegarde intacte, aucune suppression | un store historique ne s'ouvre pas |
 | P0.4 | SafetyKit + livraison | entitlement Apple + fournisseur configure | simulateur SafetyKit, idempotence, offline/retry, accuse fournisseur | collision ou reception affichee sans preuve bout en bout |
@@ -544,3 +544,27 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   expire encore ; le dernier lancement prouve reste le build 23 en
   `authorizedWhenInUse`. Ce lot mesure mieux la calibration mais n'active aucune
   alerte et ne ferme aucune porte terrain.
+
+## Execution build 46 — seuils predeclares et rapport de calibration
+
+- La politique `collision-shadow-calibration-policy-v1` fige avant le pilote les
+  seuils de continuite de l'instrumentation : 100 trajets eligibles, 1 000 km
+  suivis estimes, couverture temporelle >= 95 %, frames GPS qualifiees >= 90 %,
+  sessions inachevees <= 2 %, sessions sans trajet <= 1 % et erreurs Core Motion
+  <= 0,01 par session.
+- Une porte independante de completude de revue exige 30 candidats apparies et
+  au moins 90 % de candidats revus. Elle ne juge pas l'exactitude de leurs labels.
+- L'ecran Assistance distingue les deux portes et exporte un JSON agrege sans
+  coordonnee, trace GPS ou UUID de trajet. Le payload et les seuils sont
+  versionnes ; une empreinte SHA-256 detecte une alteration accidentelle. Cette
+  empreinte n'est pas une signature et ne prouve pas l'origine du fichier.
+- Meme si les deux portes passent, elles ne mesurent ni rappel, ni taux de faux
+  negatifs, ni disponibilite de la chaine d'alerte. Elles ne peuvent donc jamais
+  autoriser seules une promesse de protection ou la sortie du mode shadow.
+- Quatre tests nouveaux valident le passage aux seuils exacts, l'echec ferme sur
+  GPS degrade, l'absence d'identifiants/coordonnees et la detection d'alteration.
+  Suite complete 355/355, zero echec ou test ignore.
+- Build 46 signe, installe et confirme sur l'iPhone 16. Base avant/apres strictement
+  identique au SHA-256 historique, 126 trajets, `integrity_check=ok`. L'ouverture
+  automatisee expire toujours ; le dernier lancement prouve reste le build 23 en
+  `authorizedWhenInUse`. Les portes terrain restent donc ouvertes.
