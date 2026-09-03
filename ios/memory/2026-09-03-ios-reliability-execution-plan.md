@@ -423,10 +423,10 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
    resolution). Un prix de profil local ne peut valoriser un trajet d'un autre
    marche ; sans concordance, le cout reste indisponible. Ajouter une migration
    legere et des tests changement de ville, voyage, absence de geocodage et cache.
-3. **P0 Burkina/XOF, build 50 :** separer le contrat de preuve BF du contrat Canada.
-   Rechercher d'abord une source publique officielle stable ; valider HTTPS, hote,
-   schema, devise XOF, unite, carburant, date et localite. Si aucune source qualifiee
-   n'existe, conserver uniquement la saisie utilisateur datee, jamais un prix devine.
+3. **P0 Burkina/XOF, build 50 livre :** l'audit n'a qualifie aucune API reunissant
+   source officielle, stabilite, fraicheur, licence et semantique non ambigue. Toute
+   localite non couverte est refusee avant l'appel HTTP de prix ; le Burkina conserve
+   uniquement la saisie utilisateur datee, jamais un prix devine.
 4. **P1 consommation v12, build 51 :** conserver les references officielles ville,
    route et mixte, choisir/interpoler le regime seulement avec vitesse qualifiee,
    regrouper accelerations et freinages en episodes independants de la cadence GPS,
@@ -460,15 +460,16 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Etat d'execution verifie
 
-- Etat actuel : build 49 signe et installe sur l'iPhone 16 ; 385/385
-  tests iOS passent. La base appareil avant/apres installation est identique, avec
-  126 trajets et `integrity_check=ok`. Le lancement automatise expire encore : le
-  dernier lancement prouve reste le build 23 en `authorizedWhenInUse`.
+- Etat actuel : build 50 signe, installe et lance sur l'iPhone 16 ; 390/390
+  tests iOS passent. Le lancement a cree la sauvegarde de migration Build 41→49,
+  ouvert le nouveau schema, conserve 126 trajets et `integrity_check=ok`.
+  L'autorisation reste `authorizedWhenInUse`, donc la collecte ecran verrouille
+  n'est toujours pas prouvee.
 - Le cout officiel build 49 exige une preuve grossiere des extremites depart/arrivee
   concordante avec le marche du prix. Les anciens couts officiels sans preuve sont
   exclus de l'affichage et des agregats. Les migrations Build 33→49 et Build 41→49
-  sont prouvees sur simulateur ; la migration du store appareil ne l'est pas tant
-  que le telephone reste verrouille.
+  sont prouvees sur simulateur et maintenant sur le store de l'iPhone via le
+  lancement du build 50.
 - L'inbox collision build 48 est local, durable et fail-closed, mais aucune source
   SafetyKit, UI, notification, alerte ou livraison n'est branchee. Le statut public
   reste `unavailable`.
@@ -527,14 +528,17 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 49 et
-   accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
-   peut prouver la capture ecran verrouille.
+1. **Utilisateur — aujourd'hui :** dans Reglages iOS, accorder a Viim Position
+   `Toujours` avec Position precise. Le build 50 est deja lance, mais iOS rapporte
+   encore `authorizedWhenInUse` ; aucun correctif logiciel ne peut valider seul la
+   capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le
    journal et mesurer completude, trous GPS et ecart de distance. Tout ecart > 5 %
    bloque la suite de diffusion.
-3. **Build 50 — donnees publiques :** contrat BF/XOF distinct ; source officielle
-   qualifiee ou repli explicite vers saisie utilisateur seulement.
+3. **Build 50 livre — donnees publiques :** le Burkina et toute autre localite
+   sans contrat qualifie sont refuses avant tout appel HTTP de prix ; la saisie utilisateur est
+   le seul prix BF/XOF utilisable. L'audit SONABHY/INSD documente pourquoi aucun
+   fournisseur automatique n'est encore activable.
 4. **Build 51 — modelisation :** references ville/route/mixte, episodes de conduite
    invariants a la cadence et calibration sans double comptage ; mesurer mediane/P90.
 5. **Build 52 — catalogue, sans IA :** alias canoniques, SHA-256 local, annees et
@@ -731,4 +735,27 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   installation, le store conserve 126 trajets, `integrity_check=ok` et le SHA-256
   `9b26ce5bcf54778ba64268f460ecf0dedbde3d69dbd3308a5f76b48675fc01fc`.
   Le lancement est explicitement refuse par iOS car l'appareil est verrouille ;
-  aucune migration appareil ni ligne `app.launch build=49` n'est revendiquee.
+  aucune ligne `app.launch build=49` n'est revendiquee. La migration appareil a
+  ensuite ete prouvee lors du lancement du build 50.
+
+## Execution build 50 — prix Burkina fail-closed
+
+- Le routeur iOS reconnait seulement Ontario direct et Statistique Canada direct.
+  Burkina et tout autre pays retournent `unavailable` apres le geocodage Apple,
+  mais avant la creation d'une requete HTTP vers le backend ou une source de prix.
+- Le bouton de recherche conserve le prix courant et explique qu'il faut saisir
+  le prix affiche a la pompe lorsqu'aucune API publique qualifiee n'existe.
+- L'audit a verifie la page officielle SONABHY, son endpoint Strapi indirect, le
+  catalogue mensuel INSD, son XLSX de mai 2026 et la licence ouverte INSD. Le JSON
+  SONABHY contient simultanement un gazole a 675 XOF/L (structure de prix) et a
+  750 XOF/L (vente au detail Ouagadougou) : l'app ne tranche pas sans contrat.
+- Une future activation exige une ingestion backend, une interpretation humaine
+  de l'arrete, une preuve de licence et un contrat versionne teste. Aucun endpoint
+  prive ou non documente n'est appele directement depuis l'iPhone.
+- La suite iOS complete passe 390/390 sans echec ni test ignore. Le Release
+  `0.1.0 (50)` est signe, installe et lance sur l'iPhone 16. Le journal confirme
+  `app.launch build=50`, la creation de la sauvegarde de migration et
+  `authorizedWhenInUse`.
+- Apres migration, le SQLite passe `integrity_check=ok`, contient toujours 126
+  trajets et expose les colonnes Build 49 de preuve geographique. La porte terrain
+  reste ouverte tant que l'utilisateur n'accorde pas Position `Toujours`.

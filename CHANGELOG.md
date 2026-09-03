@@ -2,6 +2,14 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (prix Burkina fail-closed — build 50 privé)
+
+- **[Fiabilité]** Une localité hors des deux fournisseurs canadiens qualifiés est désormais refusée avant tout appel HTTP au backend ou à un fournisseur de prix. L'app iOS n'utilise plus le backend Viim comme proxy implicite vers une source non contractualisée et le prix existant n'est jamais écrasé.
+- **[Burkina Faso]** L'audit SONABHY/INSD n'a qualifié aucune API réunissant aujourd'hui source officielle, contrat stable, fraîcheur, licence et sémantique non ambiguë. Le calcul BF/XOF conserve uniquement le prix saisi par l'utilisateur, explicitement identifié comme tel.
+- **[UI]** Le message indique que Viim ne dispose d'aucune source publique officielle qualifiée pour cette localité et invite à saisir le prix affiché à la pompe.
+- **[QA]** Tests ajoutés sur le chemin réellement utilisé par l'interface pour le routage Ontario, reste du Canada, Burkina et pays non pris en charge, ainsi que sur l'absence d'appel HTTP de prix pour une localité non qualifiée.
+- **[Appareil]** Suite iOS complète 390/390, zéro échec ou test ignoré. Release `0.1.0 (50)` signé, installé et lancé sur l'iPhone 16. La migration Build 41→49 crée sa sauvegarde, conserve 126 trajets, passe `integrity_check=ok` et expose les nouvelles colonnes de preuve. L'autorisation reste toutefois `authorizedWhenInUse` : la capture écran verrouillé n'est toujours pas validée.
+
 ## 2026-09-03 (preuve géographique du coût carburant — build 49 privé)
 
 - **[Fiabilité]** Un prix public officiel n’est plus appliqué au moment de la persistance du trajet. Le trajet est d’abord sauvegardé sans attendre le réseau, puis ses première et dernière positions qualifiées sont géocodées par Apple. Le coût reste indisponible si une extrémité sort du marché publié, si la précision dépasse 100 m, si le géocodage échoue ou si le carburant diffère.

@@ -2,6 +2,27 @@
 
 Objectif : aucune valeur metier ne doit etre affichee sans source de verite, formule, condition de validite et raison explicite quand la valeur manque.
 
+## Etat au 2026-09-03 — prix Burkina fail-closed, build 50
+
+- Les seules recherches automatiques actives sont le releve officiel Ontario et
+  la table officielle Statistique Canada. Toute autre localite, dont le Burkina,
+  est refusee avant tout appel HTTP au backend ou a un fournisseur de prix. Le
+  geocodage Apple sert uniquement a etablir le pays et la localite grossiere.
+- La SONABHY expose indirectement un JSON Strapi non documente sur un domaine
+  tiers. Deux objets publies ensemble donnent 675 et 750 XOF/L pour le gazole car
+  l'un decrit la structure du prix et l'autre le tarif de detail. L'app refuse de
+  choisir silencieusement.
+- L'INSD publie un XLSX regional sous licence ouverte, mais la derniere moyenne
+  structuree trouvee est celle de mai 2026 et ne reflete pas le tarif SONABHY
+  entre en vigueur en juillet. Elle n'est pas presentee comme prix actuel.
+- Le prix saisi a la pompe reste utilisable, date, lie au type de carburant et
+  marque `userProvided`. Une recherche publique indisponible ne le remplace pas.
+- Audit et conditions de future activation :
+  `ios/memory/2026-09-03-burkina-fuel-price-source-audit.md`.
+- Le Release `0.1.0 (50)` est signe, installe et lance sur l'iPhone 16. La suite
+  passe 390/390 ; la migration appareil cree sa sauvegarde, conserve 126 trajets
+  et `integrity_check=ok`. La localisation reste `authorizedWhenInUse`.
+
 ## Etat au 2026-09-03 — concordance prix/trajet iOS, build 49
 
 - Un prix officiel ne cree plus de cout pendant la transaction qui sauvegarde le
@@ -17,8 +38,8 @@ Objectif : aucune valeur metier ne doit etre affichee sans source de verite, for
 - Un cout officiel historique sans cette preuve reste stocke pour audit mais est
   masque et exclu des agregats. Il n'est jamais recalcule avec le profil courant.
 - Les migrations Build 33→49 et Build 41→49 passent sur de vrais stores SQLite de
-  test. Le build 49 est installe sur l'iPhone 16, mais son lancement est bloque par
-  le verrouillage ; la migration du store appareil reste donc a prouver.
+  test. Le lancement ulterieur du build 50 a aussi migre le store reel : sauvegarde
+  creee, nouvelles colonnes presentes, 126 trajets conserves et integrite `ok`.
 
 ## Etat au 2026-09-03 — collision shadow iOS, build 29
 

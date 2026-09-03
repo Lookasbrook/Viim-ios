@@ -580,7 +580,7 @@
 "profile.fuel.invalid" = "Saisissez un prix par litre supérieur à zéro.";
 "profile.fuel.official.lookup" = "Utiliser le prix officiel local";
 "profile.fuel.official.loaded" = "Prix public officiel chargé. La zone et la date de la preuve sont indiquées ci-dessus.";
-"profile.fuel.official.unavailable" = "Aucune source publique officielle compatible n'est disponible pour cette localité.";
+"profile.fuel.official.unavailable" = "Viim ne dispose actuellement d'aucune source publique officielle qualifiée pour cette localité. Saisissez le prix affiché à la pompe : il restera identifié comme fourni par vous.";
 "profile.fuel.official.failed" = "Le prix officiel n'a pas pu être vérifié. Votre prix actuel est conservé.";
 "profile.fuel.official.cached" = "Actualisation impossible. Le dernier prix officiel encore valide est conservé.";
 "profile.fuel.official.locationUnavailable" = "Localisation précise indisponible. Vérifiez l'autorisation puis réessayez.";

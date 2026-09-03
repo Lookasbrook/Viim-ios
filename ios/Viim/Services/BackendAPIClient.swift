@@ -9,6 +9,82 @@ enum BackendAPIError: Error, Equatable {
     case transport
 }
 
+enum OfficialFuelPriceLookupRoute: Equatable {
+    case ontarioDirect
+    case statisticsCanadaDirect
+    case unavailable
+
+    static func resolve(countryCode: String, regionCode: String) -> Self {
+        let country = countryCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let region = regionCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard country == "CA" else { return .unavailable }
+        return ["ON", "ONTARIO"].contains(region) ? .ontarioDirect : .statisticsCanadaDirect
+    }
+}
+
+protocol OfficialFuelPriceFetching {
+    func fetchCurrentPrice(
+        countryCode: String,
+        regionCode: String,
+        locality: String,
+        fuelType: VehicleFuelType,
+        now: Date
+    ) async throws -> PublicFuelPriceQuote
+}
+
+/// Point d'entree unique utilise par l'interface pour choisir une source
+/// publique qualifiee. Une localite non couverte est refusee avant tout appel
+/// HTTP vers un fournisseur de prix.
+final class OfficialFuelPriceLookupCoordinator {
+    static let shared = OfficialFuelPriceLookupCoordinator()
+
+    private let ontarioClient: any OfficialFuelPriceFetching
+    private let statisticsCanadaClient: any OfficialFuelPriceFetching
+
+    init(
+        ontarioClient: any OfficialFuelPriceFetching = OntarioPublicFuelPriceClient.shared,
+        statisticsCanadaClient: any OfficialFuelPriceFetching = StatisticsCanadaPublicFuelPriceClient.shared
+    ) {
+        self.ontarioClient = ontarioClient
+        self.statisticsCanadaClient = statisticsCanadaClient
+    }
+
+    func fetchCurrentPrice(
+        countryCode: String,
+        regionCode: String,
+        locality: String,
+        fuelType: VehicleFuelType,
+        now: Date = Date()
+    ) async throws -> PublicFuelPriceQuote {
+        switch OfficialFuelPriceLookupRoute.resolve(
+            countryCode: countryCode,
+            regionCode: regionCode
+        ) {
+        case .ontarioDirect:
+            return try await ontarioClient.fetchCurrentPrice(
+                countryCode: countryCode,
+                regionCode: regionCode,
+                locality: locality,
+                fuelType: fuelType,
+                now: now
+            )
+        case .statisticsCanadaDirect:
+            return try await statisticsCanadaClient.fetchCurrentPrice(
+                countryCode: countryCode,
+                regionCode: regionCode,
+                locality: locality,
+                fuelType: fuelType,
+                now: now
+            )
+        case .unavailable:
+            throw BackendAPIError.apiStatus(
+                statusCode: 404,
+                code: "fuel_price_unavailable"
+            )
+        }
+    }
+}
+
 final class BackendAPIClient {
     static let shared = BackendAPIClient()
 
@@ -54,6 +130,17 @@ final class BackendAPIClient {
               Self.isValidLocationComponent(regionCode, maximumLength: 80),
               Self.isValidLocationComponent(locality, maximumLength: 80) else {
             throw BackendAPIError.invalidURL
+        }
+        guard OfficialFuelPriceLookupRoute.resolve(
+            countryCode: countryCode,
+            regionCode: regionCode
+        ) != .unavailable else {
+            // Le backend ne doit pas devenir un proxy generique vers une source
+            // non documentee. Sans contrat public qualifie, aucun appel reseau.
+            throw BackendAPIError.apiStatus(
+                statusCode: 404,
+                code: "fuel_price_unavailable"
+            )
         }
         guard let baseURL,
               var components = URLComponents(
@@ -275,7 +362,7 @@ struct PublicFuelPriceQuote: Equatable {
 /// Lit le relevé public de l'Ontario directement sur l'appareil. La sélection
 /// de marché reste locale : aucune coordonnée et aucune ville ne quittent
 /// l'iPhone pour cette source.
-final class OntarioPublicFuelPriceClient {
+final class OntarioPublicFuelPriceClient: OfficialFuelPriceFetching {
     static let shared = OntarioPublicFuelPriceClient()
 
     private static let sourceURL = OfficialFuelPriceEvidenceContract.ontarioURL
@@ -548,7 +635,7 @@ final class OntarioPublicFuelPriceClient {
 /// localement en identifiant de serie : ni coordonnee GPS ni texte libre ne sont
 /// transmis. Si la table ne publie pas cette ville, le resultat est explicitement
 /// la moyenne Canada et n'est jamais presente comme un prix provincial.
-final class StatisticsCanadaPublicFuelPriceClient {
+final class StatisticsCanadaPublicFuelPriceClient: OfficialFuelPriceFetching {
     static let shared = StatisticsCanadaPublicFuelPriceClient()
 
     private static let productID = 18_100_001

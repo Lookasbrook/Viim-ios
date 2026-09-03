@@ -133,13 +133,10 @@ final class BackendAPIClientTests: XCTestCase {
         XCTAssertEqual(quote.sourceURL.scheme, "https")
     }
 
-    func testOfficialFuelPricePreservesBackendErrorCode() async throws {
-        let client = makeClient { request in
-            self.httpResponse(
-                for: request,
-                statusCode: 404,
-                body: #"{"error":"fuel_price_unavailable"}"#
-            )
+    func testOfficialFuelPriceRejectsUnsupportedCountryBeforeNetworking() async throws {
+        let client = makeClient { _ in
+            XCTFail("Une localite sans contrat public ne doit pas atteindre le reseau")
+            throw URLError(.badURL)
         }
 
         do {
@@ -153,6 +150,115 @@ final class BackendAPIClientTests: XCTestCase {
         } catch let error as BackendAPIError {
             XCTAssertEqual(error, .apiStatus(statusCode: 404, code: "fuel_price_unavailable"))
         }
+    }
+
+    func testOfficialFuelPricePreservesBackendErrorCodeForQualifiedMarket() async throws {
+        let client = makeClient { request in
+            self.httpResponse(
+                for: request,
+                statusCode: 503,
+                body: #"{"error":"fuel_price_stale"}"#
+            )
+        }
+
+        do {
+            _ = try await client.fetchOfficialFuelPrice(
+                countryCode: "CA",
+                regionCode: "ON",
+                locality: "Toronto",
+                fuelType: .gasoline
+            )
+            XCTFail("Expected BackendAPIError.apiStatus")
+        } catch let error as BackendAPIError {
+            XCTAssertEqual(error, .apiStatus(statusCode: 503, code: "fuel_price_stale"))
+        }
+    }
+
+    func testOfficialFuelPriceLookupRouteIsExplicitlyLimitedToQualifiedCanadianSources() {
+        XCTAssertEqual(
+            OfficialFuelPriceLookupRoute.resolve(countryCode: " ca ", regionCode: "Ontario"),
+            .ontarioDirect
+        )
+        XCTAssertEqual(
+            OfficialFuelPriceLookupRoute.resolve(countryCode: "CA", regionCode: "QC"),
+            .statisticsCanadaDirect
+        )
+        XCTAssertEqual(
+            OfficialFuelPriceLookupRoute.resolve(countryCode: "BF", regionCode: "Kadiogo"),
+            .unavailable
+        )
+        XCTAssertEqual(
+            OfficialFuelPriceLookupRoute.resolve(countryCode: "US", regionCode: "CA"),
+            .unavailable
+        )
+    }
+
+    func testOfficialFuelPriceCoordinatorRejectsBurkinaWithoutCallingAProvider() async throws {
+        let ontario = OfficialFuelPriceFetcherSpy(result: .success(makeOfficialFuelPriceQuote()))
+        let statisticsCanada = OfficialFuelPriceFetcherSpy(result: .success(makeOfficialFuelPriceQuote()))
+        let coordinator = OfficialFuelPriceLookupCoordinator(
+            ontarioClient: ontario,
+            statisticsCanadaClient: statisticsCanada
+        )
+
+        do {
+            _ = try await coordinator.fetchCurrentPrice(
+                countryCode: "BF",
+                regionCode: "Kadiogo",
+                locality: "Ouagadougou",
+                fuelType: .gasoline
+            )
+            XCTFail("Expected BackendAPIError.apiStatus")
+        } catch let error as BackendAPIError {
+            XCTAssertEqual(error, .apiStatus(statusCode: 404, code: "fuel_price_unavailable"))
+        }
+
+        XCTAssertEqual(ontario.callCount, 0)
+        XCTAssertEqual(statisticsCanada.callCount, 0)
+    }
+
+    func testOfficialFuelPriceCoordinatorUsesOnlyOntarioProviderForOntario() async throws {
+        let expectedQuote = makeOfficialFuelPriceQuote(regionCode: "ON", locality: "Toronto")
+        let ontario = OfficialFuelPriceFetcherSpy(result: .success(expectedQuote))
+        let statisticsCanada = OfficialFuelPriceFetcherSpy(result: .failure(BackendAPIError.transport))
+        let coordinator = OfficialFuelPriceLookupCoordinator(
+            ontarioClient: ontario,
+            statisticsCanadaClient: statisticsCanada
+        )
+
+        let quote = try await coordinator.fetchCurrentPrice(
+            countryCode: "CA",
+            regionCode: "Ontario",
+            locality: "Toronto",
+            fuelType: .gasoline
+        )
+
+        XCTAssertEqual(quote, expectedQuote)
+        XCTAssertEqual(ontario.callCount, 1)
+        XCTAssertEqual(ontario.lastRegionCode, "Ontario")
+        XCTAssertEqual(statisticsCanada.callCount, 0)
+    }
+
+    func testOfficialFuelPriceCoordinatorUsesOnlyStatisticsCanadaForOtherCanadianRegions() async throws {
+        let expectedQuote = makeOfficialFuelPriceQuote(regionCode: "QC", locality: "Montreal")
+        let ontario = OfficialFuelPriceFetcherSpy(result: .failure(BackendAPIError.transport))
+        let statisticsCanada = OfficialFuelPriceFetcherSpy(result: .success(expectedQuote))
+        let coordinator = OfficialFuelPriceLookupCoordinator(
+            ontarioClient: ontario,
+            statisticsCanadaClient: statisticsCanada
+        )
+
+        let quote = try await coordinator.fetchCurrentPrice(
+            countryCode: "CA",
+            regionCode: "QC",
+            locality: "Montreal",
+            fuelType: .gasoline
+        )
+
+        XCTAssertEqual(quote, expectedQuote)
+        XCTAssertEqual(ontario.callCount, 0)
+        XCTAssertEqual(statisticsCanada.callCount, 1)
+        XCTAssertEqual(statisticsCanada.lastRegionCode, "QC")
     }
 
     func testOfficialFuelPriceMapsOfflineTransportToNetworkError() async throws {
@@ -929,6 +1035,24 @@ final class BackendAPIClientTests: XCTestCase {
         BackendAPIClient(session: makeSession(handler: handler))
     }
 
+    private func makeOfficialFuelPriceQuote(
+        regionCode: String = "ON",
+        locality: String = "Toronto"
+    ) -> PublicFuelPriceQuote {
+        PublicFuelPriceQuote(
+            countryCode: "CA",
+            regionCode: regionCode,
+            locality: locality,
+            fuelType: .gasoline,
+            pricePerLiter: 1.55,
+            currency: .cad,
+            observedAt: Date(timeIntervalSince1970: 1_788_112_000),
+            retrievedAt: Date(timeIntervalSince1970: 1_788_198_400),
+            source: OfficialFuelPriceEvidenceContract.ontarioIdentifier,
+            sourceURL: OfficialFuelPriceEvidenceContract.ontarioURL
+        )
+    }
+
     private func makeSession(
         handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
     ) -> URLSession {
@@ -952,6 +1076,28 @@ final class BackendAPIClientTests: XCTestCase {
             headerFields: ["Content-Type": contentType]
         )!
         return (response, Data(body.utf8))
+    }
+}
+
+private final class OfficialFuelPriceFetcherSpy: OfficialFuelPriceFetching {
+    private let result: Result<PublicFuelPriceQuote, Error>
+    private(set) var callCount = 0
+    private(set) var lastRegionCode: String?
+
+    init(result: Result<PublicFuelPriceQuote, Error>) {
+        self.result = result
+    }
+
+    func fetchCurrentPrice(
+        countryCode: String,
+        regionCode: String,
+        locality: String,
+        fuelType: VehicleFuelType,
+        now: Date
+    ) async throws -> PublicFuelPriceQuote {
+        callCount += 1
+        lastRegionCode = regionCode
+        return try result.get()
     }
 }
 

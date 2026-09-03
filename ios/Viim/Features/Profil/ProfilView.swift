@@ -672,30 +672,12 @@ struct ProfilView: View {
             resolvedRegionCode = regionCode
             resolvedLocality = locality
 
-            let quote: PublicFuelPriceQuote
-            if countryCode.uppercased() == "CA",
-               ["ON", "ONTARIO"].contains(regionCode.uppercased()) {
-                quote = try await OntarioPublicFuelPriceClient.shared.fetchCurrentPrice(
-                    countryCode: countryCode,
-                    regionCode: regionCode,
-                    locality: locality,
-                    fuelType: request.fuelType
-                )
-            } else if countryCode.uppercased() == "CA" {
-                quote = try await StatisticsCanadaPublicFuelPriceClient.shared.fetchCurrentPrice(
-                    countryCode: countryCode,
-                    regionCode: regionCode,
-                    locality: locality,
-                    fuelType: request.fuelType
-                )
-            } else {
-                quote = try await BackendAPIClient.shared.fetchOfficialFuelPrice(
-                    countryCode: countryCode,
-                    regionCode: regionCode,
-                    locality: locality,
-                    fuelType: request.fuelType
-                )
-            }
+            let quote = try await OfficialFuelPriceLookupCoordinator.shared.fetchCurrentPrice(
+                countryCode: countryCode,
+                regionCode: regionCode,
+                locality: locality,
+                fuelType: request.fuelType
+            )
             guard !Task.isCancelled,
                   request.canCommit(
                     activeRequestID: activeFuelPriceLookupID,
