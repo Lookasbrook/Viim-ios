@@ -364,6 +364,235 @@ final class BackendAPIClientTests: XCTestCase {
         }
     }
 
+    func testStatisticsCanadaFuelPriceUsesOnlyOfficialSeriesCoordinate() async throws {
+        let endpoint = try XCTUnwrap(
+            URL(string: "https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods")
+        )
+        let session = makeSession { request in
+            XCTAssertEqual(request.url, endpoint)
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+            let body = try self.requestBodyData(request)
+            let values = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: body) as? [[String: Any]]
+            )
+            XCTAssertEqual(values.count, 1)
+            XCTAssertEqual(values[0]["productId"] as? Int, 18_100_001)
+            XCTAssertEqual(values[0]["coordinate"] as? String, "7.2.0.0.0.0.0.0.0.0")
+            XCTAssertEqual(values[0]["latestN"] as? Int, 3)
+            let bodyText = try XCTUnwrap(String(data: body, encoding: .utf8))
+            XCTAssertFalse(bodyText.localizedCaseInsensitiveContains("Montréal"))
+            XCTAssertFalse(bodyText.localizedCaseInsensitiveContains("Québec"))
+            XCTAssertFalse(bodyText.contains("latitude"))
+            XCTAssertFalse(bodyText.contains("longitude"))
+            return self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: self.statisticsCanadaFuelResponse(
+                    coordinate: "7.2.0.0.0.0.0.0.0.0",
+                    value: 187.4
+                ),
+                responseURL: endpoint,
+                contentType: "application/json"
+            )
+        }
+        let client = StatisticsCanadaPublicFuelPriceClient(session: session)
+        let now = Date(timeIntervalSince1970: 1_788_409_800)
+
+        let quote = try await client.fetchCurrentPrice(
+            countryCode: "CA",
+            regionCode: "Québec",
+            locality: "Montréal",
+            fuelType: .gasoline,
+            now: now
+        )
+
+        XCTAssertEqual(quote.pricePerLiter, 1.874, accuracy: 0.000_1)
+        XCTAssertEqual(quote.locality, "Montréal")
+        XCTAssertEqual(quote.currency, .cad)
+        XCTAssertEqual(quote.source, "statistics_canada_table_18_10_0001_01")
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        XCTAssertEqual(
+            utcCalendar.dateComponents([.year, .month, .day], from: quote.observedAt),
+            DateComponents(year: 2026, month: 7, day: 31)
+        )
+        XCTAssertEqual(
+            quote.sourceURL.absoluteString,
+            "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000101"
+        )
+    }
+
+    func testStatisticsCanadaFuelPriceFallsBackHonestlyToCanadaAverage() async throws {
+        let endpoint = try XCTUnwrap(
+            URL(string: "https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods")
+        )
+        let client = StatisticsCanadaPublicFuelPriceClient(session: makeSession { request in
+            let body = try self.requestBodyData(request)
+            let values = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: body) as? [[String: Any]]
+            )
+            XCTAssertEqual(values[0]["coordinate"] as? String, "20.2.0.0.0.0.0.0.0.0")
+            return self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: self.statisticsCanadaFuelResponse(
+                    coordinate: "20.2.0.0.0.0.0.0.0.0",
+                    value: 181.2
+                ),
+                responseURL: endpoint,
+                contentType: "application/json"
+            )
+        })
+
+        let quote = try await client.fetchCurrentPrice(
+            countryCode: "CA",
+            regionCode: "Québec",
+            locality: "Sherbrooke",
+            fuelType: .gasoline,
+            now: Date(timeIntervalSince1970: 1_788_409_800)
+        )
+
+        XCTAssertEqual(quote.locality, "Canada")
+        XCTAssertEqual(quote.pricePerLiter, 1.812, accuracy: 0.000_1)
+        XCTAssertEqual(quote.fuelType, .gasoline)
+    }
+
+    func testStatisticsCanadaMarketMappingIsRegionScopedAndComplete() async throws {
+        let endpoint = try XCTUnwrap(
+            URL(string: "https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods")
+        )
+        let cases: [(region: String, locality: String, member: Int, label: String)] = [
+            ("Terre-Neuve-et-Labrador", "St. John's", 2, "St. John's"),
+            ("Île-du-Prince-Édouard", "Summerside", 3, "Charlottetown et Summerside"),
+            ("Nouvelle-Écosse", "Halifax", 4, "Halifax"),
+            ("Nouveau-Brunswick", "Saint John", 5, "Saint John"),
+            ("QC", "Québec", 6, "Québec"),
+            ("Québec", "Montréal", 7, "Montréal"),
+            ("Québec", "Gatineau", 20, "Canada"),
+            ("Manitoba", "Winnipeg", 11, "Winnipeg"),
+            ("Saskatchewan", "Regina", 12, "Regina"),
+            ("SK", "Saskatoon", 13, "Saskatoon"),
+            ("Alberta", "Edmonton", 14, "Edmonton"),
+            ("AB", "Calgary", 15, "Calgary"),
+            ("Colombie-Britannique", "Vancouver", 16, "Vancouver"),
+            ("BC", "Victoria", 17, "Victoria"),
+            ("Yukon", "Whitehorse", 18, "Whitehorse"),
+            ("Territoires du Nord-Ouest", "Yellowknife", 19, "Yellowknife"),
+            ("Nunavut", "Iqaluit", 20, "Canada")
+        ]
+
+        for item in cases {
+            let coordinate = "\(item.member).2.0.0.0.0.0.0.0.0"
+            let client = StatisticsCanadaPublicFuelPriceClient(session: makeSession { request in
+                self.httpResponse(
+                    for: request,
+                    statusCode: 200,
+                    body: self.statisticsCanadaFuelResponse(
+                        coordinate: coordinate,
+                        value: 150.0
+                    ),
+                    responseURL: endpoint,
+                    contentType: "application/json"
+                )
+            })
+
+            let quote = try await client.fetchCurrentPrice(
+                countryCode: "CA",
+                regionCode: item.region,
+                locality: item.locality,
+                fuelType: .gasoline,
+                now: Date(timeIntervalSince1970: 1_788_409_800)
+            )
+
+            XCTAssertEqual(quote.locality, item.label, "\(item.region) / \(item.locality)")
+        }
+    }
+
+    func testStatisticsCanadaFuelPriceRejectsUntrustedOrIncoherentResponses() async throws {
+        let endpoint = try XCTUnwrap(
+            URL(string: "https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods")
+        )
+        let cases: [(URL, String)] = [
+            (
+                try XCTUnwrap(URL(string: "https://attacker.example/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods")),
+                statisticsCanadaFuelResponse(
+                    coordinate: "7.2.0.0.0.0.0.0.0.0",
+                    value: 187.4
+                )
+            ),
+            (
+                endpoint,
+                statisticsCanadaFuelResponse(
+                    coordinate: "20.2.0.0.0.0.0.0.0.0",
+                    value: 187.4
+                )
+            ),
+            (
+                endpoint,
+                statisticsCanadaFuelResponse(
+                    coordinate: "7.2.0.0.0.0.0.0.0.0",
+                    value: 187.4,
+                    releaseTime: "2026-06-01T08:30"
+                )
+            )
+        ]
+
+        for (responseURL, responseBody) in cases {
+            let client = StatisticsCanadaPublicFuelPriceClient(session: makeSession { request in
+                self.httpResponse(
+                    for: request,
+                    statusCode: 200,
+                    body: responseBody,
+                    responseURL: responseURL,
+                    contentType: "application/json"
+                )
+            })
+            do {
+                _ = try await client.fetchCurrentPrice(
+                    countryCode: "CA",
+                    regionCode: "QC",
+                    locality: "Montréal",
+                    fuelType: .gasoline,
+                    now: Date(timeIntervalSince1970: 1_788_409_800)
+                )
+                XCTFail("Expected Statistics Canada evidence rejection")
+            } catch let error as BackendAPIError {
+                XCTAssertEqual(error, .invalidResponse)
+            }
+        }
+    }
+
+    func testStatisticsCanadaFuelPriceRejectsUnsupportedInputBeforeNetworking() async throws {
+        let client = StatisticsCanadaPublicFuelPriceClient(session: makeSession { _ in
+            XCTFail("Unsupported input must not reach the network")
+            throw URLError(.badURL)
+        })
+
+        let cases: [(country: String, region: String, locality: String, fuel: VehicleFuelType)] = [
+            ("BF", "Centre", "Ouagadougou", .gasoline),
+            ("CA", "Québec", "Montréal", .electric),
+            ("CA", "Québec", "Sherbrooke", .diesel)
+        ]
+        for item in cases {
+            do {
+                _ = try await client.fetchCurrentPrice(
+                    countryCode: item.country,
+                    regionCode: item.region,
+                    locality: item.locality,
+                    fuelType: item.fuel
+                )
+                XCTFail("Expected unavailable public fuel price")
+            } catch let error as BackendAPIError {
+                XCTAssertEqual(
+                    error,
+                    .apiStatus(statusCode: 404, code: "fuel_price_unavailable")
+                )
+            }
+        }
+    }
+
     func testFuelEconomyVariantsUseAnExactEncodedVehicleQuery() async throws {
         let session = makeSession { request in
             let components = try XCTUnwrap(
@@ -660,6 +889,37 @@ final class BackendAPIClientTests: XCTestCase {
             XCTFail("Expected implausible engine evidence to be rejected")
         } catch let error as PublicVehicleCatalogError {
             XCTAssertEqual(error, .invalidResponse)
+        }
+    }
+
+    private func statisticsCanadaFuelResponse(
+        coordinate: String,
+        value: Double,
+        releaseTime: String = "2026-08-17T08:30"
+    ) -> String {
+        """
+        [{"status":"SUCCESS","object":{"responseStatusCode":0,"productId":18100001,"coordinate":"\(coordinate)","vectorId":735096,"vectorDataPoint":[{"refPer":"2026-07-01","value":\(value),"decimals":1,"scalarFactorCode":0,"symbolCode":0,"statusCode":0,"securityLevelCode":0,"releaseTime":"\(releaseTime)","frequencyCode":6}]}}]
+        """
+    }
+
+    private func requestBodyData(_ request: URLRequest) throws -> Data {
+        if let body = request.httpBody {
+            return body
+        }
+        let stream = try XCTUnwrap(request.httpBodyStream)
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 4_096)
+        while true {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            if count < 0 {
+                throw try XCTUnwrap(stream.streamError)
+            }
+            if count == 0 {
+                return data
+            }
+            data.append(contentsOf: buffer.prefix(count))
         }
     }
 

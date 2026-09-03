@@ -579,14 +579,14 @@
 "profile.fuel.saved" = "Devise et prix enregistrés.";
 "profile.fuel.invalid" = "Saisissez un prix par litre supérieur à zéro.";
 "profile.fuel.official.lookup" = "Utiliser le prix officiel local";
-"profile.fuel.official.loaded" = "Prix public officiel chargé pour votre localité.";
+"profile.fuel.official.loaded" = "Prix public officiel chargé. La zone et la date de la preuve sont indiquées ci-dessus.";
 "profile.fuel.official.unavailable" = "Aucune source publique officielle compatible n'est disponible pour cette localité.";
 "profile.fuel.official.failed" = "Le prix officiel n'a pas pu être vérifié. Votre prix actuel est conservé.";
 "profile.fuel.official.cached" = "Actualisation impossible. Le dernier prix officiel encore valide est conservé.";
 "profile.fuel.official.locationUnavailable" = "Localisation précise indisponible. Vérifiez l'autorisation puis réessayez.";
 "profile.fuel.official.localityUnknown" = "Localité inconnue";
 "profile.fuel.official.detail" = "Source publique officielle · %@ · données du %@";
-"profile.fuel.official.stale" = "Les données publiques ont plus de 14 jours. Actualisez-les avant de calculer de nouveaux coûts.";
+"profile.fuel.official.stale" = "Les données publiques ont expiré selon la fréquence de leur source. Actualisez-les avant de calculer de nouveaux coûts.";
 "trip.fuelEvidence.priceSource" = "Source du prix";
 "vehicle.fuelType.gasoline" = "Essence";
 "vehicle.fuelType.diesel" = "Diesel";

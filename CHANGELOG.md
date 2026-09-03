@@ -2,6 +2,14 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (prix publics canadiens localises — build 47 privé)
+
+- **[Source officielle]** Hors Ontario, l’app interroge directement l’API WDS de Statistique Canada pour la table mensuelle 18-10-0001-01. L’Ontario conserve son relevé provincial hebdomadaire, plus précis et plus frais.
+- **[Localité honnête]** Quinze marchés publiés hors Ontario sont résolus sur l’iPhone avec contrôle conjoint province/ville. Une ville non publiée utilise explicitement la moyenne essence `Canada` ; elle n’est jamais présentée comme un prix local ou provincial. Comme la table ne publie pas de moyenne nationale diesel, ce cas reste indisponible au lieu d’être inventé.
+- **[Confidentialité/Sécurité]** La requête Statistique Canada contient seulement l’identifiant de table, la coordonnée de série publique et trois périodes — jamais la position GPS ni le nom libre de la ville. URL finale, HTTPS, type MIME, taille, schéma, série, carburant, unité, fraîcheur, chronologie et plage de prix sont validés avant persistance.
+- **[Cohérence]** Une preuve mensuelle conserve la fin du mois observé et expire après 60 jours ; le relevé Ontario reste limité à 14 jours. Le cache compare les marchés canoniques et ne peut plus réutiliser le prix d’une ville après un changement de marché, de pays ou de carburant.
+- **[QA/Appareil]** Sept scénarios automatisés ajoutés : corps minimal de requête, repli Canada, table des marchés, réponses incohérentes/non fiables, carburant non pris en charge, contrat de fraîcheur et isolation géographique du cache. Suite complète 362/362, zéro échec ou test ignoré. Le build 47 est signé, installé et confirmé sur l’iPhone 16 ; la base avant/après est strictement identique (126 trajets, intégrité `ok`). Le lancement est refusé parce que l’iPhone est verrouillé : le dernier lancement prouvé reste le build 23 en `authorizedWhenInUse`.
+
 ## 2026-09-03 (portes de calibration collision et rapport agrégé — build 46 privé)
 
 - **[Calibration]** Une politique versionnée et pré-déclarée sépare désormais deux portes : continuité de l’instrumentation et complétude de la revue des candidats. La première exige au moins 100 trajets éligibles, 1 000 km suivis estimés, 95 % de temps couvert, 90 % de frames GPS qualifiées, au plus 2 % de sessions inachevées, 1 % de sessions orphelines et 0,01 erreur Core Motion par session. La seconde exige au moins 30 candidats appariés et 90 % revus.

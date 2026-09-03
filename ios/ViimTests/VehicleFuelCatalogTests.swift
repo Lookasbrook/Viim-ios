@@ -670,6 +670,52 @@ final class VehicleFuelCatalogTests: XCTestCase {
         XCTAssertEqual(settings.costMinorUnits(for: 10), 1_550)
     }
 
+    func testStatisticsCanadaMonthlyPriceUsesItsDeclaredFreshnessAndExactEvidence() throws {
+        let releasedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let settings = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.874,
+            source: .officialPublicData,
+            capturedAt: releasedAt,
+            fuelType: .gasoline,
+            sourceIdentifier: "statistics_canada_table_18_10_0001_01",
+            sourceURL: try XCTUnwrap(
+                URL(string: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000101")
+            ),
+            locality: "Montréal"
+        )
+
+        XCTAssertTrue(settings.canSnapshotCost(at: releasedAt.addingTimeInterval(59 * 24 * 60 * 60)))
+        XCTAssertFalse(settings.canSnapshotCost(at: releasedAt.addingTimeInterval(61 * 24 * 60 * 60)))
+        XCTAssertEqual(settings.costMinorUnits(for: 10), 1_874)
+
+        let alteredURL = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.874,
+            source: .officialPublicData,
+            capturedAt: releasedAt,
+            fuelType: .gasoline,
+            sourceIdentifier: "statistics_canada_table_18_10_0001_01",
+            sourceURL: URL(string: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000102"),
+            locality: "Montréal"
+        )
+        XCTAssertFalse(alteredURL.canSnapshotCost(at: releasedAt))
+
+        let impossibleNationalDiesel = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.874,
+            source: .officialPublicData,
+            capturedAt: releasedAt,
+            fuelType: .diesel,
+            sourceIdentifier: "statistics_canada_table_18_10_0001_01",
+            sourceURL: try XCTUnwrap(
+                URL(string: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000101")
+            ),
+            locality: "Canada"
+        )
+        XCTAssertFalse(impossibleNationalDiesel.canSnapshotCost(at: releasedAt))
+    }
+
     func testOfficialPriceRequiresCompleteHttpsEvidence() {
         let observedAt = Date(timeIntervalSince1970: 1_800_000_000)
         func settings(
@@ -846,6 +892,9 @@ final class VehicleFuelCatalogTests: XCTestCase {
                 currentProfile: profile,
                 currentSettings: official,
                 selectedFuelType: .gasoline,
+                countryCode: "CA",
+                regionCode: "Ontario",
+                locality: "Toronto",
                 at: now
             )
         )
@@ -855,6 +904,9 @@ final class VehicleFuelCatalogTests: XCTestCase {
                 currentProfile: profile,
                 currentSettings: official,
                 selectedFuelType: .diesel,
+                countryCode: "CA",
+                regionCode: "Ontario",
+                locality: "Toronto",
                 at: now
             )
         )
@@ -864,7 +916,152 @@ final class VehicleFuelCatalogTests: XCTestCase {
                 currentProfile: profile,
                 currentSettings: official,
                 selectedFuelType: .gasoline,
+                countryCode: "CA",
+                regionCode: "Ontario",
+                locality: "Toronto",
                 at: now.addingTimeInterval(15 * 24 * 60 * 60)
+            )
+        )
+        XCTAssertFalse(
+            request.canReuseCachedOfficialPrice(
+                activeRequestID: request.id,
+                currentProfile: profile,
+                currentSettings: official,
+                selectedFuelType: .gasoline,
+                countryCode: "CA",
+                regionCode: "Ontario",
+                locality: "Ottawa",
+                at: now
+            )
+        )
+        XCTAssertFalse(
+            request.canReuseCachedOfficialPrice(
+                activeRequestID: request.id,
+                currentProfile: profile,
+                currentSettings: official,
+                selectedFuelType: .gasoline,
+                countryCode: "CA",
+                regionCode: "Québec",
+                locality: "Montréal",
+                at: now
+            )
+        )
+
+        let sudburyEvidence = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.55,
+            source: .officialPublicData,
+            capturedAt: now.addingTimeInterval(-6 * 24 * 60 * 60),
+            fuelType: .gasoline,
+            sourceIdentifier: "government_of_ontario_fuel_price_survey",
+            sourceURL: try XCTUnwrap(URL(string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv")),
+            locality: "Sudbury"
+        )
+        let sudburyRequest = FuelPriceLookupRequest(
+            id: UUID(),
+            profile: profile,
+            settings: sudburyEvidence,
+            fuelType: .gasoline
+        )
+        XCTAssertTrue(
+            sudburyRequest.canReuseCachedOfficialPrice(
+                activeRequestID: sudburyRequest.id,
+                currentProfile: profile,
+                currentSettings: sudburyEvidence,
+                selectedFuelType: .gasoline,
+                countryCode: "CA",
+                regionCode: "ON",
+                locality: "Greater Sudbury",
+                at: now
+            )
+        )
+    }
+
+    func testFuelPriceCacheRespectsStatisticsCanadaMarketResolution() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let profile = UserProfile(
+            firstName: "Awa",
+            phoneNumber: "+14185550123",
+            vehicleType: .voiture,
+            vehicleBrand: "Toyota",
+            vehicleModel: "Corolla",
+            vehicleYear: "2024",
+            synced: false,
+            fuelType: .gasoline
+        )
+        func request(locality: String) throws -> (FuelPriceLookupRequest, FuelSettings) {
+            let settings = FuelSettings(
+                currency: .cad,
+                pricePerLiter: 1.50,
+                source: .officialPublicData,
+                capturedAt: now.addingTimeInterval(-20 * 24 * 60 * 60),
+                fuelType: .gasoline,
+                sourceIdentifier: "statistics_canada_table_18_10_0001_01",
+                sourceURL: try XCTUnwrap(
+                    URL(string: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000101")
+                ),
+                locality: locality
+            )
+            return (
+                FuelPriceLookupRequest(
+                    id: UUID(),
+                    profile: profile,
+                    settings: settings,
+                    fuelType: .gasoline
+                ),
+                settings
+            )
+        }
+
+        let (montrealRequest, montreal) = try request(locality: "Montréal")
+        XCTAssertTrue(
+            montrealRequest.canReuseCachedOfficialPrice(
+                activeRequestID: montrealRequest.id,
+                currentProfile: profile,
+                currentSettings: montreal,
+                selectedFuelType: .gasoline,
+                countryCode: "CA",
+                regionCode: "QC",
+                locality: "Montreal",
+                at: now
+            )
+        )
+        XCTAssertFalse(
+            montrealRequest.canReuseCachedOfficialPrice(
+                activeRequestID: montrealRequest.id,
+                currentProfile: profile,
+                currentSettings: montreal,
+                selectedFuelType: .gasoline,
+                countryCode: "CA",
+                regionCode: "QC",
+                locality: "Québec",
+                at: now
+            )
+        )
+
+        let (canadaRequest, canada) = try request(locality: "Canada")
+        XCTAssertTrue(
+            canadaRequest.canReuseCachedOfficialPrice(
+                activeRequestID: canadaRequest.id,
+                currentProfile: profile,
+                currentSettings: canada,
+                selectedFuelType: .gasoline,
+                countryCode: "CA",
+                regionCode: "Nunavut",
+                locality: "Iqaluit",
+                at: now
+            )
+        )
+        XCTAssertFalse(
+            canadaRequest.canReuseCachedOfficialPrice(
+                activeRequestID: canadaRequest.id,
+                currentProfile: profile,
+                currentSettings: canada,
+                selectedFuelType: .gasoline,
+                countryCode: "US",
+                regionCode: "New York",
+                locality: "New York",
+                at: now
             )
         )
     }

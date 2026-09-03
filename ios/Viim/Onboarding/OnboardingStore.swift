@@ -120,6 +120,64 @@ enum FuelPriceSource: String, Codable, Hashable {
     case unverifiedDefault
 }
 
+enum OfficialFuelPriceEvidenceContract {
+    static let ontarioIdentifier = "government_of_ontario_fuel_price_survey"
+    static let ontarioURL = URL(
+        string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"
+    )!
+    static let statisticsCanadaIdentifier = "statistics_canada_table_18_10_0001_01"
+    static let statisticsCanadaURL = URL(
+        string: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000101"
+    )!
+    static let ontarioMaximumAge: TimeInterval = 14 * 24 * 60 * 60
+    // La table StatCan est mensuelle et parait apres la fin du mois observe.
+    // Une fenetre distincte evite de presenter une source mensuelle comme
+    // hebdomadaire tout en la rendant inutilisable avant sa prochaine parution.
+    // Le prix est une moyenne du mois civil. La date conservee est la fin de
+    // cette periode, pas la date de publication. Soixante jours couvrent le
+    // calendrier mensuel sans prolonger indefiniment une valeur obsolete.
+    static let statisticsCanadaMaximumAge: TimeInterval = 60 * 24 * 60 * 60
+
+    static func maximumAge(for identifier: String?) -> TimeInterval? {
+        switch identifier {
+        case ontarioIdentifier:
+            ontarioMaximumAge
+        case statisticsCanadaIdentifier:
+            statisticsCanadaMaximumAge
+        default:
+            nil
+        }
+    }
+
+    static func hasTrustedSource(identifier: String?, url: URL?) -> Bool {
+        guard let identifier, let url else { return false }
+        switch identifier {
+        case ontarioIdentifier:
+            return url == ontarioURL
+        case statisticsCanadaIdentifier:
+            return url == statisticsCanadaURL
+        default:
+            return false
+        }
+    }
+
+    static func supportsEvidence(
+        identifier: String?,
+        fuelType: VehicleFuelType,
+        locality: String
+    ) -> Bool {
+        guard identifier == statisticsCanadaIdentifier else { return true }
+        let normalizedLocality = locality
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "fr_CA"))
+            .lowercased()
+        if normalizedLocality == "canada" {
+            return fuelType == .gasoline || fuelType == .gasolineHybrid
+        }
+        return true
+    }
+}
+
 enum VehicleFuelType: String, CaseIterable, Codable, Hashable, Identifiable {
     case gasoline
     case diesel
@@ -150,7 +208,7 @@ struct FuelSettings: Codable, Equatable, Hashable {
     static let maximumSnapshotAge: TimeInterval = 30 * 24 * 60 * 60
     /// Les sources publiques hebdomadaires doivent être rafraîchies plus souvent
     /// qu'un prix directement confirmé par l'utilisateur.
-    static let maximumOfficialSnapshotAge: TimeInterval = 14 * 24 * 60 * 60
+    static let maximumOfficialSnapshotAge = OfficialFuelPriceEvidenceContract.ontarioMaximumAge
     static let maximumFutureClockSkew: TimeInterval = 5 * 60
 
     let currency: SupportedCurrency
@@ -220,9 +278,17 @@ struct FuelSettings: Codable, Equatable, Hashable {
         }
 
         let age = date.timeIntervalSince(capturedAt)
-        let maximumAge = source == .officialPublicData
-            ? Self.maximumOfficialSnapshotAge
-            : Self.maximumSnapshotAge
+        let maximumAge: TimeInterval
+        if source == .officialPublicData {
+            guard let officialMaximumAge = OfficialFuelPriceEvidenceContract.maximumAge(
+                for: sourceIdentifier
+            ) else {
+                return false
+            }
+            maximumAge = officialMaximumAge
+        } else {
+            maximumAge = Self.maximumSnapshotAge
+        }
         return age >= -Self.maximumFutureClockSkew && age <= maximumAge
     }
 
@@ -232,21 +298,20 @@ struct FuelSettings: Codable, Equatable, Hashable {
               fuelType.supportsLiquidFuelEstimate,
               pricePerLiter.isFinite,
               (0.20...5.00).contains(pricePerLiter),
-              sourceIdentifier == "government_of_ontario_fuel_price_survey",
-              let sourceURL,
-              sourceURL.scheme?.lowercased() == "https",
-              ["ontario.ca", "www.ontario.ca"].contains(sourceURL.host?.lowercased() ?? ""),
-              sourceURL.port == nil,
-              sourceURL.user == nil,
-              sourceURL.password == nil,
-              sourceURL.path == "/v1/files/fuel-prices/fueltypesall.csv",
-              sourceURL.query == nil,
-              sourceURL.fragment == nil,
+              OfficialFuelPriceEvidenceContract.hasTrustedSource(
+                  identifier: sourceIdentifier,
+                  url: sourceURL
+              ),
               let locality else {
             return false
         }
         let normalizedLocality = locality.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !normalizedLocality.isEmpty &&
+        return OfficialFuelPriceEvidenceContract.supportsEvidence(
+                identifier: sourceIdentifier,
+                fuelType: fuelType,
+                locality: normalizedLocality
+            ) &&
+            !normalizedLocality.isEmpty &&
             normalizedLocality.count <= 80 &&
             normalizedLocality.rangeOfCharacter(from: .controlCharacters) == nil
     }

@@ -261,6 +261,20 @@ encore frais est conserve si le reseau echoue. Le 2026-09-03, la route de secour
 production bien que son implementation soit presente dans le depot ; elle ne
 fait donc plus partie du chemin critique Ontario.
 
+Extension build 47 : pour le reste du Canada, l'app lit directement l'API WDS
+officielle de Statistique Canada, table mensuelle 18-10-0001-01. La selection
+province/ville est faite localement et la requete ne contient que l'identifiant
+de table, la coordonnee de serie publique et trois periodes. Quinze marches
+publies hors Ontario sont reconnus ; ailleurs, l'essence revient explicitement
+a la preuve `Canada`, jamais a une moyenne provinciale inventee. Aucune moyenne
+nationale diesel n'etant publiee par cette table, ce cas est declare indisponible.
+L'URL finale, le type MIME, la taille, le
+schema, la serie, le carburant, l'unite, les dates et la plage de prix sont
+valides. La fin du mois observe est conservee comme date de preuve (fraicheur
+maximale 60 jours), distincte du releve Ontario hebdomadaire (14 jours). Le cache
+est maintenant lie au pays et au marche resolu : un prix de ville ne suit plus
+l'utilisateur dans une autre ville.
+
 1. Selectionner la source par pays/region sans transmettre la trace du trajet :
    pays et subdivision suffisent dans la plupart des cas.
 2. Autoriser uniquement des domaines HTTPS explicites, imposer timeout, taille
@@ -272,9 +286,10 @@ fait donc plus partie du chemin critique Ontario.
    comme local.
 
 Porte de sortie : tests de concurrence, donnees malformees, panne reseau, cache,
-changement de localite et changement de carburant. La tranche Ontario couvre ces
-contrats en tests ; restent la verification manuelle sur appareil et l'ajout de
-sources officielles propres a chaque autre juridiction.
+changement de localite et changement de carburant. Les tranches Ontario et Canada
+couvrent ces contrats en tests ; restent la verification manuelle sur appareil,
+les prix plus fins dans les juridictions canadiennes non publiees par cette table
+et l'ajout de sources officielles pour les autres pays pris en charge.
 
 ## P1-C — Catalogue vehicules et photos reelles
 
@@ -372,7 +387,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 5. Schema vehicule versionne, puis imports officiels et photos P1-C.
 6. Integrite transversale des indicateurs P1-E.
 7. Modele de consommation/calibration par pleins P1-A.
-8. Etendre les connecteurs de prix locaux securises P1-B au-dela de l'Ontario.
+8. Etendre les connecteurs de prix locaux securises P1-B au-dela du Canada.
 9. Release TestFlight limitee, tableau de sante de collecte, puis ouverture
    progressive seulement si toutes les portes sont franchies.
 
@@ -568,3 +583,33 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   identique au SHA-256 historique, 126 trajets, `integrity_check=ok`. L'ouverture
   automatisee expire toujours ; le dernier lancement prouve reste le build 23 en
   `authorizedWhenInUse`. Les portes terrain restent donc ouvertes.
+
+## Execution build 47 — prix publics canadiens et isolation du cache
+
+- Hors Ontario, l'app utilise directement la table mensuelle 18-10-0001-01 via
+  l'API WDS de Statistique Canada. L'Ontario conserve sa source provinciale
+  hebdomadaire ; les autres pays conservent le backend tant qu'une source locale
+  qualifiee n'est pas integree.
+- La ville et la province servent uniquement a choisir localement une serie. La
+  requete officielle transporte l'identifiant de table, une coordonnee de serie
+  et trois periodes, sans position GPS ni texte de localite.
+- Quinze marches publies hors Ontario sont resolus avec un controle province +
+  ville. Une ville non couverte retombe sur la moyenne nationale essence en
+  portant le libelle `Canada`, sans inventer un prix provincial. Le diesel reste
+  indisponible hors marche publie, car aucune serie nationale diesel n'existe.
+- Les preuves Ontario et Statistique Canada ont des contrats distincts : URL et
+  identifiant exacts, 14 jours pour la source hebdomadaire, 60 jours pour la fin
+  du mois observe par la source mensuelle. Une reponse WDS est aussi refusee si
+  sa publication depasse 45 jours.
+- La reutilisation hors ligne du cache exige maintenant le pays, le marche et le
+  carburant courants. Une preuve locale n'est plus reutilisee apres un changement
+  de ville ; la moyenne nationale reste reutilisable uniquement au Canada.
+- Sept tests nouveaux couvrent le corps minimal, le repli national, la table des
+  marches, les reponses malformees ou incoherentes, le carburant electrique, la
+  fraicheur mensuelle et l'isolation geographique du cache. La validation complete,
+  passe 362/362, sans echec ni test ignore.
+- Build 47 signe, installe et confirme `0.1.0 (47)` sur l'iPhone 16. La base avant
+  et apres est strictement identique au SHA-256 historique, avec 126 trajets et
+  `integrity_check=ok`. Le lancement est refuse par iOS car l'appareil est verrouille ;
+  aucun `app.launch build=47` n'est donc revendique. Le dernier lancement prouve
+  reste le build 23 en `authorizedWhenInUse`, et les portes terrain restent ouvertes.

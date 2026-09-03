@@ -1,6 +1,6 @@
 # Politique de confidentialité de Viim
 
-Dernière mise à jour : 18 juillet 2026
+Dernière mise à jour : 3 septembre 2026
 
 Viim est une application iOS de suivi de conduite et de sécurité routière éditée par YAMSTACK TECHNOLOGIE. Cette politique explique quelles données sont utilisées, pourquoi elles le sont et quels choix restent sous le contrôle de l’utilisateur.
 
@@ -22,12 +22,14 @@ Les trajets et diagnostics sont conservés localement dans l’espace privé de 
 
 Viim transmet uniquement les informations nécessaires lorsqu’un utilisateur déclenche une fonction connectée :
 
+- pour rechercher volontairement un prix public de carburant : le service de géocodage Apple traite la position afin de déterminer le pays, la région et la ville. La source Ontario reçoit seulement une demande générique de fichier. Statistique Canada reçoit l’identifiant public d’une série qui indique un marché publié et le type de carburant, sans coordonnées GPS ni nom de ville en texte libre. Pour les autres pays pris en charge, l’API Viim peut recevoir le pays, la région, la ville et le carburant, jamais l’itinéraire ;
+- pour rechercher volontairement une fiche de consommation officielle : l’année, la marque et le modèle du véhicule sont transmis à Ressources naturelles Canada ou FuelEconomy.gov selon le pays, sans position ni trajet ;
 - pour un test d’alerte WhatsApp : prénom du conducteur et coordonnées du contact choisi ;
 - pour un partage de position : prénom du conducteur, coordonnées du contact choisi et position au moment du partage ;
 - pour une alerte de collision confirmée : coordonnées des contacts choisis, position et informations médicales facultatives nécessaires à l’assistance ;
 - l’attestation du conducteur selon laquelle les contacts choisis acceptent d’être prévenus par messagerie.
 
-Ces données sont envoyées par connexion HTTPS à l’API Viim, puis au fournisseur de messagerie chargé d’acheminer l’alerte. Viim ne vend pas de données personnelles et n’utilise pas les données pour de la publicité ou du suivi entre applications.
+Ces échanges utilisent HTTPS avec l’API Viim ou la source publique explicitement décrite par la fonction. Les seules données d’alerte sont ensuite transmises au fournisseur de messagerie chargé d’acheminer le message. Viim ne vend pas de données personnelles et n’utilise pas les données pour de la publicité ou du suivi entre applications.
 
 ## Autorisations iOS
 

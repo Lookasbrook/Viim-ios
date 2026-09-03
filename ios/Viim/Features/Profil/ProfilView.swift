@@ -649,6 +649,9 @@ struct ProfilView: View {
             return
         }
 
+        var resolvedCountryCode: String?
+        var resolvedRegionCode: String?
+        var resolvedLocality: String?
         do {
             // Le backend ne recoit jamais les coordonnees : seulement cette
             // localite grossiere retournee par le service Apple.
@@ -665,11 +668,21 @@ struct ProfilView: View {
                   ) else {
                 throw BackendAPIError.invalidResponse
             }
+            resolvedCountryCode = countryCode
+            resolvedRegionCode = regionCode
+            resolvedLocality = locality
 
             let quote: PublicFuelPriceQuote
             if countryCode.uppercased() == "CA",
                ["ON", "ONTARIO"].contains(regionCode.uppercased()) {
                 quote = try await OntarioPublicFuelPriceClient.shared.fetchCurrentPrice(
+                    countryCode: countryCode,
+                    regionCode: regionCode,
+                    locality: locality,
+                    fuelType: request.fuelType
+                )
+            } else if countryCode.uppercased() == "CA" {
+                quote = try await StatisticsCanadaPublicFuelPriceClient.shared.fetchCurrentPrice(
                     countryCode: countryCode,
                     regionCode: regionCode,
                     locality: locality,
@@ -722,6 +735,9 @@ struct ProfilView: View {
                 currentProfile: onboardingStore.profile,
                 currentSettings: onboardingStore.fuelSettings,
                 selectedFuelType: selectedFuelType,
+                countryCode: resolvedCountryCode,
+                regionCode: resolvedRegionCode,
+                locality: resolvedLocality,
                 at: Date()
             ) {
                 feedbackKey = "profile.fuel.official.cached"
@@ -859,17 +875,47 @@ struct FuelPriceLookupRequest: Equatable {
         currentProfile: UserProfile?,
         currentSettings: FuelSettings,
         selectedFuelType: VehicleFuelType?,
+        countryCode: String?,
+        regionCode: String?,
+        locality: String?,
         at date: Date
     ) -> Bool {
-        canCommit(
+        guard canCommit(
             activeRequestID: activeRequestID,
             currentProfile: currentProfile,
             currentSettings: currentSettings,
             selectedFuelType: selectedFuelType
-        ) &&
+        ),
             settings.source == .officialPublicData &&
             settings.fuelType == fuelType &&
-            settings.canSnapshotCost(at: date)
+            settings.canSnapshotCost(at: date),
+            let countryCode,
+            let regionCode,
+            let locality,
+            let cachedLocality = settings.locality else {
+            return false
+        }
+
+        let country = countryCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let region = Self.normalize(regionCode)
+        let normalizedCachedLocality = Self.normalize(cachedLocality)
+        switch settings.sourceIdentifier {
+        case OfficialFuelPriceEvidenceContract.ontarioIdentifier:
+            let expected = OntarioPublicFuelPriceClient.evidenceLocality(locality: locality)
+            return country == "CA" &&
+                ["on", "ontario"].contains(region) &&
+                (normalizedCachedLocality == "ontario" ||
+                    normalizedCachedLocality == Self.normalize(expected))
+        case OfficialFuelPriceEvidenceContract.statisticsCanadaIdentifier:
+            guard country == "CA" else { return false }
+            let expected = StatisticsCanadaPublicFuelPriceClient.evidenceLocality(
+                region: regionCode,
+                locality: locality
+            )
+            return normalizedCachedLocality == Self.normalize(expected)
+        default:
+            return false
+        }
     }
 
     static func coarseLocality(locality: String?, regionCode: String) -> String? {
@@ -879,6 +925,17 @@ struct FuelPriceLookupRequest: Equatable {
         }
         let city = locality?.trimmingCharacters(in: .whitespacesAndNewlines)
         return city?.isEmpty == false ? city : region
+    }
+
+    private static func normalize(_ value: String) -> String {
+        value
+            .folding(
+                options: [.caseInsensitive, .diacriticInsensitive],
+                locale: Locale(identifier: "fr_CA")
+            )
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .joined()
     }
 }
 
