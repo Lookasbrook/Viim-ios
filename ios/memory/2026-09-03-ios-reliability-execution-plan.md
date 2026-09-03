@@ -363,8 +363,8 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Ordre d'execution recommande
 
-1. Deverrouillage puis validation terrain P0-A sur le build 33.
-2. Valider sur appareil la sante persistante P0-C livree dans le build 33,
+1. Deverrouillage puis validation terrain P0-A sur le build 45.
+2. Valider sur appareil la sante persistante P0-C livree depuis le build 33,
    sans activer d'alerte.
 3. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
    comme instrumentation secondaire.
@@ -380,7 +380,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 | Lot | Delivrable | Depend de | Verification exigee | Bloque la diffusion si |
 |---|---|---|---|---|
-| P0.1 | Permission et collecte build 33 | action utilisateur `Toujours` | 3 trajets verrouilles + hors ligne + terminaison systeme | un trajet ordinaire manque ou ecart distance > 5 % |
+| P0.1 | Permission et collecte build 45 | action utilisateur `Toujours` | 3 trajets verrouilles + hors ligne + terminaison systeme | un trajet ordinaire manque ou ecart distance > 5 % |
 | P0.2 | Sante de collecte 7 j | P0.1 pour preuve terrain | journal present, pas de PII, panne mouvement/GPS visible en < 10 min a la reouverture | un etat vert existe sans sample recent |
 | P0.3 | Persistance versionnee | fixtures des stores historiques | migration interrompue/reprise, sauvegarde intacte, aucune suppression | un store historique ne s'ouvre pas |
 | P0.4 | SafetyKit + livraison | entitlement Apple + fournisseur configure | simulateur SafetyKit, idempotence, offline/retry, accuse fournisseur | collision ou reception affichee sans preuve bout en bout |
