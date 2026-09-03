@@ -12,9 +12,18 @@ struct ProfilView: View {
     @State private var feedbackKey: LocalizedStringKey?
     @State private var feedbackIsError = false
     @State private var isLoadingOfficialPrice = false
+    @State private var activeFuelPriceLookupID: UUID?
+    @State private var fuelPriceLookupTask: Task<Void, Never>?
     @State private var odometerText = ""
     @State private var odometerFeedbackKey: LocalizedStringKey?
     @State private var odometerFeedbackIsError = false
+    @State private var vehicleVariants: [FuelEconomyVehicleVariant] = []
+    @State private var selectedVehicleVariantID: String?
+    @State private var isLoadingVehicleCatalog = false
+    @State private var vehicleCatalogFeedbackKey: LocalizedStringKey?
+    @State private var vehicleCatalogFeedbackIsError = false
+    @State private var activeVehicleCatalogRequestID: UUID?
+    @State private var vehicleCatalogTask: Task<Void, Never>?
 
     var body: some View {
         Form {
@@ -25,6 +34,10 @@ struct ProfilView: View {
                 } else {
                     Text("profile.placeholder")
                 }
+            }
+
+            if let profile = onboardingStore.profile, profile.vehicleType == .voiture {
+                vehicleSpecificationSection(profile: profile)
             }
 
             Section {
@@ -79,7 +92,7 @@ struct ProfilView: View {
                     }
 
                     Button {
-                        Task { await loadOfficialLocalPrice() }
+                        beginOfficialPriceLookup()
                     } label: {
                         if isLoadingOfficialPrice {
                             ProgressView()
@@ -100,17 +113,21 @@ struct ProfilView: View {
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("profile.fuel.help")
-                    if onboardingStore.fuelSettings.source == .officialPublicData,
-                       onboardingStore.fuelSettings.canSnapshotCost(at: Date()) {
-                        Text(officialPriceDetail)
+                    if let settings = editorFuelSettings,
+                       settings.source == .officialPublicData,
+                       settings.canSnapshotCost(at: Date()) {
+                        Text(officialPriceDetail(settings: settings))
                             .foregroundStyle(ViimColors.success)
-                    } else if onboardingStore.fuelSettings.source == .officialPublicData {
+                    } else if let settings = editorFuelSettings,
+                              settings.source == .officialPublicData {
                         Text("profile.fuel.official.stale")
                             .foregroundStyle(ViimColors.warning)
-                    } else if onboardingStore.fuelSettings.source != .userProvided {
+                    } else if let settings = editorFuelSettings,
+                              settings.source != .userProvided {
                         Text("profile.fuel.unverified")
                             .foregroundStyle(ViimColors.warning)
-                    } else if !onboardingStore.fuelSettings.canSnapshotCost(at: Date()) {
+                    } else if let settings = editorFuelSettings,
+                              !settings.canSnapshotCost(at: Date()) {
                         Text("profile.fuel.stale")
                             .foregroundStyle(ViimColors.warning)
                     }
@@ -125,19 +142,216 @@ struct ProfilView: View {
         .navigationTitle("profile.title")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: loadFuelSettings)
-        .onChange(of: selectedCurrency) { newCurrency in
-            guard newCurrency != onboardingStore.fuelSettings.currency else {
-                return
-            }
-            fuelPriceText = ""
-            feedbackKey = nil
+        .onDisappear {
+            cancelOfficialPriceLookup()
+            cancelVehicleCatalogLookup()
         }
-        .onChange(of: selectedFuelType) { newFuelType in
-            guard newFuelType != onboardingStore.fuelSettings.fuelType else {
-                return
+        .onChange(of: selectedCurrency) { _ in
+            synchronizeFuelEditorToSelection()
+        }
+        .onChange(of: selectedFuelType) { _ in
+            synchronizeFuelEditorToSelection()
+        }
+    }
+
+    @ViewBuilder
+    private func vehicleSpecificationSection(profile: UserProfile) -> some View {
+        Section {
+            if let specification = profile.vehicleSpecification?.matched(to: profile) {
+                LabeledContent("profile.vehicleData.status") {
+                    Label("profile.vehicleData.verified", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(ViimColors.success)
+                }
+                LabeledContent("profile.vehicleData.variant", value: specification.variant)
+                LabeledContent("profile.vehicleData.engine", value: specification.engineDescription)
+                LabeledContent("profile.vehicleData.transmission", value: specification.transmission)
+                LabeledContent(
+                    "profile.vehicleData.combinedConsumption",
+                    value: specification.combinedLitersPer100Km.formatted(
+                        .number.precision(.fractionLength(1))
+                    ) + " L/100 km"
+                )
+                Link(destination: specification.sourceURL) {
+                    Label("profile.vehicleData.openSource", systemImage: "safari")
+                }
+
+                Button(action: beginVehicleVariantLookup) {
+                    if isLoadingVehicleCatalog && vehicleVariants.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label("profile.vehicleData.changeVariant", systemImage: "arrow.triangle.2.circlepath")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .disabled(isLoadingVehicleCatalog)
+
+                vehicleVariantPicker
+            } else {
+                LabeledContent("profile.vehicleData.status") {
+                    Text("profile.vehicleData.indicative")
+                        .foregroundStyle(ViimColors.warning)
+                }
+
+                Button(action: beginVehicleVariantLookup) {
+                    if isLoadingVehicleCatalog && vehicleVariants.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label("profile.vehicleData.lookup", systemImage: "checkmark.seal")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .disabled(isLoadingVehicleCatalog)
+
+                vehicleVariantPicker
             }
-            fuelPriceText = ""
-            feedbackKey = nil
+        } header: {
+            Text("profile.section.vehicleData")
+        } footer: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("profile.vehicleData.privacy")
+                if let vehicleCatalogFeedbackKey {
+                    Text(vehicleCatalogFeedbackKey)
+                        .foregroundStyle(vehicleCatalogFeedbackIsError ? Color.red : ViimColors.success)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var vehicleVariantPicker: some View {
+        if !vehicleVariants.isEmpty {
+            Picker("profile.vehicleData.variant", selection: $selectedVehicleVariantID) {
+                Text("profile.vehicleData.variantPlaceholder")
+                    .tag(nil as String?)
+                ForEach(vehicleVariants) { variant in
+                    Text(variant.description).tag(Optional(variant.recordID))
+                }
+            }
+
+            Button(action: confirmVehicleVariant) {
+                if isLoadingVehicleCatalog {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("profile.vehicleData.confirm")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isLoadingVehicleCatalog || selectedVehicleVariantID == nil)
+        }
+    }
+
+    private func beginVehicleVariantLookup() {
+        guard let profile = onboardingStore.profile,
+              profile.vehicleType == .voiture,
+              let year = Int(profile.vehicleYear.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            vehicleCatalogFeedbackIsError = true
+            vehicleCatalogFeedbackKey = "profile.vehicleData.invalidProfile"
+            return
+        }
+
+        cancelVehicleCatalogLookup(clearVariants: true)
+        let request = VehicleCatalogLookupRequest(id: UUID(), profile: profile)
+        activeVehicleCatalogRequestID = request.id
+        isLoadingVehicleCatalog = true
+        vehicleCatalogFeedbackKey = nil
+        vehicleCatalogTask = Task {
+            defer { finishVehicleCatalogRequest(request.id) }
+            do {
+                let variants = try await FuelEconomyVehicleClient.shared.fetchVariants(
+                    year: year,
+                    make: profile.vehicleBrand,
+                    model: profile.vehicleModel
+                )
+                guard !Task.isCancelled,
+                      request.canCommit(
+                        activeRequestID: activeVehicleCatalogRequestID,
+                        currentProfile: onboardingStore.profile
+                      ) else {
+                    return
+                }
+                vehicleVariants = variants
+                selectedVehicleVariantID = variants.count == 1 ? variants.first?.recordID : nil
+                vehicleCatalogFeedbackIsError = false
+                vehicleCatalogFeedbackKey = "profile.vehicleData.variantsLoaded"
+            } catch {
+                guard !Task.isCancelled, activeVehicleCatalogRequestID == request.id else {
+                    return
+                }
+                vehicleVariants = []
+                selectedVehicleVariantID = nil
+                vehicleCatalogFeedbackIsError = true
+                vehicleCatalogFeedbackKey = "profile.vehicleData.unavailable"
+            }
+        }
+    }
+
+    private func confirmVehicleVariant() {
+        guard let profile = onboardingStore.profile,
+              let year = Int(profile.vehicleYear.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let selectedVehicleVariantID,
+              let variant = vehicleVariants.first(where: { $0.recordID == selectedVehicleVariantID }) else {
+            vehicleCatalogFeedbackIsError = true
+            vehicleCatalogFeedbackKey = "profile.vehicleData.selectVariant"
+            return
+        }
+
+        cancelVehicleCatalogLookup(clearVariants: false)
+        let request = VehicleCatalogLookupRequest(id: UUID(), profile: profile)
+        activeVehicleCatalogRequestID = request.id
+        isLoadingVehicleCatalog = true
+        vehicleCatalogFeedbackKey = nil
+        vehicleCatalogTask = Task {
+            defer { finishVehicleCatalogRequest(request.id) }
+            do {
+                let specification = try await FuelEconomyVehicleClient.shared.fetchSpecification(
+                    variant: variant,
+                    expectedYear: year,
+                    expectedMake: profile.vehicleBrand,
+                    expectedModel: profile.vehicleModel
+                )
+                guard !Task.isCancelled,
+                      request.canCommit(
+                        activeRequestID: activeVehicleCatalogRequestID,
+                        currentProfile: onboardingStore.profile
+                      ) else {
+                    return
+                }
+                try onboardingStore.updateVehicleSpecification(specification)
+                vehicleVariants = []
+                self.selectedVehicleVariantID = nil
+                vehicleCatalogFeedbackIsError = false
+                vehicleCatalogFeedbackKey = "profile.vehicleData.saved"
+            } catch {
+                guard !Task.isCancelled, activeVehicleCatalogRequestID == request.id else {
+                    return
+                }
+                vehicleCatalogFeedbackIsError = true
+                vehicleCatalogFeedbackKey = "profile.vehicleData.unavailable"
+            }
+        }
+    }
+
+    private func finishVehicleCatalogRequest(_ requestID: UUID) {
+        guard activeVehicleCatalogRequestID == requestID else {
+            return
+        }
+        vehicleCatalogTask = nil
+        activeVehicleCatalogRequestID = nil
+        isLoadingVehicleCatalog = false
+    }
+
+    private func cancelVehicleCatalogLookup(clearVariants: Bool = false) {
+        vehicleCatalogTask?.cancel()
+        vehicleCatalogTask = nil
+        activeVehicleCatalogRequestID = nil
+        isLoadingVehicleCatalog = false
+        if clearVariants {
+            vehicleVariants = []
+            selectedVehicleVariantID = nil
         }
     }
 
@@ -146,7 +360,7 @@ struct ProfilView: View {
         selectedFuelType = onboardingStore.profile?.fuelType ?? settings.fuelType
         selectedCurrency = settings.currency
         fuelPriceText = settings.canSnapshotCost && settings.fuelType == selectedFuelType
-            ? Self.priceText(settings.pricePerLiter)
+            ? FuelPriceEditorPolicy.priceText(settings.pricePerLiter)
             : ""
     }
 
@@ -180,26 +394,17 @@ struct ProfilView: View {
             return
         }
 
-        let currentSettings = onboardingStore.fuelSettings
-        if currentSettings.source == .officialPublicData,
-           currentSettings.fuelType == selectedFuelType,
-           currentSettings.currency == selectedCurrency,
-           abs(currentSettings.pricePerLiter - price) < 0.000_001 {
-            feedbackIsError = false
-            feedbackKey = "profile.fuel.saved"
-            return
-        }
-
         do {
-            try onboardingStore.updateVehicleFuelType(selectedFuelType)
-            try onboardingStore.updateFuelSettings(
-                FuelSettings(
-                    currency: selectedCurrency,
-                    pricePerLiter: price,
-                    source: .userProvided,
-                    capturedAt: Date(),
-                    fuelType: selectedFuelType
-                )
+            let settingsToSave = FuelPriceEditorPolicy.settingsForSave(
+                currentSettings: onboardingStore.fuelSettings,
+                selectedFuelType: selectedFuelType,
+                selectedCurrency: selectedCurrency,
+                parsedPrice: price,
+                now: Date()
+            )
+            try onboardingStore.updateFuelConfiguration(
+                fuelType: selectedFuelType,
+                settings: settingsToSave
             )
             feedbackIsError = false
             feedbackKey = "profile.fuel.saved"
@@ -209,22 +414,52 @@ struct ProfilView: View {
         }
     }
 
-    @MainActor
-    private func loadOfficialLocalPrice() async {
+    private func beginOfficialPriceLookup() {
         guard let selectedFuelType, selectedFuelType.supportsLiquidFuelEstimate else {
             feedbackIsError = true
             feedbackKey = "profile.fuelType.required"
             return
         }
 
+        fuelPriceLookupTask?.cancel()
+        let request = FuelPriceLookupRequest(
+            id: UUID(),
+            profile: onboardingStore.profile,
+            settings: onboardingStore.fuelSettings,
+            fuelType: selectedFuelType
+        )
+        activeFuelPriceLookupID = request.id
         isLoadingOfficialPrice = true
         feedbackKey = nil
-        defer { isLoadingOfficialPrice = false }
+        fuelPriceLookupTask = Task {
+            await loadOfficialLocalPrice(request: request)
+        }
+    }
+
+    private func cancelOfficialPriceLookup() {
+        fuelPriceLookupTask?.cancel()
+        fuelPriceLookupTask = nil
+        activeFuelPriceLookupID = nil
+        isLoadingOfficialPrice = false
+    }
+
+    @MainActor
+    private func loadOfficialLocalPrice(request: FuelPriceLookupRequest) async {
+        defer {
+            if activeFuelPriceLookupID == request.id {
+                fuelPriceLookupTask = nil
+                activeFuelPriceLookupID = nil
+                isLoadingOfficialPrice = false
+            }
+        }
 
         let requestedAt = Date()
         locationService.requestCurrentLocation()
         var location: CLLocation?
         for _ in 0..<20 {
+            guard !Task.isCancelled, activeFuelPriceLookupID == request.id else {
+                return
+            }
             if let candidate = locationService.latestLocation,
                candidate.horizontalAccuracy > 0,
                candidate.horizontalAccuracy <= 1_000,
@@ -232,7 +467,11 @@ struct ProfilView: View {
                 location = candidate
                 break
             }
-            try? await Task.sleep(nanoseconds: 250_000_000)
+            do {
+                try await Task.sleep(nanoseconds: 250_000_000)
+            } catch {
+                return
+            }
         }
 
         guard let location else {
@@ -259,16 +498,20 @@ struct ProfilView: View {
                 countryCode: countryCode,
                 regionCode: regionCode,
                 locality: locality,
-                fuelType: selectedFuelType
+                fuelType: request.fuelType
             )
-            guard self.selectedFuelType == selectedFuelType,
-                  quote.fuelType == selectedFuelType else {
+            guard !Task.isCancelled,
+                  request.canCommit(
+                    activeRequestID: activeFuelPriceLookupID,
+                    currentProfile: onboardingStore.profile,
+                    currentSettings: onboardingStore.fuelSettings,
+                    selectedFuelType: selectedFuelType
+                  ),
+                  quote.fuelType == request.fuelType else {
                 throw BackendAPIError.invalidResponse
             }
 
-            try onboardingStore.updateVehicleFuelType(selectedFuelType)
-            try onboardingStore.updateFuelSettings(
-                FuelSettings(
+            let officialSettings = FuelSettings(
                     currency: quote.currency,
                     pricePerLiter: quote.pricePerLiter,
                     source: .officialPublicData,
@@ -278,12 +521,18 @@ struct ProfilView: View {
                     sourceURL: quote.sourceURL,
                     locality: quote.locality
                 )
+            try onboardingStore.updateFuelConfiguration(
+                fuelType: request.fuelType,
+                settings: officialSettings
             )
             selectedCurrency = quote.currency
-            fuelPriceText = Self.priceText(quote.pricePerLiter)
+            fuelPriceText = FuelPriceEditorPolicy.priceText(quote.pricePerLiter)
             feedbackIsError = false
             feedbackKey = "profile.fuel.official.loaded"
         } catch let error as BackendAPIError {
+            guard !Task.isCancelled, activeFuelPriceLookupID == request.id else {
+                return
+            }
             feedbackIsError = true
             if case .apiStatus(_, let code) = error, code == "fuel_price_unavailable" {
                 feedbackKey = "profile.fuel.official.unavailable"
@@ -291,13 +540,33 @@ struct ProfilView: View {
                 feedbackKey = "profile.fuel.official.failed"
             }
         } catch {
+            guard !Task.isCancelled, activeFuelPriceLookupID == request.id else {
+                return
+            }
             feedbackIsError = true
             feedbackKey = "profile.fuel.official.failed"
         }
     }
 
-    private var officialPriceDetail: String {
+    private var editorFuelSettings: FuelSettings? {
         let settings = onboardingStore.fuelSettings
+        guard settings.fuelType == selectedFuelType,
+              settings.currency == selectedCurrency else {
+            return nil
+        }
+        return settings
+    }
+
+    private func synchronizeFuelEditorToSelection() {
+        if let settings = editorFuelSettings, settings.canSnapshotCost {
+            fuelPriceText = FuelPriceEditorPolicy.priceText(settings.pricePerLiter)
+        } else {
+            fuelPriceText = ""
+        }
+        feedbackKey = nil
+    }
+
+    private func officialPriceDetail(settings: FuelSettings) -> String {
         let date = settings.capturedAt?.formatted(date: .abbreviated, time: .omitted) ?? "—"
         let locality = settings.locality ?? String(localized: "profile.fuel.official.localityUnknown")
         return String.localizedStringWithFormat(
@@ -338,10 +607,6 @@ struct ProfilView: View {
         )
     }
 
-    private static func priceText(_ value: Double) -> String {
-        value.formatted(.number.precision(.fractionLength(0...2)).locale(.current))
-    }
-
     private func dismissKeyboard() {
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),
@@ -349,5 +614,61 @@ struct ProfilView: View {
             from: nil,
             for: nil
         )
+    }
+}
+
+enum FuelPriceEditorPolicy {
+    static func priceText(_ value: Double, locale: Locale = .current) -> String {
+        value.formatted(.number.precision(.fractionLength(0...3)).locale(locale))
+    }
+
+    static func settingsForSave(
+        currentSettings: FuelSettings,
+        selectedFuelType: VehicleFuelType,
+        selectedCurrency: SupportedCurrency,
+        parsedPrice: Double,
+        now: Date
+    ) -> FuelSettings {
+        if currentSettings.source == .officialPublicData,
+           currentSettings.fuelType == selectedFuelType,
+           currentSettings.currency == selectedCurrency,
+           abs(currentSettings.pricePerLiter - parsedPrice) < 0.000_001 {
+            return currentSettings
+        }
+        return FuelSettings(
+            currency: selectedCurrency,
+            pricePerLiter: parsedPrice,
+            source: .userProvided,
+            capturedAt: now,
+            fuelType: selectedFuelType
+        )
+    }
+}
+
+struct FuelPriceLookupRequest: Equatable {
+    let id: UUID
+    let profile: UserProfile?
+    let settings: FuelSettings
+    let fuelType: VehicleFuelType
+
+    func canCommit(
+        activeRequestID: UUID?,
+        currentProfile: UserProfile?,
+        currentSettings: FuelSettings,
+        selectedFuelType: VehicleFuelType?
+    ) -> Bool {
+        activeRequestID == id &&
+            currentProfile == profile &&
+            currentSettings == settings &&
+            selectedFuelType == fuelType
+    }
+}
+
+struct VehicleCatalogLookupRequest: Equatable {
+    let id: UUID
+    let profile: UserProfile
+
+    func canCommit(activeRequestID: UUID?, currentProfile: UserProfile?) -> Bool {
+        activeRequestID == id && currentProfile == profile
     }
 }

@@ -29,7 +29,19 @@ struct TripCaptureOutcomeRecord: Equatable, Identifiable {
     let sampleCount: Int
 }
 
-struct ActiveTripJournal {
+protocol ActiveTripJournaling {
+    func activeDrafts() throws -> [ActiveTripDraftRecord]
+    func samples(for tripId: UUID) throws -> [LocationSample]
+    func finalizeTrip(
+        id tripId: UUID,
+        status: String,
+        reason: String,
+        source: String,
+        sampleCount: Int
+    ) throws
+}
+
+struct ActiveTripJournal: ActiveTripJournaling {
     private let context: NSManagedObjectContext
 
     init(context: NSManagedObjectContext) {

@@ -203,22 +203,146 @@ final class BackendAPIClientTests: XCTestCase {
         }
     }
 
+    func testFuelEconomyVariantsUseAnExactEncodedVehicleQuery() async throws {
+        let session = makeSession { request in
+            let components = try XCTUnwrap(
+                URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)
+            )
+            let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).compactMap { item in
+                item.value.map { (item.name, $0) }
+            })
+            XCTAssertEqual(components.scheme, "https")
+            XCTAssertEqual(components.host, "www.fueleconomy.gov")
+            XCTAssertEqual(components.path, "/ws/rest/vehicle/menu/options")
+            XCTAssertEqual(query, ["year": "2024", "make": "Toyota", "model": "Corolla"])
+            XCTAssertNil(query["latitude"])
+            XCTAssertNil(query["longitude"])
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+            return self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: #"{"menuItem":[{"text":"Auto (AV-S10), 4 cyl, 2.0 L, SIDI & PFI","value":"47343"},{"text":"Auto (AV-S10), 4 cyl, 2.0 L, 3-mode","value":"47344"}]}"#
+            )
+        }
+        let client = FuelEconomyVehicleClient(session: session)
+
+        let variants = try await client.fetchVariants(year: 2024, make: "Toyota", model: "Corolla")
+
+        XCTAssertEqual(variants.map(\.recordID), ["47343", "47344"])
+        XCTAssertEqual(variants.first?.description, "Auto (AV-S10), 4 cyl, 2.0 L, SIDI & PFI")
+    }
+
+    func testFuelEconomyVehicleCreatesExactAuditableSpecification() async throws {
+        let retrievedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let session = makeSession { request in
+            XCTAssertEqual(request.url?.absoluteString, "https://www.fueleconomy.gov/ws/rest/vehicle/47343")
+            return self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: #"{"id":"47343","year":"2024","make":"Toyota","model":"Corolla","baseModel":"Corolla","fuelType1":"Regular Gasoline","atvType":"","city08":"32","highway08":"41","comb08":"35","cylinders":"4","displ":"2.0","eng_dscr":"SIDI & PFI","trany":"Automatic (AV-S10)","modifiedOn":"2024-01-18T00:00:00-05:00"}"#
+            )
+        }
+        let client = FuelEconomyVehicleClient(session: session)
+        let variant = FuelEconomyVehicleVariant(
+            recordID: "47343",
+            description: "Auto (AV-S10), 4 cyl, 2.0 L, SIDI & PFI"
+        )
+
+        let specification = try await client.fetchSpecification(
+            variant: variant,
+            expectedYear: 2024,
+            expectedMake: "Toyota",
+            expectedModel: "Corolla",
+            retrievedAt: retrievedAt
+        )
+
+        XCTAssertEqual(specification.sourceIdentifier, "fueleconomy.gov.vehicle")
+        XCTAssertEqual(specification.sourceRecordID, "47343")
+        XCTAssertEqual(specification.fuelType, .gasoline)
+        XCTAssertEqual(specification.transmission, "Automatic (AV-S10)")
+        XCTAssertEqual(specification.engineDescription, "2.0 L · 4 cyl · SIDI & PFI")
+        XCTAssertEqual(specification.combinedLitersPer100Km, 235.214583 / 35, accuracy: 0.000_001)
+        XCTAssertEqual(specification.retrievedAt, retrievedAt)
+        XCTAssertTrue(specification.hasTrustedEvidence)
+    }
+
+    func testFuelEconomyVehicleRejectsMismatchedIdentityAndUntrustedRedirect() async throws {
+        let validBody = #"{"id":"47343","year":"2024","make":"Toyota","model":"Camry","baseModel":"Camry","fuelType1":"Regular Gasoline","atvType":"","city08":"32","highway08":"41","comb08":"35","cylinders":"4","displ":"2.0","eng_dscr":"","trany":"Automatic","modifiedOn":"2024-01-18T00:00:00-05:00"}"#
+        let mismatchedClient = FuelEconomyVehicleClient(session: makeSession { request in
+            self.httpResponse(for: request, statusCode: 200, body: validBody)
+        })
+        let variant = FuelEconomyVehicleVariant(recordID: "47343", description: "Automatic")
+
+        do {
+            _ = try await mismatchedClient.fetchSpecification(
+                variant: variant,
+                expectedYear: 2024,
+                expectedMake: "Toyota",
+                expectedModel: "Corolla"
+            )
+            XCTFail("Expected identity mismatch to be rejected")
+        } catch let error as PublicVehicleCatalogError {
+            XCTAssertEqual(error, .identityMismatch)
+        }
+
+        let redirectedClient = FuelEconomyVehicleClient(session: makeSession { request in
+            self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: validBody,
+                responseURL: URL(string: "https://example.com/ws/rest/vehicle/47343")
+            )
+        })
+        do {
+            _ = try await redirectedClient.fetchSpecification(
+                variant: variant,
+                expectedYear: 2024,
+                expectedMake: "Toyota",
+                expectedModel: "Camry"
+            )
+            XCTFail("Expected untrusted response URL to be rejected")
+        } catch let error as PublicVehicleCatalogError {
+            XCTAssertEqual(error, .untrustedResponse)
+        }
+    }
+
+    func testFuelEconomyVehicleRejectsOversizedResponse() async throws {
+        let oversized = String(repeating: "x", count: FuelEconomyVehicleClient.maximumResponseBytes + 1)
+        let client = FuelEconomyVehicleClient(session: makeSession { request in
+            self.httpResponse(for: request, statusCode: 200, body: oversized)
+        })
+
+        do {
+            _ = try await client.fetchVariants(year: 2024, make: "Toyota", model: "Corolla")
+            XCTFail("Expected oversized response to be rejected")
+        } catch let error as PublicVehicleCatalogError {
+            XCTAssertEqual(error, .responseTooLarge)
+        }
+    }
+
     private func makeClient(
         handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
     ) -> BackendAPIClient {
+        BackendAPIClient(session: makeSession(handler: handler))
+    }
+
+    private func makeSession(
+        handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
+    ) -> URLSession {
         URLProtocolStub.handler = handler
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [URLProtocolStub.self]
-        return BackendAPIClient(session: URLSession(configuration: configuration))
+        return URLSession(configuration: configuration)
     }
 
     private func httpResponse(
         for request: URLRequest,
         statusCode: Int,
-        body: String
+        body: String,
+        responseURL: URL? = nil
     ) -> (HTTPURLResponse, Data) {
         let response = HTTPURLResponse(
-            url: request.url!,
+            url: responseURL ?? request.url!,
             statusCode: statusCode,
             httpVersion: nil,
             headerFields: ["Content-Type": "application/json"]

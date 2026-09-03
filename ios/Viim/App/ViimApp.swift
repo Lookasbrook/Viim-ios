@@ -38,7 +38,7 @@ struct ViimApp: App {
         }
         tripRecorder.recoverActiveTrips()
 
-        CarburantFeatureFlags.persistDebugOverridesIfRequested()
+        CarburantFeatureFlags.clearPersistedDebugOverrides()
         let carburantFeatureFlags = CarburantFeatureFlags.resolved()
         ViimDiagnostics.log("carburant.featureFlags \(carburantFeatureFlags.diagnosticSummary)")
         let locationService = LocationService(
@@ -46,10 +46,12 @@ struct ViimApp: App {
             carburantFeatureFlags: carburantFeatureFlags
         )
         let motionActivityService = MotionActivityService()
+        let collisionShadowMonitor = CollisionShadowMonitor()
         let tripDetectionCoordinator = TripDetectionCoordinator(
             locationService: locationService,
             motionActivityService: motionActivityService,
-            tripRecorder: tripRecorder
+            tripRecorder: tripRecorder,
+            collisionShadowMonitor: collisionShadowMonitor
         )
 
         // Cablage headless : quand iOS relance l'app en arriere-plan (reveil
@@ -93,6 +95,7 @@ struct ViimApp: App {
 }
 
 private struct AppLaunchView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
     @EnvironmentObject private var motionActivityService: MotionActivityService
@@ -101,20 +104,28 @@ private struct AppLaunchView: View {
     @EnvironmentObject private var tripDetectionCoordinator: TripDetectionCoordinator
 
     var body: some View {
-        if onboardingStore.isCompleted {
-            RootTabView()
-                .task(id: recordingConfigurationID) {
-                    guard let profile = onboardingStore.profile else {
-                        tripDetectionCoordinator.stop()
-                        return
+        Group {
+            if onboardingStore.isCompleted {
+                RootTabView()
+                    .task(id: recordingConfigurationID) {
+                        guard let profile = onboardingStore.profile else {
+                            tripDetectionCoordinator.stop()
+                            return
+                        }
+                        tripDetectionCoordinator.configure(
+                            profile: profile,
+                            fuelSettings: onboardingStore.fuelSettings
+                        )
                     }
-                    tripDetectionCoordinator.configure(
-                        profile: profile,
-                        fuelSettings: onboardingStore.fuelSettings
-                    )
-                }
-        } else {
-            OnboardingView()
+            } else {
+                OnboardingView()
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active, onboardingStore.isCompleted else {
+                return
+            }
+            locationService.prepareForForegroundUse()
         }
     }
 
@@ -125,11 +136,18 @@ private struct AppLaunchView: View {
         let settings = onboardingStore.fuelSettings
         return [
             profile.vehicleType.rawValue,
+            profile.vehicleBrand,
+            profile.vehicleModel,
+            profile.vehicleYear,
             profile.fuelType?.rawValue ?? "legacy",
             settings.currency.rawValue,
             String(settings.pricePerLiter),
             settings.source?.rawValue ?? "legacy",
-            settings.fuelType?.rawValue ?? "legacy"
+            settings.fuelType?.rawValue ?? "legacy",
+            settings.capturedAt.map { String($0.timeIntervalSince1970) } ?? "undated",
+            settings.sourceIdentifier ?? "no-source",
+            settings.sourceURL?.absoluteString ?? "no-url",
+            settings.locality ?? "no-locality"
         ].joined(separator: "|")
     }
 
@@ -140,17 +158,20 @@ final class TripDetectionCoordinator: ObservableObject {
     private let locationService: LocationService
     private let motionActivityService: MotionActivityService
     private let tripRecorder: TripRecorder
+    private let collisionShadowMonitor: CollisionShadowMonitor
     private var stationaryFinalizationTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     init(
         locationService: LocationService,
         motionActivityService: MotionActivityService,
-        tripRecorder: TripRecorder
+        tripRecorder: TripRecorder,
+        collisionShadowMonitor: CollisionShadowMonitor = CollisionShadowMonitor()
     ) {
         self.locationService = locationService
         self.motionActivityService = motionActivityService
         self.tripRecorder = tripRecorder
+        self.collisionShadowMonitor = collisionShadowMonitor
 
         motionActivityService.$phase
             .removeDuplicates()
@@ -160,12 +181,29 @@ final class TripDetectionCoordinator: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        locationService.$latestLocation
+            .sink { [weak collisionShadowMonitor] location in
+                collisionShadowMonitor?.updateLocation(location)
+            }
+            .store(in: &cancellables)
+
+        locationService.$activeTrip
+            .map { $0 != nil }
+            .removeDuplicates()
+            .sink { [weak collisionShadowMonitor] isActive in
+                collisionShadowMonitor?.setTripActive(isActive)
+            }
+            .store(in: &cancellables)
     }
 
     func configure(profile: UserProfile, fuelSettings: FuelSettings) {
         tripRecorder.configure(profile: profile, fuelSettings: fuelSettings)
         tripRecorder.observe(locationService: locationService)
         locationService.configure(vehicleType: profile.vehicleType)
+        collisionShadowMonitor.configure(vehicleType: profile.vehicleType)
+        collisionShadowMonitor.updateLocation(locationService.latestLocation)
+        collisionShadowMonitor.setTripActive(locationService.activeTrip != nil)
         locationService.prepareForForegroundUse()
         motionActivityService.startAutoDetection(vehicleType: profile.vehicleType)
         reconcileAutomaticTracking()
@@ -175,6 +213,7 @@ final class TripDetectionCoordinator: ObservableObject {
         stationaryFinalizationTask?.cancel()
         stationaryFinalizationTask = nil
         motionActivityService.stopAutoDetection()
+        collisionShadowMonitor.stop()
         locationService.stopMonitoring(keepPassiveWakeups: false)
     }
 

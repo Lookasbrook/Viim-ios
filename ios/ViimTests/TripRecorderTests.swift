@@ -106,6 +106,71 @@ final class TripRecorderTests: XCTestCase {
         XCTAssertEqual(manager.todayTrips.map(\.id), [tripId])
     }
 
+    func testRecoverStaleActiveTripQuarantinesItAndPreservesRawSamples() throws {
+        let persistenceController = PersistenceController(inMemory: true)
+        let context = persistenceController.container.viewContext
+        let store = TripStore(context: context)
+        let manager = TripManager(store: store)
+        let journal = ActiveTripJournal(context: context)
+        let recorder = TripRecorder(journal: journal, tripManager: manager)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let start = now.addingTimeInterval(-14 * 60 * 60)
+        let samples = routeSamples(start: start)
+        let tripId = UUID()
+        let activeTrip = ActiveDetectedTrip(
+            id: tripId,
+            startedAt: start,
+            lastUpdatedAt: start.addingTimeInterval(600),
+            lastMovingAt: start.addingTimeInterval(600),
+            distanceMeters: 1_200,
+            sampleCount: samples.count
+        )
+        try journal.startTrip(activeTrip, vehicleType: .moto, samples: samples)
+
+        recorder.recoverActiveTrips(now: now)
+
+        XCTAssertTrue(try store.fetchRecentTrips(limit: 1).isEmpty)
+        XCTAssertTrue(try journal.activeDrafts().isEmpty)
+        XCTAssertEqual(try journal.samples(for: tripId).count, samples.count)
+        let outcome = try XCTUnwrap(journal.captureOutcomes().first)
+        XCTAssertEqual(outcome.status, "rejected")
+        XCTAssertEqual(outcome.reason, "staleActiveTrip")
+        XCTAssertEqual(outcome.source, "recovery")
+    }
+
+    func testStaleRecoveryKeepsDraftWhenSamplesCannotBeRead() throws {
+        let persistenceController = PersistenceController(inMemory: true)
+        let context = persistenceController.container.viewContext
+        let store = TripStore(context: context)
+        let manager = TripManager(store: store)
+        let backingJournal = ActiveTripJournal(context: context)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let start = now.addingTimeInterval(-14 * 60 * 60)
+        let samples = routeSamples(start: start)
+        let tripId = UUID()
+        let activeTrip = ActiveDetectedTrip(
+            id: tripId,
+            startedAt: start,
+            lastUpdatedAt: start.addingTimeInterval(600),
+            lastMovingAt: start.addingTimeInterval(600),
+            distanceMeters: 1_200,
+            sampleCount: samples.count
+        )
+        try backingJournal.startTrip(activeTrip, vehicleType: .moto, samples: samples)
+        let failingJournal = SamplesReadFailureJournal(backing: backingJournal)
+        let recorder = TripRecorder(journal: failingJournal, tripManager: manager)
+
+        recorder.recoverActiveTrips(now: now)
+        recorder.recoverActiveTrips(now: now)
+
+        XCTAssertEqual(failingJournal.sampleReadAttempts, 2)
+        XCTAssertFalse(failingJournal.finalizeWasCalled)
+        XCTAssertEqual(try backingJournal.activeDrafts().map(\.id), [tripId])
+        XCTAssertEqual(try backingJournal.samples(for: tripId).count, samples.count)
+        XCTAssertTrue(try backingJournal.captureOutcomes().isEmpty)
+        XCTAssertTrue(try store.fetchRecentTrips(limit: 1).isEmpty)
+    }
+
     func testRecoverBuild8CompressedGpsBurstUsesReceiptTimelineAndPersists() throws {
         let persistenceController = PersistenceController(inMemory: true)
         let context = persistenceController.container.viewContext
@@ -198,5 +263,34 @@ final class TripRecorderTests: XCTestCase {
             speedAccuracy: 1,
             receivedAt: receivedAt
         )
+    }
+}
+
+private final class SamplesReadFailureJournal: ActiveTripJournaling {
+    private let backing: ActiveTripJournal
+    private(set) var sampleReadAttempts = 0
+    private(set) var finalizeWasCalled = false
+
+    init(backing: ActiveTripJournal) {
+        self.backing = backing
+    }
+
+    func activeDrafts() throws -> [ActiveTripDraftRecord] {
+        try backing.activeDrafts()
+    }
+
+    func samples(for tripId: UUID) throws -> [LocationSample] {
+        sampleReadAttempts += 1
+        throw NSError(domain: "TripRecorderTests", code: 1)
+    }
+
+    func finalizeTrip(
+        id tripId: UUID,
+        status: String,
+        reason: String,
+        source: String,
+        sampleCount: Int
+    ) throws {
+        finalizeWasCalled = true
     }
 }

@@ -27,6 +27,7 @@ struct AccueilView: View {
 
                     AutoDetectionStatusCard(
                         authorizationState: locationService.authorizationState,
+                        collectionReadiness: locationService.collectionReadiness,
                         movementPhase: motionActivityService.phase,
                         isMonitoring: locationService.isMonitoring,
                         isPassiveWakeupMonitoring: locationService.isPassiveWakeupMonitoring,
@@ -140,7 +141,7 @@ struct AccueilView: View {
                     icon: "location.fill",
                     titleKey: "home.status.tripDetection",
                     detailKey: tripDetectionDetailKey,
-                    tint: locationService.tripPhase.tint
+                    tint: tripDetectionTint
                 )
                 HomeStatusRow(
                     icon: "exclamationmark.triangle.fill",
@@ -166,8 +167,8 @@ struct AccueilView: View {
     }
 
     private var tripDetectionDetailKey: LocalizedStringKey {
-        guard locationService.authorizationState.canTrackLocation else {
-            return locationService.authorizationState.statusKey
+        guard locationService.collectionReadiness.isReadyForBackground else {
+            return locationService.collectionReadiness.statusKey
         }
         if !locationService.isMonitoring, locationService.isPassiveWakeupMonitoring {
             return "home.monitoring.status.passiveWakeup"
@@ -176,17 +177,28 @@ struct AccueilView: View {
     }
 
     private var tripDetectionStyle: ViimChip.Style {
-        guard locationService.authorizationState.canTrackLocation else {
-            return locationService.authorizationState == .denied ? .danger : .warning
+        switch tripDetectionTone {
+        case .success: return .success
+        case .warning: return .warning
+        case .danger: return .danger
+        case .blue: return .neutral
         }
-        if locationService.isPassiveWakeupMonitoring {
-            return .success
-        }
-        return locationService.isMonitoring ? .success : .warning
+    }
+
+    private var tripDetectionTint: Color {
+        tripDetectionTone.tint
+    }
+
+    private var tripDetectionTone: HomeStatusTone {
+        HomeStatusPresenter.tripDetectionTone(
+            readiness: locationService.collectionReadiness,
+            isMonitoring: locationService.isMonitoring,
+            isPassiveWakeupMonitoring: locationService.isPassiveWakeupMonitoring
+        )
     }
 
     private var collisionDetectionStatus: HomeStatusPresentation {
-        HomeStatusPresenter.collisionDetection(isEnabled: tripManager.collisionDetectionEnabled)
+        HomeStatusPresenter.collisionDetection()
     }
 
     private var networkStatus: HomeStatusPresentation {
@@ -267,6 +279,7 @@ struct HomeStatusPresentation: Equatable {
 enum HomeStatusTone: Equatable {
     case success
     case warning
+    case danger
     case blue
 
     var tint: Color {
@@ -275,6 +288,8 @@ enum HomeStatusTone: Equatable {
             return ViimColors.success
         case .warning:
             return ViimColors.warning
+        case .danger:
+            return ViimColors.danger
         case .blue:
             return ViimColors.blue
         }
@@ -282,10 +297,21 @@ enum HomeStatusTone: Equatable {
 }
 
 enum HomeStatusPresenter {
-    static func collisionDetection(isEnabled: Bool) -> HomeStatusPresentation {
+    static func tripDetectionTone(
+        readiness: LocationCollectionReadiness,
+        isMonitoring: Bool,
+        isPassiveWakeupMonitoring: Bool
+    ) -> HomeStatusTone {
+        guard readiness.isReadyForBackground else {
+            return readiness.isPermissionBlocked ? .danger : .warning
+        }
+        return isMonitoring || isPassiveWakeupMonitoring ? .success : .blue
+    }
+
+    static func collisionDetection() -> HomeStatusPresentation {
         HomeStatusPresentation(
-            detailKey: isEnabled ? "status.enabled" : "home.status.collisionDetection.pending",
-            tone: isEnabled ? .success : .blue
+            detailKey: "home.status.collisionDetection.unavailable",
+            tone: .warning
         )
     }
 
@@ -433,29 +459,39 @@ private struct VehicleTrackingCard: View {
 
     var body: some View {
         ViimCard {
-            HStack(spacing: 12) {
-                VehiclePhotoThumbnail(profile: profile)
-                    .frame(width: 112, height: 84)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    VehiclePhotoThumbnail(profile: profile)
+                        .frame(width: 112, height: 84)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(vehicleName)
-                        .font(.system(size: 14, weight: .heavy))
-                        .foregroundStyle(ViimColors.text)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(vehicleName)
+                            .font(.system(size: 14, weight: .heavy))
+                            .foregroundStyle(ViimColors.text)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
 
-                    if let vehicleYear {
-                        Text(vehicleYear)
-                            .font(.caption)
-                            .foregroundStyle(ViimColors.muted)
+                        if let vehicleYear {
+                            Text(vehicleYear)
+                                .font(.caption)
+                                .foregroundStyle(ViimColors.muted)
+                        }
+
+                        ViimChip(titleKey: statusKey, style: statusStyle)
+                            .padding(.top, 2)
                     }
-
-                    ViimChip(titleKey: statusKey, style: statusStyle)
-                        .padding(.top, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let attribution = photoResolution?.attribution {
+                    VehiclePhotoCreditLine(attribution: attribution)
+                }
             }
         }
+    }
+
+    private var photoResolution: VehiclePhotoResolution? {
+        VehiclePhotoCatalog.resolve(for: profile)
     }
 
     private var vehicleName: String {
@@ -473,6 +509,32 @@ private struct VehicleTrackingCard: View {
             return nil
         }
         return year
+    }
+}
+
+private struct VehiclePhotoCreditLine: View {
+    let attribution: VehiclePhotoAttribution
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Link(destination: attribution.sourceURL) {
+                Text(
+                    String.localizedStringWithFormat(
+                        String(localized: "vehicle.photo.authorFormat"),
+                        attribution.author
+                    )
+                )
+            }
+            Text(verbatim: "·")
+            Link(attribution.license.displayName, destination: attribution.license.url)
+            Text(verbatim: "·")
+            Text("vehicle.photo.modified")
+        }
+        .font(.caption2)
+        .foregroundStyle(ViimColors.muted)
+        .lineLimit(2)
+        .minimumScaleFactor(0.75)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -524,6 +586,7 @@ private struct VehiclePhotoThumbnail: View {
 
 private struct AutoDetectionStatusCard: View {
     let authorizationState: LocationAuthorizationState
+    let collectionReadiness: LocationCollectionReadiness
     let movementPhase: MovementDetectionPhase
     let isMonitoring: Bool
     let isPassiveWakeupMonitoring: Bool
@@ -533,7 +596,7 @@ private struct AutoDetectionStatusCard: View {
     let onOpenSettings: () -> Void
 
     private var isBackgroundCapable: Bool {
-        authorizationState == .authorizedAlways
+        collectionReadiness.isReadyForBackground
     }
 
     var body: some View {
@@ -543,12 +606,12 @@ private struct AutoDetectionStatusCard: View {
                     HStack(spacing: 7) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.caption.weight(.bold))
-                        Text("home.monitoring.background.headline")
+                        Text(collectionReadiness.headlineKey)
                             .font(.system(size: 13, weight: .heavy))
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                     }
-                    .foregroundStyle(authorizationState == .denied ? ViimColors.danger : ViimColors.warning)
+                    .foregroundStyle(collectionReadiness.isPermissionBlocked ? ViimColors.danger : ViimColors.warning)
                 }
 
                 HStack(spacing: 10) {
@@ -586,7 +649,7 @@ private struct AutoDetectionStatusCard: View {
                     Spacer(minLength: 0)
                 }
 
-                if authorizationState == .authorizedWhenInUse {
+                if collectionReadiness == .foregroundOnly {
                     Button {
                         onEnableBackgroundDetection()
                     } label: {
@@ -614,14 +677,8 @@ private struct AutoDetectionStatusCard: View {
     }
 
     private var tint: Color {
-        if !authorizationState.canTrackLocation {
-            return authorizationState == .denied ? ViimColors.danger : ViimColors.warning
-        }
-        // En « Lorsque l'app est active », Viim n'enregistre RIEN telephone
-        // verrouille : ne jamais afficher de vert rassurant, meme si un suivi
-        // au premier plan est en cours.
-        if authorizationState == .authorizedWhenInUse {
-            return ViimColors.warning
+        if !collectionReadiness.isReadyForBackground {
+            return collectionReadiness.isPermissionBlocked ? ViimColors.danger : ViimColors.warning
         }
         if isPassiveWakeupMonitoring {
             return ViimColors.success
@@ -630,11 +687,8 @@ private struct AutoDetectionStatusCard: View {
     }
 
     private var detailKey: LocalizedStringKey {
-        guard authorizationState.canTrackLocation else {
-            return authorizationState == .denied ? "home.monitoring.denied.detail" : "home.monitoring.permission.detail"
-        }
-        if authorizationState == .authorizedWhenInUse {
-            return "home.monitoring.whenInUse.detail"
+        guard collectionReadiness.isReadyForBackground else {
+            return collectionReadiness.detailKey
         }
         if !isMonitoring, isPassiveWakeupMonitoring {
             return "home.monitoring.passive.detail"
@@ -643,11 +697,8 @@ private struct AutoDetectionStatusCard: View {
     }
 
     private var statusKey: LocalizedStringKey {
-        guard authorizationState.canTrackLocation else {
-            return "home.monitoring.status.needsPermission"
-        }
-        if authorizationState == .authorizedWhenInUse {
-            return "location.permission.whenInUse"
+        guard collectionReadiness.isReadyForBackground else {
+            return collectionReadiness.statusKey
         }
         if !isMonitoring, isPassiveWakeupMonitoring {
             return "home.monitoring.status.passiveWakeup"
@@ -1081,6 +1132,8 @@ private struct TripDetailView: View {
                     }
                 }
 
+                TripMetricEvidenceCard(trip: trip)
+
                 if trip.isTrustedForDisplay, trip.fuelLiters != nil {
                     TripFuelEvidenceCard(trip: trip)
                 }
@@ -1108,6 +1161,83 @@ private struct TripDetailView: View {
 
     private func trustedText(_ value: String) -> String {
         trip.isTrustedForDisplay ? value : String(localized: "format.score.empty")
+    }
+}
+
+private struct TripMetricEvidenceCard: View {
+    let trip: TripRecord
+
+    var body: some View {
+        ViimCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("trip.quality.evidence.title", systemImage: "waveform.path.ecg.rectangle.fill")
+                        .font(.system(size: 14, weight: .bold))
+                    Spacer()
+                    ViimChip(titleKey: confidenceKey, style: confidenceStyle)
+                }
+
+                Text("trip.quality.evidence.summary")
+                    .font(.caption)
+                    .foregroundStyle(ViimColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                TripDetailInfoRow(
+                    titleKey: "trip.quality.evidence.gpsCoverage",
+                    value: trip.coverageRatio.formatted(.percent.precision(.fractionLength(0)).locale(.current))
+                )
+                if trip.gpsAccuracyAvg >= 0 {
+                    TripDetailInfoRow(
+                        titleKey: "trip.quality.evidence.gpsAccuracy",
+                        value: String.localizedStringWithFormat(
+                            String(localized: "trip.quality.evidence.metersFormat"),
+                            trip.gpsAccuracyAvg
+                        )
+                    )
+                }
+                TripDetailInfoRow(
+                    titleKey: "trip.quality.evidence.maxGap",
+                    value: DrivingValueFormatter.durationText(seconds: Int(trip.maxSampleGapSec.rounded()))
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.quality.evidence.segments",
+                    value: "\(trip.validSegmentCount) / \(trip.rejectedSegmentCount)"
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.quality.evidence.formulas",
+                    value: "\(TripMetricsCalculator.formulaVersion) · \(trip.qualityFormulaVersion)"
+                )
+
+                Text("trip.quality.evidence.provenance")
+                    .font(.caption2)
+                    .foregroundStyle(ViimColors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var confidenceKey: LocalizedStringKey {
+        switch trip.qualityConfidence {
+        case .reliable:
+            return "trip.quality.confidence.reliable"
+        case .partial:
+            return "trip.quality.confidence.partial"
+        case .needsReview:
+            return "trip.quality.confidence.needsReview"
+        case .rejected:
+            return "trip.quality.confidence.rejected"
+        }
+    }
+
+    private var confidenceStyle: ViimChip.Style {
+        switch trip.qualityConfidence {
+        case .reliable:
+            return .success
+        case .partial:
+            return .warning
+        case .needsReview, .rejected:
+            return .danger
+        }
     }
 }
 
@@ -1199,7 +1329,7 @@ private struct TripFuelEvidenceCard: View {
             return String(localized: "trip.fuelEvidence.priceMissing")
         }
         let priceValue = price.formatted(
-            .number.precision(.fractionLength(0...2)).locale(.current)
+            .number.precision(.fractionLength(0...3)).locale(.current)
         )
         if let capturedAt = trip.fuelPriceCapturedAt {
             let date = capturedAt.formatted(date: .abbreviated, time: .omitted)
@@ -1559,6 +1689,67 @@ private extension LocationAuthorizationState {
         case .denied: "location.permission.denied"
         case .authorizedWhenInUse: "location.permission.whenInUse"
         case .authorizedAlways: "location.permission.always"
+        }
+    }
+}
+
+private extension LocationCollectionReadiness {
+    var headlineKey: LocalizedStringKey {
+        switch self {
+        case .ready:
+            return "home.monitoring.title"
+        case .foregroundOnly:
+            return "home.monitoring.background.headline"
+        case .permissionNotDetermined, .permissionDenied, .permissionRestricted:
+            return "home.monitoring.readiness.permissionHeadline"
+        case .preciseLocationDisabled:
+            return "home.monitoring.readiness.preciseHeadline"
+        case .backgroundRefreshDisabled, .backgroundRefreshRestricted:
+            return "home.monitoring.readiness.refreshHeadline"
+        case .passiveWakeupPending:
+            return "home.monitoring.readiness.wakeupHeadline"
+        }
+    }
+
+    var statusKey: LocalizedStringKey {
+        switch self {
+        case .ready:
+            return "home.monitoring.status.passiveWakeup"
+        case .permissionNotDetermined:
+            return "location.permission.notDetermined"
+        case .permissionDenied:
+            return "location.permission.denied"
+        case .permissionRestricted:
+            return "location.permission.restricted"
+        case .foregroundOnly:
+            return "location.permission.whenInUse"
+        case .preciseLocationDisabled:
+            return "home.monitoring.readiness.preciseStatus"
+        case .backgroundRefreshDisabled:
+            return "home.monitoring.readiness.refreshDisabledStatus"
+        case .backgroundRefreshRestricted:
+            return "home.monitoring.readiness.refreshRestrictedStatus"
+        case .passiveWakeupPending:
+            return "home.monitoring.readiness.wakeupStatus"
+        }
+    }
+
+    var detailKey: LocalizedStringKey {
+        switch self {
+        case .ready:
+            return "home.monitoring.passive.detail"
+        case .permissionNotDetermined:
+            return "home.monitoring.permission.detail"
+        case .permissionDenied, .permissionRestricted:
+            return "home.monitoring.denied.detail"
+        case .foregroundOnly:
+            return "home.monitoring.whenInUse.detail"
+        case .preciseLocationDisabled:
+            return "home.monitoring.readiness.preciseDetail"
+        case .backgroundRefreshDisabled, .backgroundRefreshRestricted:
+            return "home.monitoring.readiness.refreshDetail"
+        case .passiveWakeupPending:
+            return "home.monitoring.readiness.wakeupDetail"
         }
     }
 }

@@ -539,7 +539,8 @@ private struct VehiclePreviewCard: View {
                 if let photo = VehiclePhotoCatalog.resolve(
                     vehicleType: draft.vehicleType,
                     brand: draft.vehicleBrand,
-                    model: draft.vehicleModel
+                    model: draft.vehicleModel,
+                    year: draft.vehicleYear
                 ) {
                     Image(photo.assetName)
                         .resizable()
@@ -548,6 +549,8 @@ private struct VehiclePreviewCard: View {
                         .frame(height: 116)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .accessibilityHidden(true)
+
+                    VehiclePhotoCreditLine(attribution: photo.attribution)
                 } else {
                     VehicleIllustration(type: draft.vehicleType)
                         .frame(maxWidth: .infinity)
@@ -572,6 +575,32 @@ private struct VehiclePreviewCard: View {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         return parts.isEmpty ? draft.vehicleType.fallbackDisplayName : parts.joined(separator: " ")
+    }
+}
+
+private struct VehiclePhotoCreditLine: View {
+    let attribution: VehiclePhotoAttribution
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Link(destination: attribution.sourceURL) {
+                Text(
+                    String.localizedStringWithFormat(
+                        String(localized: "vehicle.photo.authorFormat"),
+                        attribution.author
+                    )
+                )
+            }
+            Text(verbatim: "·")
+            Link(attribution.license.displayName, destination: attribution.license.url)
+            Text(verbatim: "·")
+            Text("vehicle.photo.modified")
+        }
+        .font(.caption2)
+        .foregroundStyle(ViimColors.muted)
+        .multilineTextAlignment(.center)
+        .minimumScaleFactor(0.75)
+        .accessibilityElement(children: .combine)
     }
 }
 

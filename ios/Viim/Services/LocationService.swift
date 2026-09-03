@@ -1,9 +1,11 @@
 import CoreLocation
 import Foundation
+import UIKit
 
 protocol LocationManaging: AnyObject {
     var delegate: CLLocationManagerDelegate? { get set }
     var authorizationStatus: CLAuthorizationStatus { get }
+    var accuracyAuthorization: CLAccuracyAuthorization { get }
     var allowsBackgroundLocationUpdates: Bool { get set }
     var pausesLocationUpdatesAutomatically: Bool { get set }
     var showsBackgroundLocationIndicator: Bool { get set }
@@ -50,6 +52,84 @@ enum LocationAuthorizationState: Equatable {
 
     var canTrackLocation: Bool {
         self == .authorizedWhenInUse || self == .authorizedAlways
+    }
+}
+
+enum BackgroundRefreshAvailability: String, Equatable {
+    case available
+    case denied
+    case restricted
+
+    static var current: BackgroundRefreshAvailability {
+        switch UIApplication.shared.backgroundRefreshStatus {
+        case .available:
+            return .available
+        case .denied:
+            return .denied
+        case .restricted:
+            return .restricted
+        @unknown default:
+            return .restricted
+        }
+    }
+}
+
+/// Source de verite unique pour tout statut de collecte affiche ou journalise.
+/// `ready` signifie que les prerequis iOS sont configures, pas qu'un trajet
+/// terrain a deja ete observe.
+enum LocationCollectionReadiness: String, Equatable {
+    case ready
+    case permissionNotDetermined
+    case permissionDenied
+    case permissionRestricted
+    case foregroundOnly
+    case preciseLocationDisabled
+    case backgroundRefreshDisabled
+    case backgroundRefreshRestricted
+    case passiveWakeupPending
+
+    static func evaluate(
+        authorization: LocationAuthorizationState,
+        hasFullAccuracy: Bool,
+        backgroundRefresh: BackgroundRefreshAvailability,
+        passiveWakeupRequested: Bool
+    ) -> LocationCollectionReadiness {
+        switch authorization {
+        case .notDetermined:
+            return .permissionNotDetermined
+        case .denied:
+            return .permissionDenied
+        case .restricted:
+            return .permissionRestricted
+        case .authorizedWhenInUse:
+            return .foregroundOnly
+        case .authorizedAlways:
+            break
+        }
+
+        guard hasFullAccuracy else {
+            return .preciseLocationDisabled
+        }
+        switch backgroundRefresh {
+        case .denied:
+            return .backgroundRefreshDisabled
+        case .restricted:
+            return .backgroundRefreshRestricted
+        case .available:
+            break
+        }
+        guard passiveWakeupRequested else {
+            return .passiveWakeupPending
+        }
+        return .ready
+    }
+
+    var isReadyForBackground: Bool {
+        self == .ready
+    }
+
+    var isPermissionBlocked: Bool {
+        self == .permissionDenied || self == .permissionRestricted
     }
 }
 
@@ -190,9 +270,9 @@ final class LocationService: NSObject, ObservableObject {
     private let backgroundActivitySessionFactory: () -> Any?
     private let alwaysServiceSessionFactory: () -> Any?
     private let carburantFeatureFlags: CarburantFeatureFlags
+    private let backgroundRefreshStatusProvider: () -> BackgroundRefreshAvailability
     private var shouldMonitorAfterAuthorization = false
     private var shouldRequestCurrentLocationAfterAuthorization = false
-    private var didRequestAlwaysUpgrade = false
     private var batterySavingMode = false
     private var vehicleType: VehicleType = .moto
     private var aboveStartSpeedSince: Date?
@@ -203,6 +283,7 @@ final class LocationService: NSObject, ObservableObject {
     private var lastRouteLocation: CLLocation?
     private var lastReceivedLocation: CLLocation?
     private var lastMovementEvidenceAt: Date?
+    private var lastDiagnosticsHeartbeatAt: Date?
     private var monitoringStartedAt: Date?
     private var idleStopWorkItem: DispatchWorkItem?
     // CLBackgroundActivitySession (iOS 17+), stocke en Any pour la cible iOS 16.
@@ -217,6 +298,7 @@ final class LocationService: NSObject, ObservableObject {
     // automatique est desactive ou l'autorisation perdue.
     private var backgroundActivitySession: Any?
     private var departureRegion: CLCircularRegion?
+    private var departureRegionMonitoringConfirmed = false
     // Depuis iOS 18, Apple demande de conserver cette session explicite pour
     // exploiter l'autorisation Always et de la recreer immediatement lors
     // d'une relance en arriere-plan. Contrairement a
@@ -233,6 +315,7 @@ final class LocationService: NSObject, ObservableObject {
     @Published private(set) var activeTrip: ActiveDetectedTrip?
     @Published private(set) var lastCompletedTrip: CompletedDetectedTrip?
     @Published private(set) var routeSamples: [LocationSample] = []
+    @Published private(set) var collectionReadiness: LocationCollectionReadiness = .permissionNotDetermined
 
     var hasBackgroundActivitySession: Bool {
         backgroundActivitySession != nil
@@ -246,6 +329,9 @@ final class LocationService: NSObject, ObservableObject {
         activeTripJournal: ActiveTripJournal? = nil,
         manager: LocationManaging = CLLocationManager(),
         carburantFeatureFlags: CarburantFeatureFlags = .resolved(),
+        backgroundRefreshStatusProvider: @escaping () -> BackgroundRefreshAvailability = {
+            BackgroundRefreshAvailability.current
+        },
         backgroundActivitySessionFactory: @escaping () -> Any? = {
             if #available(iOS 17.0, *) {
                 return CLBackgroundActivitySession()
@@ -262,12 +348,14 @@ final class LocationService: NSObject, ObservableObject {
         self.activeTripJournal = activeTripJournal
         self.manager = manager
         self.carburantFeatureFlags = carburantFeatureFlags
+        self.backgroundRefreshStatusProvider = backgroundRefreshStatusProvider
         self.backgroundActivitySessionFactory = backgroundActivitySessionFactory
         self.alwaysServiceSessionFactory = alwaysServiceSessionFactory
         super.init()
         manager.delegate = self
         authorizationState = LocationAuthorizationState(status: manager.authorizationStatus)
         configureManager()
+        refreshCollectionReadiness(context: "init")
     }
 
     func configure(vehicleType: VehicleType) {
@@ -318,41 +406,25 @@ final class LocationService: NSObject, ObservableObject {
         shouldMonitorAfterAuthorization = false
         configureManager()
         requestAuthorization()
-        requestAlwaysUpgradeOnceIfNeeded()
         beginAlwaysServiceSessionIfNeeded()
         beginBackgroundActivitySessionForIdleIfNeeded()
         startPassiveWakeupMonitoringIfAllowed()
-    }
-
-    /// La collecte de trajets de Viim n'a de sens qu'en autorisation Always :
-    /// telephone verrouille, app suspendue, iOS doit pouvoir relancer le
-    /// processus. Quand l'utilisateur n'a accorde que « Lorsque l'app est
-    /// active », on demande l'escalade une fois par session de premier plan.
-    /// iOS n'affiche la bascule qu'une seule fois par installation ; au-dela,
-    /// la banniere d'accueil renvoie vers les Reglages.
-    func requestAlwaysUpgradeOnceIfNeeded() {
-        guard authorizationState == .authorizedWhenInUse, !didRequestAlwaysUpgrade else {
-            return
-        }
-        didRequestAlwaysUpgrade = true
-        ViimDiagnostics.log("location.always.autoRequest state=\(authorizationState)")
-        manager.requestAlwaysAuthorization()
+        refreshCollectionReadiness(context: "foreground")
     }
 
     /// Restaure les attentes de collecte sans dependre de la creation d'une
     /// vue. Cette methode est appelee au lancement, y compris lorsque Core
     /// Location relance Viim en arriere-plan apres une terminaison systeme.
-    /// La session Always doit etre recreee ICI, avant le premier callback de
-    /// localisation. Hors `gpsSessionSplit`, la session d'activite visuelle
-    /// historique est aussi restauree ; avec le spike, elle attend le premier
-    /// `startMonitoring()` afin de ne pas rester visible pendant l'idle.
+    /// La session Always et la session d'activite doivent etre recreees ICI,
+    /// avant le premier callback de localisation. Aucun flag experimental ne
+    /// peut affaiblir ce chemin de fiabilite.
     func restoreAutomaticTrackingSession() {
         configureManager()
         beginAlwaysServiceSessionIfNeeded()
         beginBackgroundActivitySessionForIdleIfNeeded()
         startPassiveWakeupMonitoringIfAllowed()
         ViimDiagnostics.log("location.automaticSession.restored state=\(authorizationState)")
-        logCollectionReadiness(context: "restore")
+        refreshCollectionReadiness(context: "restore")
     }
 
     /// Une seule ligne, a chaque lancement, qui dit sans ambiguite si Viim
@@ -360,12 +432,25 @@ final class LocationService: NSObject, ObservableObject {
     /// l'absence de cette ligne qui a rendu l'incident 2026-09-02 invisible :
     /// il a fallu extraire le conteneur du telephone pour voir
     /// `authorizedWhenInUse`.
-    private func logCollectionReadiness(context: String) {
-        let backgroundCapable = authorizationState == .authorizedAlways
+    func refreshCollectionReadiness(context: String = "refresh") {
+        let backgroundRefresh = backgroundRefreshStatusProvider()
+        let next = LocationCollectionReadiness.evaluate(
+            authorization: authorizationState,
+            hasFullAccuracy: manager.accuracyAuthorization == .fullAccuracy,
+            backgroundRefresh: backgroundRefresh,
+            passiveWakeupRequested: isPassiveWakeupMonitoring
+        )
+        collectionReadiness = next
         ViimDiagnostics.log(
             "location.readiness context=\(context) auth=\(authorizationState) "
-            + "backgroundCapable=\(backgroundCapable) "
-            + "passiveWakeups=\(isPassiveWakeupMonitoring) "
+            + "state=\(next.rawValue) "
+            + "precise=\(manager.accuracyAuthorization == .fullAccuracy) "
+            + "backgroundRefresh=\(backgroundRefresh.rawValue) "
+            + "passiveWakeupRequested=\(isPassiveWakeupMonitoring) "
+            + "departureRegionConfirmed=\(departureRegionMonitoringConfirmed) "
+            + "backgroundSession=\(backgroundActivitySession != nil) "
+            + "alwaysServiceSession=\(alwaysServiceSession != nil) "
+            + "continuousMonitoring=\(isMonitoring) "
             + "gpsSessionSplit=\(carburantFeatureFlags.gpsSessionSplit)"
         )
     }
@@ -416,25 +501,17 @@ final class LocationService: NSObject, ObservableObject {
         if keepPassiveWakeups {
             startPassiveWakeupMonitoringIfAllowed()
             startDepartureRegionMonitoringIfAllowed()
-            // Le comportement historique conserve la session visuelle en idle
-            // sur Always. Le spike `gpsSessionSplit` l'invalide au contraire
-            // apres chaque trajet tout en gardant SLC/geofence/service session
-            // armes ; la validation terrain decide lequel est retenu.
-            //
-            // Filet de securite (incident 2026-09-02) : sous `gpsSessionSplit`
-            // en Always, ne demonter la session d'activite QUE si un reveil
-            // passif l'a effectivement remplacee. Si SLC/geofence n'ont pas pu
-            // s'armer, la session reste le dernier lien qui permet a iOS de
-            // relancer la collecte apres terminaison.
+            // Les appels SLC/geofence confirment une demande a Core Location,
+            // pas une future relance reussie. Ils ne constituent donc jamais
+            // une preuve suffisante pour demonter la session d'activite en
+            // autorisation Always.
             if Self.shouldEndIdleBackgroundActivitySession(
-                authorization: authorizationState,
-                gpsSessionSplit: carburantFeatureFlags.gpsSessionSplit,
-                passiveWakeupArmed: isPassiveWakeupMonitoring,
-                departureRegionArmed: departureRegion != nil
+                authorization: authorizationState
             ) {
                 endBackgroundActivitySession()
-            } else if !shouldRetainBackgroundActivitySessionWhileIdle {
-                ViimDiagnostics.log("location.backgroundSession.retain reason=noPassiveWakeup")
+            } else {
+                beginBackgroundActivitySessionForIdleIfNeeded()
+                ViimDiagnostics.log("location.backgroundSession.retain reason=alwaysReliabilityPolicy")
             }
         } else {
             stopPassiveWakeupMonitoring()
@@ -602,28 +679,16 @@ final class LocationService: NSObject, ObservableObject {
     }
 
     private var shouldRetainBackgroundActivitySessionWhileIdle: Bool {
-        authorizationState == .authorizedAlways && !carburantFeatureFlags.gpsSessionSplit
+        authorizationState == .authorizedAlways
     }
 
-    /// Decide si la session d'activite d'arriere-plan peut etre demontee a
-    /// l'arret d'un trajet. Retourne `false` (donc on la garde) quand le spike
-    /// `gpsSessionSplit` est actif en Always mais qu'aucun reveil passif
-    /// (SLC ou geofence de depart) n'a pu prendre le relais : sans ce garde,
-    /// une seule defaillance d'armement SLC laisse l'app sans aucun moyen
-    /// d'etre relancee par iOS (incident 2026-09-02).
+    /// Sous Always, la session reste ouverte tant qu'aucune validation terrain
+    /// ne prouve qu'un mecanisme moins conservateur offre la meme continuite.
+    /// Un simple appel `startMonitoring…` ne garantit pas un futur reveil.
     static func shouldEndIdleBackgroundActivitySession(
-        authorization: LocationAuthorizationState,
-        gpsSessionSplit: Bool,
-        passiveWakeupArmed: Bool,
-        departureRegionArmed: Bool
+        authorization: LocationAuthorizationState
     ) -> Bool {
-        if authorization == .authorizedAlways && !gpsSessionSplit {
-            return false
-        }
-        if authorization == .authorizedAlways && !passiveWakeupArmed && !departureRegionArmed {
-            return false
-        }
-        return true
+        authorization != .authorizedAlways
     }
 
     private func beginBackgroundActivitySessionForIdleIfNeeded() {
@@ -793,7 +858,12 @@ final class LocationService: NSObject, ObservableObject {
 
     private func startPassiveWakeupMonitoringIfAllowed() {
         guard authorizationState == .authorizedAlways else {
+            if isPassiveWakeupMonitoring {
+                manager.stopMonitoringSignificantLocationChanges()
+                ViimDiagnostics.log("location.passiveWakeups.stop reason=authorization")
+            }
             isPassiveWakeupMonitoring = false
+            refreshCollectionReadiness(context: "passiveWakeupUnavailable")
             return
         }
 
@@ -804,6 +874,7 @@ final class LocationService: NSObject, ObservableObject {
         manager.startMonitoringSignificantLocationChanges()
         isPassiveWakeupMonitoring = true
         ViimDiagnostics.log("location.passiveWakeups.start")
+        refreshCollectionReadiness(context: "passiveWakeupStart")
     }
 
     private func stopPassiveWakeupMonitoring() {
@@ -814,6 +885,7 @@ final class LocationService: NSObject, ObservableObject {
         manager.stopMonitoringSignificantLocationChanges()
         isPassiveWakeupMonitoring = false
         ViimDiagnostics.log("location.passiveWakeups.stop")
+        refreshCollectionReadiness(context: "passiveWakeupStop")
     }
 
     /// Arme une geofence de sortie autour du dernier point connu quand le GPS
@@ -836,6 +908,7 @@ final class LocationService: NSObject, ObservableObject {
         region.notifyOnEntry = false
         manager.startMonitoring(for: region)
         departureRegion = region
+        departureRegionMonitoringConfirmed = false
         ViimDiagnostics.log("location.departureRegion.start radius=\(Int(Constants.departureRegionRadiusMeters))")
     }
 
@@ -846,6 +919,7 @@ final class LocationService: NSObject, ObservableObject {
 
         manager.stopMonitoring(for: departureRegion)
         self.departureRegion = nil
+        departureRegionMonitoringConfirmed = false
         ViimDiagnostics.log("location.departureRegion.stop")
     }
 
@@ -1254,7 +1328,7 @@ final class LocationService: NSObject, ObservableObject {
 
 extension LocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationState = LocationAuthorizationState(status: manager.authorizationStatus)
+        authorizationState = LocationAuthorizationState(status: self.manager.authorizationStatus)
         configureManager()
         ViimDiagnostics.log("location.authorization state=\(authorizationState)")
         if authorizationState == .authorizedAlways {
@@ -1263,11 +1337,15 @@ extension LocationService: CLLocationManagerDelegate {
         } else {
             endAlwaysServiceSession()
             stopDepartureRegionMonitoring()
+            if !isMonitoring {
+                endBackgroundActivitySession()
+            }
         }
         if !authorizationState.canTrackLocation {
             endBackgroundActivitySession()
         }
         startPassiveWakeupMonitoringIfAllowed()
+        refreshCollectionReadiness(context: "authorizationChanged")
 
         if shouldRequestCurrentLocationAfterAuthorization, authorizationState.canTrackLocation {
             requestCurrentLocation()
@@ -1284,6 +1362,7 @@ extension LocationService: CLLocationManagerDelegate {
         // failsafe et l'arret stationnaire de couper le GPS en plein trajet
         // quand iOS ne livre que des points epars.
         locations.forEach(registerMovementEvidence)
+        logDiagnosticsHeartbeatIfNeeded(locations: locations)
 
         if !isMonitoring, authorizationState == .authorizedAlways {
             if shouldPromotePassiveWakeupToContinuousMonitoring(locations) {
@@ -1309,23 +1388,76 @@ extension LocationService: CLLocationManagerDelegate {
         startMonitoring()
     }
 
+    func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region: CLRegion) {
+        guard region.identifier == Constants.departureRegionIdentifier else {
+            return
+        }
+        departureRegionMonitoringConfirmed = true
+        ViimDiagnostics.log("location.departureRegion.confirmed")
+        refreshCollectionReadiness(context: "departureRegionConfirmed")
+    }
+
     func locationManager(
         _ manager: CLLocationManager,
         monitoringDidFailFor region: CLRegion?,
         withError error: Error
     ) {
+        if region?.identifier == Constants.departureRegionIdentifier {
+            departureRegionMonitoringConfirmed = false
+        }
         ViimDiagnostics.log("location.departureRegion.failed region=\(region?.identifier ?? "nil")")
+        refreshCollectionReadiness(context: "departureRegionFailed")
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        if (error as? CLError)?.code == .denied {
-            authorizationState = .denied
+        let nsError = error as NSError
+        if nsError.domain == kCLErrorDomain, nsError.code == CLError.denied.rawValue {
+            // `kCLErrorDenied` peut signaler qu'une livraison est interdite
+            // dans le contexte courant (par exemple app suspendue avec une
+            // autorisation When In Use). Ce n'est pas une preuve que
+            // l'utilisateur a retire l'autorisation. Le statut du manager est
+            // la source de verite, comme dans le callback d'autorisation.
+            authorizationState = LocationAuthorizationState(status: self.manager.authorizationStatus)
             shouldRequestCurrentLocationAfterAuthorization = false
+            idleStopWorkItem?.cancel()
+            idleStopWorkItem = nil
+            self.manager.stopUpdatingLocation()
             isMonitoring = false
-            isPassiveWakeupMonitoring = false
-            stopDepartureRegionMonitoring()
-            endBackgroundActivitySession()
-            endAlwaysServiceSession()
+            monitoringStartedAt = nil
+
+            if authorizationState != .authorizedAlways {
+                if isPassiveWakeupMonitoring {
+                    self.manager.stopMonitoringSignificantLocationChanges()
+                }
+                isPassiveWakeupMonitoring = false
+                stopDepartureRegionMonitoring()
+                endBackgroundActivitySession()
+                endAlwaysServiceSession()
+            }
+
+            configureManager()
+            ViimDiagnostics.log("location.error code=denied authSnapshot=\(authorizationState)")
+            refreshCollectionReadiness(context: "locationDeliveryDenied")
         }
+    }
+
+    private func logDiagnosticsHeartbeatIfNeeded(locations: [CLLocation], now: Date = Date()) {
+        guard let newest = locations.max(by: { $0.timestamp < $1.timestamp }) else {
+            return
+        }
+        if let lastDiagnosticsHeartbeatAt,
+           now.timeIntervalSince(lastDiagnosticsHeartbeatAt) < 5 * 60 {
+            return
+        }
+        lastDiagnosticsHeartbeatAt = now
+        let age = max(0, now.timeIntervalSince(newest.timestamp))
+        ViimDiagnostics.log(
+            "location.heartbeat sampleAgeSec=\(Int(age)) "
+            + "horizontalAccuracy=\(Int(newest.horizontalAccuracy.rounded())) "
+            + "speedValid=\(newest.speed >= 0) "
+            + "continuousMonitoring=\(isMonitoring) "
+            + "passiveWakeupRequested=\(isPassiveWakeupMonitoring) "
+            + "backgroundSession=\(backgroundActivitySession != nil)"
+        )
     }
 }

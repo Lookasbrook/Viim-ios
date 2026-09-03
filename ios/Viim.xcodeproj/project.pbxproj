@@ -56,6 +56,9 @@
 		920000000000000000000004 /* MaintenanceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920000000000000000000104 /* MaintenanceStoreTests.swift */; };
 		960000000000000000000001 /* CarburantContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960000000000000000000101 /* CarburantContracts.swift */; };
 		960000000000000000000002 /* CarburantContractsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960000000000000000000102 /* CarburantContractsTests.swift */; };
+		970000000000000000000001 /* CollisionDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 970000000000000000000101 /* CollisionDetection.swift */; };
+		970000000000000000000002 /* CollisionDetectionEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 970000000000000000000102 /* CollisionDetectionEngineTests.swift */; };
+		980000000000000000000001 /* PublicVehicleCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 980000000000000000000101 /* PublicVehicleCatalog.swift */; };
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
@@ -130,6 +133,9 @@
 		920000000000000000000104 /* MaintenanceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceStoreTests.swift; sourceTree = "<group>"; };
 		960000000000000000000101 /* CarburantContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CarburantContracts.swift; sourceTree = "<group>"; };
 		960000000000000000000102 /* CarburantContractsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarburantContractsTests.swift; sourceTree = "<group>"; };
+		970000000000000000000101 /* CollisionDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CollisionDetection.swift; sourceTree = "<group>"; };
+		970000000000000000000102 /* CollisionDetectionEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollisionDetectionEngineTests.swift; sourceTree = "<group>"; };
+		980000000000000000000101 /* PublicVehicleCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/PublicVehicleCatalog.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -176,6 +182,8 @@
 				920000000000000000000101 /* DrivingDynamics.swift */,
 				920000000000000000000102 /* MaintenanceStore.swift */,
 				960000000000000000000101 /* CarburantContracts.swift */,
+				970000000000000000000101 /* CollisionDetection.swift */,
+				980000000000000000000101 /* PublicVehicleCatalog.swift */,
 				910000000000000000000102 /* TripRecorder.swift */,
 				10000000000000000000010B /* SensorFiltering.swift */,
 				10000000000000000000010C /* LocationService.swift */,
@@ -237,6 +245,7 @@
 				920000000000000000000103 /* DrivingDynamicsTests.swift */,
 				920000000000000000000104 /* MaintenanceStoreTests.swift */,
 				960000000000000000000102 /* CarburantContractsTests.swift */,
+				970000000000000000000102 /* CollisionDetectionEngineTests.swift */,
 			);
 			path = ViimTests;
 			sourceTree = "<group>";
@@ -380,6 +389,8 @@
 				920000000000000000000001 /* DrivingDynamics.swift in Sources */,
 				920000000000000000000002 /* MaintenanceStore.swift in Sources */,
 				960000000000000000000001 /* CarburantContracts.swift in Sources */,
+				970000000000000000000001 /* CollisionDetection.swift in Sources */,
+				980000000000000000000001 /* PublicVehicleCatalog.swift in Sources */,
 				910000000000000000000001 /* ActiveTripJournal.swift in Sources */,
 				910000000000000000000002 /* TripRecorder.swift in Sources */,
 			);
@@ -405,6 +416,7 @@
 				920000000000000000000003 /* DrivingDynamicsTests.swift in Sources */,
 				920000000000000000000004 /* MaintenanceStoreTests.swift in Sources */,
 				960000000000000000000002 /* CarburantContractsTests.swift in Sources */,
+				970000000000000000000002 /* CollisionDetectionEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -541,7 +553,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;
@@ -565,7 +577,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;

@@ -4,7 +4,8 @@ import Foundation
 
 @MainActor
 final class TripRecorder: ObservableObject {
-    private let journal: ActiveTripJournal
+    static let maximumRecoverableActiveDraftAge: TimeInterval = 12 * 60 * 60
+    private let journal: any ActiveTripJournaling
     private let tripManager: TripManager
     private var cancellables = Set<AnyCancellable>()
     private var observedLocationService: LocationService?
@@ -13,7 +14,7 @@ final class TripRecorder: ObservableObject {
     private var fuelProfile: VehicleFuelProfile?
     private var fuelSettings: FuelSettings?
 
-    init(journal: ActiveTripJournal, tripManager: TripManager) {
+    init(journal: any ActiveTripJournaling, tripManager: TripManager) {
         self.journal = journal
         self.tripManager = tripManager
     }
@@ -57,15 +58,25 @@ final class TripRecorder: ObservableObject {
             return
         }
 
-        let samples = samplesForTrip(id: completedTrip.id)
-        let outcome = tripManager.persistCompletedTrip(
-            completedTrip,
-            samples: samples,
-            vehicleType: vehicleType,
-            fuelProfile: fuelProfile,
-            fuelSettings: fuelSettings
-        )
-        handle(outcome: outcome, tripId: completedTrip.id, sampleCount: samples.count, source: "live")
+        do {
+            let samples = try journal.samples(for: completedTrip.id)
+            let outcome = tripManager.persistCompletedTrip(
+                completedTrip,
+                samples: samples,
+                vehicleType: vehicleType,
+                fuelProfile: fuelProfile,
+                fuelSettings: fuelSettings
+            )
+            handle(outcome: outcome, tripId: completedTrip.id, sampleCount: samples.count, source: "live")
+        } catch {
+            // Le brouillon reste durable et sera retente au prochain lancement.
+            // Persister avec un tableau vide transformerait une panne Core Data
+            // transitoire en rejet terminal et ferait perdre le trajet.
+            processedTripIDs.remove(completedTrip.id)
+            ViimDiagnostics.log(
+                "trip.recorder.samples.failed id=\(completedTrip.id.uuidString) source=live"
+            )
+        }
     }
 
     private func recover(_ draft: ActiveTripDraftRecord, now: Date) {
@@ -73,7 +84,30 @@ final class TripRecorder: ObservableObject {
             return
         }
 
-        let samples = samplesForTrip(id: draft.id)
+        let samples: [LocationSample]
+        do {
+            samples = try journal.samples(for: draft.id)
+        } catch {
+            processedTripIDs.remove(draft.id)
+            ViimDiagnostics.log(
+                "trip.recorder.samples.failed id=\(draft.id.uuidString) source=recovery"
+            )
+            return
+        }
+        if draft.phase == .active,
+           Self.isActiveDraftStale(lastUpdatedAt: draft.lastUpdatedAt, now: now) {
+            ViimDiagnostics.log(
+                "trip.capture.outcome id=\(draft.id.uuidString) status=rejected reason=staleActiveTrip source=recovery"
+            )
+            finalizeJournalTrip(
+                id: draft.id,
+                status: "rejected",
+                reason: "staleActiveTrip",
+                source: "recovery",
+                sampleCount: samples.count
+            )
+            return
+        }
         if draft.phase == .candidate,
            !LocationService.shouldBeginTripFromCandidateSamples(samples, vehicleType: draft.vehicleType) {
             if LocationService.isCandidateExpired(lastUpdatedAt: draft.lastUpdatedAt, now: now) {
@@ -119,13 +153,8 @@ final class TripRecorder: ObservableObject {
         }
     }
 
-    private func samplesForTrip(id tripId: UUID) -> [LocationSample] {
-        do {
-            return try journal.samples(for: tripId)
-        } catch {
-            ViimDiagnostics.log("trip.recorder.samples.failed")
-            return []
-        }
+    static func isActiveDraftStale(lastUpdatedAt: Date, now: Date) -> Bool {
+        now.timeIntervalSince(lastUpdatedAt) > maximumRecoverableActiveDraftAge
     }
 
     private func finalizeJournalTrip(

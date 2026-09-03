@@ -3,6 +3,163 @@ import XCTest
 @testable import Viim
 
 final class LocationServiceTests: XCTestCase {
+    func testReadinessRequiresEveryBackgroundPrerequisite() {
+        XCTAssertEqual(
+            LocationCollectionReadiness.evaluate(
+                authorization: .authorizedAlways,
+                hasFullAccuracy: true,
+                backgroundRefresh: .available,
+                passiveWakeupRequested: true
+            ),
+            .ready
+        )
+        XCTAssertEqual(
+            LocationCollectionReadiness.evaluate(
+                authorization: .authorizedWhenInUse,
+                hasFullAccuracy: true,
+                backgroundRefresh: .available,
+                passiveWakeupRequested: true
+            ),
+            .foregroundOnly
+        )
+        XCTAssertEqual(
+            LocationCollectionReadiness.evaluate(
+                authorization: .authorizedAlways,
+                hasFullAccuracy: false,
+                backgroundRefresh: .available,
+                passiveWakeupRequested: true
+            ),
+            .preciseLocationDisabled
+        )
+        XCTAssertEqual(
+            LocationCollectionReadiness.evaluate(
+                authorization: .authorizedAlways,
+                hasFullAccuracy: true,
+                backgroundRefresh: .denied,
+                passiveWakeupRequested: true
+            ),
+            .backgroundRefreshDisabled
+        )
+        XCTAssertEqual(
+            LocationCollectionReadiness.evaluate(
+                authorization: .authorizedAlways,
+                hasFullAccuracy: true,
+                backgroundRefresh: .available,
+                passiveWakeupRequested: false
+            ),
+            .passiveWakeupPending
+        )
+    }
+
+    func testFreshPermissionFlowRequiresExplicitAlwaysAction() {
+        let manager = LocationManagerSpy(authorizationStatus: .notDetermined)
+        let service = LocationService(
+            manager: manager,
+            backgroundRefreshStatusProvider: { .available }
+        )
+        let callbackManager = CLLocationManager()
+
+        service.prepareForForegroundUse()
+        XCTAssertEqual(manager.requestWhenInUseCallCount, 1)
+        XCTAssertEqual(manager.requestAlwaysCallCount, 0)
+        XCTAssertEqual(service.collectionReadiness, .permissionNotDetermined)
+
+        manager.authorizationStatus = .authorizedWhenInUse
+        service.locationManagerDidChangeAuthorization(callbackManager)
+        XCTAssertEqual(service.collectionReadiness, .foregroundOnly)
+        XCTAssertEqual(manager.requestAlwaysCallCount, 0)
+
+        service.requestBackgroundAuthorization()
+        XCTAssertEqual(manager.requestAlwaysCallCount, 1)
+
+        manager.authorizationStatus = .authorizedAlways
+        service.locationManagerDidChangeAuthorization(callbackManager)
+        XCTAssertEqual(service.collectionReadiness, .ready)
+        XCTAssertTrue(service.isPassiveWakeupMonitoring)
+    }
+
+    func testDeniedLocationErrorImmediatelyDegradesReadiness() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
+        let service = LocationService(
+            manager: manager,
+            backgroundRefreshStatusProvider: { .available },
+            backgroundActivitySessionFactory: { NSObject() },
+            alwaysServiceSessionFactory: { NSObject() }
+        )
+
+        service.prepareForForegroundUse()
+        XCTAssertEqual(service.collectionReadiness, .ready)
+        XCTAssertTrue(service.hasBackgroundActivitySession)
+
+        manager.authorizationStatus = .denied
+
+        let deniedError = NSError(
+            domain: kCLErrorDomain,
+            code: CLError.denied.rawValue
+        )
+        service.locationManager(CLLocationManager(), didFailWithError: deniedError)
+
+        XCTAssertEqual(service.authorizationState, .denied)
+        XCTAssertEqual(service.collectionReadiness, .permissionDenied)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.hasAlwaysServiceSession)
+        XCTAssertFalse(service.isPassiveWakeupMonitoring)
+        XCTAssertFalse(manager.allowsBackgroundLocationUpdates)
+    }
+
+    func testDeniedLocationErrorPreservesActualWhenInUseAuthorization() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
+        let service = LocationService(
+            manager: manager,
+            backgroundRefreshStatusProvider: { .available },
+            backgroundActivitySessionFactory: { NSObject() },
+            alwaysServiceSessionFactory: { NSObject() }
+        )
+
+        service.prepareForForegroundUse()
+        service.startMonitoring()
+        XCTAssertTrue(service.isMonitoring)
+        XCTAssertEqual(service.collectionReadiness, .foregroundOnly)
+
+        let deniedError = NSError(
+            domain: kCLErrorDomain,
+            code: CLError.denied.rawValue
+        )
+        service.locationManager(CLLocationManager(), didFailWithError: deniedError)
+
+        XCTAssertEqual(service.authorizationState, .authorizedWhenInUse)
+        XCTAssertEqual(service.collectionReadiness, .foregroundOnly)
+        XCTAssertFalse(service.isMonitoring)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.hasAlwaysServiceSession)
+        XCTAssertFalse(service.isPassiveWakeupMonitoring)
+        XCTAssertFalse(manager.allowsBackgroundLocationUpdates)
+        XCTAssertTrue(manager.actions.contains(.stopStandard))
+    }
+
+    func testAlwaysDowngradeReleasesIdleBackgroundSessions() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
+        let service = LocationService(
+            manager: manager,
+            backgroundRefreshStatusProvider: { .available },
+            backgroundActivitySessionFactory: { NSObject() },
+            alwaysServiceSessionFactory: { NSObject() }
+        )
+
+        service.prepareForForegroundUse()
+        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertTrue(service.hasAlwaysServiceSession)
+
+        manager.authorizationStatus = .authorizedWhenInUse
+        service.locationManagerDidChangeAuthorization(CLLocationManager())
+
+        XCTAssertEqual(service.collectionReadiness, .foregroundOnly)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.hasAlwaysServiceSession)
+        XCTAssertFalse(service.isPassiveWakeupMonitoring)
+        XCTAssertFalse(manager.allowsBackgroundLocationUpdates)
+    }
+
     func testLocationSampleCapturesAltitudeWithItsAccuracy() {
         let point = location(
             latitude: 12.3714,
@@ -705,7 +862,7 @@ final class LocationServiceTests: XCTestCase {
         XCTAssertTrue(service.hasAlwaysServiceSession)
     }
 
-    func testGpsSessionSplitKeepsVisualSessionOffWhileAlwaysIsIdle() {
+    func testGpsSessionSplitCannotDisableAlwaysReliabilitySession() {
         let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
         var visualSessionCreationCount = 0
         let service = LocationService(
@@ -724,8 +881,8 @@ final class LocationServiceTests: XCTestCase {
 
         service.prepareForForegroundUse()
 
-        XCTAssertEqual(visualSessionCreationCount, 0)
-        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertEqual(visualSessionCreationCount, 1)
+        XCTAssertTrue(service.hasBackgroundActivitySession)
         XCTAssertTrue(service.hasAlwaysServiceSession)
         XCTAssertEqual(manager.actions, [.startSignificant])
 
@@ -740,12 +897,12 @@ final class LocationServiceTests: XCTestCase {
         service.stopMonitoring()
 
         XCTAssertEqual(manager.actions, [.stopStandard])
-        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertTrue(service.hasBackgroundActivitySession)
         XCTAssertTrue(service.hasAlwaysServiceSession)
         XCTAssertTrue(service.isPassiveWakeupMonitoring)
     }
 
-    func testGpsSessionSplitCreatesVisualSessionWhenPassiveWakeupStartsTracking() {
+    func testGpsSessionSplitColdRestoreCreatesReliabilitySessionBeforeWakeup() {
         let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
         var visualSessionCreationCount = 0
         let service = LocationService(
@@ -764,8 +921,8 @@ final class LocationServiceTests: XCTestCase {
         let delegateManager = CLLocationManager()
 
         service.restoreAutomaticTrackingSession()
-        XCTAssertEqual(visualSessionCreationCount, 0)
-        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertEqual(visualSessionCreationCount, 1)
+        XCTAssertTrue(service.hasBackgroundActivitySession)
 
         let wakeup = location(
             latitude: 12.3714,
@@ -905,17 +1062,14 @@ final class LocationServiceTests: XCTestCase {
         XCTAssertEqual(manager.actions, [.startStandard, .stopStandard])
     }
 
-    func testForegroundUseAutoRequestsAlwaysUpgradeOnceWhenOnlyWhenInUse() {
+    func testForegroundUseDoesNotRequestAlwaysWithoutExplicitUserAction() {
         let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
         let service = LocationService(manager: manager)
 
         service.prepareForForegroundUse()
         service.prepareForForegroundUse()
 
-        // Escalade demandee, mais une seule fois par session de premier plan :
-        // iOS n'affiche la bascule qu'une fois, ensuite c'est le role de la
-        // banniere d'accueil de renvoyer vers les Reglages.
-        XCTAssertEqual(manager.requestAlwaysCallCount, 1)
+        XCTAssertEqual(manager.requestAlwaysCallCount, 0)
     }
 
     func testForegroundUseDoesNotRequestAlwaysWhenAlreadyAlways() {
@@ -936,57 +1090,26 @@ final class LocationServiceTests: XCTestCase {
         XCTAssertEqual(manager.requestAlwaysCallCount, 0)
     }
 
-    func testIdleTeardownKeepsBackgroundSessionWhenSplitLeftNoPassiveWakeup() {
-        // Always + gpsSessionSplit actif, mais SLC et geofence non armes :
-        // la session d'activite est le dernier lien de relance, on la garde.
+    func testIdleTeardownKeepsBackgroundSessionUnderAlwaysWithoutPassiveWakeup() {
         XCTAssertFalse(
             LocationService.shouldEndIdleBackgroundActivitySession(
-                authorization: .authorizedAlways,
-                gpsSessionSplit: true,
-                passiveWakeupArmed: false,
-                departureRegionArmed: false
+                authorization: .authorizedAlways
             )
         )
     }
 
-    func testIdleTeardownReleasesBackgroundSessionOncePassiveWakeupArmed() {
-        XCTAssertTrue(
+    func testIdleTeardownKeepsBackgroundSessionWhenPassiveWakeupWasOnlyRequested() {
+        XCTAssertFalse(
             LocationService.shouldEndIdleBackgroundActivitySession(
-                authorization: .authorizedAlways,
-                gpsSessionSplit: true,
-                passiveWakeupArmed: true,
-                departureRegionArmed: false
-            )
-        )
-        XCTAssertTrue(
-            LocationService.shouldEndIdleBackgroundActivitySession(
-                authorization: .authorizedAlways,
-                gpsSessionSplit: true,
-                passiveWakeupArmed: false,
-                departureRegionArmed: true
+                authorization: .authorizedAlways
             )
         )
     }
 
-    func testIdleTeardownKeepsHistoricRetentionWithoutSplitAndReleasesUnderWhenInUse() {
-        // Sans le spike, Always conserve la session visuelle (comportement
-        // historique).
-        XCTAssertFalse(
-            LocationService.shouldEndIdleBackgroundActivitySession(
-                authorization: .authorizedAlways,
-                gpsSessionSplit: false,
-                passiveWakeupArmed: false,
-                departureRegionArmed: false
-            )
-        )
-        // En When In Use, aucune collecte d'arriere-plan possible : on ne
-        // laisse pas l'indicateur de localisation allume a l'idle.
+    func testIdleTeardownReleasesBackgroundSessionUnderWhenInUse() {
         XCTAssertTrue(
             LocationService.shouldEndIdleBackgroundActivitySession(
-                authorization: .authorizedWhenInUse,
-                gpsSessionSplit: true,
-                passiveWakeupArmed: false,
-                departureRegionArmed: false
+                authorization: .authorizedWhenInUse
             )
         )
     }
@@ -1059,7 +1182,8 @@ private final class LocationManagerSpy: LocationManaging {
     }
 
     weak var delegate: CLLocationManagerDelegate?
-    let authorizationStatus: CLAuthorizationStatus
+    var authorizationStatus: CLAuthorizationStatus
+    var accuracyAuthorization: CLAccuracyAuthorization = .fullAccuracy
     var allowsBackgroundLocationUpdates = false
     var pausesLocationUpdatesAutomatically = true
     var showsBackgroundLocationIndicator = false

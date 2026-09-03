@@ -190,7 +190,8 @@ final class TripStoreTests: XCTestCase {
                     samples: routeSamples,
                     vehicleType: .voiture,
                     distanceKm: expectedDistanceMeters / 1_000
-                )
+                ),
+                tripDurationSec: trip.duration
             )
         )
 

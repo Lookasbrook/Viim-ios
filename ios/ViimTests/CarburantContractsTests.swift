@@ -35,71 +35,18 @@ final class CarburantContractsTests: XCTestCase {
         XCTAssertFalse(gpsOnly.transitClassifier)
     }
 
-    func testPersistedGpsSplitOverrideIsIgnoredAfterTTL() {
+    func testPersistedGpsSplitOverrideNeverActivatesAFlag() {
         let suiteName = "CarburantContractsTests.\(UUID().uuidString)"
         let defaults = try! XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        let armedAt = Date(timeIntervalSince1970: 1_000_000)
-        CarburantFeatureFlags.persistDebugOverridesIfRequested(
-            arguments: ["Viim", CarburantFeatureFlags.gpsSessionSplitArgument],
-            userDefaults: defaults,
-            now: armedAt
-        )
+        defaults.set(true, forKey: CarburantFeatureFlags.gpsSessionSplitDefaultsKey)
+        defaults.set(Date(), forKey: CarburantFeatureFlags.gpsSessionSplitDefaultsKey + ".activatedAt")
 
-        let withinWindow = CarburantFeatureFlags.resolved(
-            arguments: ["Viim"],
-            userDefaults: defaults,
-            now: armedAt.addingTimeInterval(CarburantFeatureFlags.persistedOverrideTTL - 60)
-        )
-        let afterWindow = CarburantFeatureFlags.resolved(
-            arguments: ["Viim"],
-            userDefaults: defaults,
-            now: armedAt.addingTimeInterval(CarburantFeatureFlags.persistedOverrideTTL + 60)
-        )
-
-        #if DEBUG
-        XCTAssertTrue(withinWindow.gpsSessionSplit)
-        XCTAssertFalse(afterWindow.gpsSessionSplit)
-        #else
-        XCTAssertEqual(withinWindow, .disabled)
-        XCTAssertEqual(afterWindow, .disabled)
-        #endif
+        XCTAssertEqual(CarburantFeatureFlags.resolved(arguments: ["Viim"]), .disabled)
     }
 
-    func testExpiredPersistedOverrideIsReArmedByLaunchArgument() {
-        let suiteName = "CarburantContractsTests.\(UUID().uuidString)"
-        let defaults = try! XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        let armedAt = Date(timeIntervalSince1970: 1_000_000)
-        CarburantFeatureFlags.persistDebugOverridesIfRequested(
-            arguments: ["Viim", CarburantFeatureFlags.gpsSessionSplitArgument],
-            userDefaults: defaults,
-            now: armedAt
-        )
-
-        let staleNow = armedAt.addingTimeInterval(CarburantFeatureFlags.persistedOverrideTTL * 4)
-        CarburantFeatureFlags.persistDebugOverridesIfRequested(
-            arguments: ["Viim", CarburantFeatureFlags.gpsSessionSplitArgument],
-            userDefaults: defaults,
-            now: staleNow
-        )
-
-        let resolved = CarburantFeatureFlags.resolved(
-            arguments: ["Viim"],
-            userDefaults: defaults,
-            now: staleNow.addingTimeInterval(60)
-        )
-
-        #if DEBUG
-        XCTAssertTrue(resolved.gpsSessionSplit)
-        #else
-        XCTAssertEqual(resolved, .disabled)
-        #endif
-    }
-
-    func testLegacyPersistedOverrideWithoutTimestampIsIgnored() {
+    func testLegacyPersistedOverridesAreDeletedAtLaunch() {
         // Reproduit l'etat du telephone lors de l'incident 2026-09-02 :
         // `viim.feature.gpsSessionSplit = true` ecrit par une version sans
         // horodatage. La build corrigee ne doit plus l'honorer.
@@ -107,19 +54,22 @@ final class CarburantContractsTests: XCTestCase {
         let defaults = try! XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        defaults.set(true, forKey: "viim.feature.gpsSessionSplit")
+        let keys = [
+            CarburantFeatureFlags.gpsSessionSplitDefaultsKey,
+            CarburantFeatureFlags.physicalFuelModelDefaultsKey,
+            CarburantFeatureFlags.transitClassifierDefaultsKey
+        ]
+        for key in keys {
+            defaults.set(true, forKey: key)
+            defaults.set(Date(), forKey: key + ".activatedAt")
+        }
 
-        let resolved = CarburantFeatureFlags.resolved(
-            arguments: ["Viim"],
-            userDefaults: defaults,
-            now: Date(timeIntervalSince1970: 1_800_000_000)
-        )
+        CarburantFeatureFlags.clearPersistedDebugOverrides(userDefaults: defaults)
 
-        #if DEBUG
-        XCTAssertFalse(resolved.gpsSessionSplit)
-        #else
-        XCTAssertEqual(resolved, .disabled)
-        #endif
+        for key in keys {
+            XCTAssertNil(defaults.object(forKey: key))
+            XCTAssertNil(defaults.object(forKey: key + ".activatedAt"))
+        }
     }
 
     func testDiagnosticSummaryListsEveryFlag() {
@@ -129,28 +79,16 @@ final class CarburantContractsTests: XCTestCase {
         )
     }
 
-    func testDebugLaunchOverridePersistsForSystemRelaunch() {
-        let suiteName = "CarburantContractsTests.\(UUID().uuidString)"
-        let defaults = try! XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer {
-            defaults.removePersistentDomain(forName: suiteName)
-        }
-
-        CarburantFeatureFlags.persistDebugOverridesIfRequested(
-            arguments: ["Viim", CarburantFeatureFlags.gpsSessionSplitArgument],
-            userDefaults: defaults
+    func testDebugLaunchOverrideEndsWithTheCurrentProcessArguments() {
+        let requested = CarburantFeatureFlags.resolved(
+            arguments: ["Viim", CarburantFeatureFlags.gpsSessionSplitArgument]
         )
-
-        let relaunched = CarburantFeatureFlags.resolved(
-            arguments: ["Viim"],
-            userDefaults: defaults
-        )
+        let relaunched = CarburantFeatureFlags.resolved(arguments: ["Viim"])
         #if DEBUG
-        XCTAssertTrue(relaunched.gpsSessionSplit)
+        XCTAssertTrue(requested.gpsSessionSplit)
         #else
-        XCTAssertEqual(relaunched, .disabled)
+        XCTAssertEqual(requested, .disabled)
         #endif
-        XCTAssertFalse(relaunched.physicalFuelModel)
-        XCTAssertFalse(relaunched.transitClassifier)
+        XCTAssertEqual(relaunched, .disabled)
     }
 }

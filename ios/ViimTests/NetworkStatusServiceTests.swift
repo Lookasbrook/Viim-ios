@@ -3,11 +3,44 @@ import XCTest
 @testable import Viim
 
 final class NetworkStatusServiceTests: XCTestCase {
-    func testCollisionStatusIsNotEnabledWhenDetectorIsDisabled() {
-        let status = HomeStatusPresenter.collisionDetection(isEnabled: false)
+    func testTripDetectionNeverLooksReadyWhenBackgroundPrerequisitesAreMissing() {
+        let degradedStates: [LocationCollectionReadiness] = [
+            .permissionNotDetermined,
+            .permissionDenied,
+            .permissionRestricted,
+            .foregroundOnly,
+            .preciseLocationDisabled,
+            .backgroundRefreshDisabled,
+            .backgroundRefreshRestricted,
+            .passiveWakeupPending
+        ]
 
-        XCTAssertEqual(status.detailKey, "home.status.collisionDetection.pending")
-        XCTAssertEqual(status.tone, .blue)
+        for readiness in degradedStates {
+            let tone = HomeStatusPresenter.tripDetectionTone(
+                readiness: readiness,
+                isMonitoring: true,
+                isPassiveWakeupMonitoring: true
+            )
+            XCTAssertNotEqual(tone, .success, "\(readiness) ne doit jamais paraitre pret")
+        }
+    }
+
+    func testTripDetectionLooksReadyOnlyWhenConfiguredAndActive() {
+        XCTAssertEqual(
+            HomeStatusPresenter.tripDetectionTone(
+                readiness: .ready,
+                isMonitoring: false,
+                isPassiveWakeupMonitoring: true
+            ),
+            .success
+        )
+    }
+
+    func testCollisionStatusIsNotEnabledWhenDetectorIsDisabled() {
+        let status = HomeStatusPresenter.collisionDetection()
+
+        XCTAssertEqual(status.detailKey, "home.status.collisionDetection.unavailable")
+        XCTAssertEqual(status.tone, .warning)
         XCTAssertNotEqual(status.detailKey, "status.enabled")
     }
 

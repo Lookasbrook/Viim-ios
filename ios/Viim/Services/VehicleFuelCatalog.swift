@@ -1,5 +1,11 @@
 import Foundation
 
+enum VehicleFuelReferenceResolution: String, Equatable {
+    case bicycleZero
+    case indicativeModel
+    case officialVariant
+}
+
 struct VehicleFuelProfile: Equatable {
     let vehicleType: VehicleType
     let fuelType: VehicleFuelType?
@@ -7,6 +13,7 @@ struct VehicleFuelProfile: Equatable {
     let litersPer100Km: Double
     let confidence: MetricConfidence
     let sourceIdentifier: String
+    let referenceResolution: VehicleFuelReferenceResolution
 }
 
 struct FuelConsumptionEstimate: Equatable {
@@ -29,8 +36,9 @@ struct VehicleCatalogSuggestion: Equatable, Identifiable {
 }
 
 enum VehicleFuelCatalog {
-    static let formulaVersion = "vehicle-fuel-catalog-v8-gps-dynamics"
-    static let sourceIdentifier = "ViimCatalog.indicative.v7"
+    static let formulaVersion = "vehicle-fuel-catalog-v9-exact-model-gps-dynamics"
+    static let sourceIdentifier = "ViimCatalog.indicative.v8"
+    static let minimumDynamicsCoverageRatio = 0.80
 
     private static let entries: [VehicleFuelEntry] = [
         car("Toyota", "Corolla", ["corolla", "corollaaltis", "altis"], 6.8, rank: 10),
@@ -182,6 +190,23 @@ enum VehicleFuelCatalog {
             return nil
         }
 
+        if let specification = userProfile.vehicleSpecification {
+            guard let matched = specification.matched(to: userProfile) else {
+                // Une preuve officielle devenue incoherente ne doit jamais
+                // retomber silencieusement sur la moyenne indicative du modele.
+                return nil
+            }
+            return VehicleFuelProfile(
+                vehicleType: userProfile.vehicleType,
+                fuelType: matched.fuelType,
+                canonicalName: "\(matched.make) \(matched.model) \(matched.year)",
+                litersPer100Km: matched.combinedLitersPer100Km,
+                confidence: .partial,
+                sourceIdentifier: matched.qualifiedSourceIdentifier,
+                referenceResolution: .officialVariant
+            )
+        }
+
         guard let baseProfile = profile(
             vehicleType: userProfile.vehicleType,
             brand: userProfile.vehicleBrand,
@@ -189,14 +214,10 @@ enum VehicleFuelCatalog {
         ) else {
             return nil
         }
-        return VehicleFuelProfile(
-            vehicleType: baseProfile.vehicleType,
-            fuelType: userProfile.fuelType,
-            canonicalName: baseProfile.canonicalName,
-            litersPer100Km: baseProfile.litersPer100Km,
-            confidence: baseProfile.confidence,
-            sourceIdentifier: baseProfile.sourceIdentifier
-        )
+        // Le catalogue historique contient une reference par modele, pas une
+        // fiche technique par annee/motorisation. Ne jamais recopier le choix
+        // essence/diesel/hybride comme s'il avait determine cette valeur.
+        return baseProfile
     }
 
     static func profile(vehicleType: VehicleType, brand: String, model: String) -> VehicleFuelProfile? {
@@ -207,7 +228,8 @@ enum VehicleFuelCatalog {
                 canonicalName: String(localized: "vehicle.type.velo"),
                 litersPer100Km: 0,
                 confidence: .reliable,
-                sourceIdentifier: sourceIdentifier
+                sourceIdentifier: sourceIdentifier,
+                referenceResolution: .bicycleZero
             )
         }
 
@@ -221,7 +243,8 @@ enum VehicleFuelCatalog {
             canonicalName: entry.canonicalName,
             litersPer100Km: entry.litersPer100Km,
             confidence: .partial,
-            sourceIdentifier: sourceIdentifier
+            sourceIdentifier: sourceIdentifier,
+            referenceResolution: .indicativeModel
         )
     }
 
@@ -278,12 +301,11 @@ enum VehicleFuelCatalog {
             guard abs(candidate.distanceKm - distanceKm) <= distanceToleranceKm else {
                 return nil
             }
-            if let tripDurationSec {
-                guard tripDurationSec.isFinite,
-                      tripDurationSec > 0,
-                      candidate.analyzedDurationSec / tripDurationSec >= 0.60 else {
-                    return nil
-                }
+            guard let tripDurationSec,
+                  tripDurationSec.isFinite,
+                  tripDurationSec > 0,
+                  candidate.analyzedDurationSec / tripDurationSec >= minimumDynamicsCoverageRatio else {
+                return nil
             }
             return candidate
         }
@@ -307,7 +329,7 @@ enum VehicleFuelCatalog {
 
         return entries.first(where: { entry in
             entry.vehicleType == vehicleType &&
-                entry.matches(brand: normalizedBrand, model: normalizedModel, combined: combined)
+                entry.matchesExactly(brand: normalizedBrand, model: normalizedModel, combined: combined)
         })
     }
 
@@ -530,12 +552,12 @@ private struct VehicleFuelEntry: Equatable {
         "\(canonicalBrand) \(canonicalModel)"
     }
 
-    func matches(brand: String, model: String, combined: String) -> Bool {
-        let brandMatches = brand.isEmpty || brandKeys.contains { key in
-            brand.contains(key) || model.contains(key)
-        }
-        let modelMatches = modelKeys.contains { key in
-            model.contains(key) || combined.contains(key)
+    func matchesExactly(brand: String, model: String, combined: String) -> Bool {
+        let brandMatches = brand.isEmpty || brandKeys.contains(brand)
+        let modelMatches = modelKeys.contains(model) || brandKeys.contains { brandKey in
+            modelKeys.contains { modelKey in
+                combined == brandKey + modelKey || model == brandKey + modelKey
+            }
         }
         return brandMatches && modelMatches
     }

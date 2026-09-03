@@ -200,6 +200,18 @@ struct FuelSettings: Codable, Equatable, Hashable {
             return false
         }
 
+        if source == .officialPublicData {
+            guard let sourceIdentifier,
+                  !sourceIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let sourceURL,
+                  sourceURL.scheme?.lowercased() == "https",
+                  sourceURL.host != nil,
+                  let locality,
+                  !locality.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return false
+            }
+        }
+
         let age = date.timeIntervalSince(capturedAt)
         let maximumAge = source == .officialPublicData
             ? Self.maximumOfficialSnapshotAge
@@ -238,6 +250,10 @@ struct UserProfile: Codable, Equatable {
     /// Choix explicite de l'utilisateur. `nil` conserve la compatibilite des
     /// profils crees avant l'ajout de cette information.
     var fuelType: VehicleFuelType? = nil
+    /// Variante officielle selectionnee explicitement. Elle reste optionnelle
+    /// pour decoder sans perte les profils historiques. Toute discordance avec
+    /// l'annee, la marque, le modele ou le carburant invalide cette preuve.
+    var vehicleSpecification: VerifiedVehicleSpecification? = nil
 
     var vehicleDisplayName: String {
         let parts = [vehicleBrand, vehicleModel, vehicleYear]
@@ -294,7 +310,12 @@ final class OnboardingStore: ObservableObject {
     }
 
     func complete(profile: UserProfile, emergencyContact: EmergencyContact?) throws {
-        let encodedProfile = try JSONEncoder().encode(profile)
+        var validatedProfile = profile
+        if let specification = profile.vehicleSpecification,
+           specification.matched(to: profile) == nil {
+            validatedProfile.vehicleSpecification = nil
+        }
+        let encodedProfile = try JSONEncoder().encode(validatedProfile)
         userDefaults.set(encodedProfile, forKey: Keys.profile)
 
         if let emergencyContact {
@@ -303,7 +324,7 @@ final class OnboardingStore: ObservableObject {
             try secureStore.delete()
         }
 
-        self.profile = profile
+        self.profile = validatedProfile
     }
 
     /// Redeclare l'odometre : la nouvelle valeur devient la base et les
@@ -333,12 +354,43 @@ final class OnboardingStore: ObservableObject {
         fuelSettings = settings
     }
 
+    /// Applique la motorisation et sa preuve de prix comme une seule mutation
+    /// logique. Les encodages sont valides avant toute ecriture, ce qui evite
+    /// un profil modifie avec un prix reste sur l'ancien carburant.
+    func updateFuelConfiguration(
+        fuelType: VehicleFuelType,
+        settings: FuelSettings
+    ) throws {
+        guard var updatedProfile = profile, updatedProfile.vehicleType != .velo else {
+            return
+        }
+        guard settings.fuelType == fuelType,
+              settings.pricePerLiter.isFinite,
+              settings.pricePerLiter >= 0 else {
+            throw FuelSettingsError.invalidPrice
+        }
+
+        updatedProfile.fuelType = fuelType
+        if updatedProfile.vehicleSpecification?.fuelType != fuelType {
+            updatedProfile.vehicleSpecification = nil
+        }
+        let encodedProfile = try JSONEncoder().encode(updatedProfile)
+        let encodedSettings = try JSONEncoder().encode(settings)
+        userDefaults.set(encodedProfile, forKey: Keys.profile)
+        userDefaults.set(encodedSettings, forKey: Keys.fuelSettings)
+        profile = updatedProfile
+        fuelSettings = settings
+    }
+
     func updateVehicleFuelType(_ fuelType: VehicleFuelType) throws {
         guard var updatedProfile = profile, updatedProfile.vehicleType != .velo else {
             return
         }
 
         updatedProfile.fuelType = fuelType
+        if updatedProfile.vehicleSpecification?.fuelType != fuelType {
+            updatedProfile.vehicleSpecification = nil
+        }
         userDefaults.set(try JSONEncoder().encode(updatedProfile), forKey: Keys.profile)
         profile = updatedProfile
 
@@ -356,6 +408,17 @@ final class OnboardingStore: ObservableObject {
         )
         userDefaults.set(try JSONEncoder().encode(resetSettings), forKey: Keys.fuelSettings)
         fuelSettings = resetSettings
+    }
+
+    func updateVehicleSpecification(_ specification: VerifiedVehicleSpecification) throws {
+        guard var updatedProfile = profile,
+              specification.matched(to: updatedProfile) != nil else {
+            throw VehicleSpecificationError.identityMismatch
+        }
+
+        updatedProfile.vehicleSpecification = specification
+        userDefaults.set(try JSONEncoder().encode(updatedProfile), forKey: Keys.profile)
+        profile = updatedProfile
     }
 
     private static func loadProfile(from userDefaults: UserDefaults) -> UserProfile? {
@@ -379,6 +442,10 @@ enum FuelSettingsError: Error {
 
 enum OdometerError: Error {
     case invalidValue
+}
+
+enum VehicleSpecificationError: Error {
+    case identityMismatch
 }
 
 final class SecureEmergencyContactStore {
