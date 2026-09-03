@@ -202,12 +202,22 @@ devient visible lors de la prochaine ouverture.
 
 ## P1-A — Estimation avancee de consommation
 
-Etat logiciel : tranche `vehicle-fuel-catalog-v10-evidence-range-elevation`
-implementee dans le build 27. Chaque nouveau trajet conserve une plage prudente
+Etat logiciel : tranche `vehicle-fuel-catalog-v11-fill-up-calibration`
+implementee jusqu'au build 41. Chaque nouveau trajet conserve une plage prudente
 basse/centrale/haute pour les litres et le cout, la resolution de la reference,
 les multiplicateurs conduite et montee, leur couverture et la version du calcul.
-Le denivele GPS n'accorde aucune economie supposee en descente. La plage reste
-`non calibree` tant que des pleins reels ne permettent pas de mesurer son erreur.
+Le denivele GPS n'accorde aucune economie supposee en descente.
+
+Lot build 41 : saisie volontaire de pleins complets dans Profil, persistance locale
+Core Data `ViimBuild41` et migration testee depuis l'immuable `ViimBuild33`. Une
+calibration exige au moins trois pleins pour former deux intervalles valides. Les
+dates et odometres doivent progresser, les bornes voiture/moto sont distinctes,
+les aberrations sont exclues et une calibration trop eloignee de la reference de
+depart est refusee. L'identite comprend type, marque, modele, annee, carburant et
+variante officielle : aucune preuve ne traverse un changement de vehicule. Chaque
+futur trajet fige la consommation calibree, le nombre d'intervalles, la distance
+couverte et la date de la derniere preuve dans son identifiant de source ; aucun
+trajet historique n'est reecrit.
 
 1. Versionner un profil vehicule structure : annee, marque, modele, finition,
    moteur, transmission, carburant et provenance.
@@ -219,13 +229,13 @@ Le denivele GPS n'accorde aucune economie supposee en descente. La plage reste
    facteur doit conserver sa couverture et son incertitude.
 4. Produire une plage basse/centrale/haute. Revenir a la reference catalogue si
    la couverture dynamique est inferieure a 80 %.
-5. Ajouter la calibration volontaire par pleins : kilometrage, litres, date et
-   vehicule. Ne jamais melanger deux vehicules ni recalculer silencieusement un
-   ancien trajet.
+5. [Livre build 41] Ajouter la calibration volontaire par pleins : kilometrage,
+   litres, date et vehicule. Ne jamais melanger deux vehicules ni recalculer
+   silencieusement un ancien trajet.
 6. Separarer partout litres estimes, cout calcule et prix constate, avec date,
    localite, devise, source et fraicheur.
 
-Porte de sortie : erreur mediane et P90 mesurees sur plusieurs pleins par profil ;
+Porte de sortie restante : erreur mediane et P90 mesurees sur plusieurs pleins par profil ;
 aucune valeur ponctuelle affichee quand le profil est ambigu ; historique
 reproductible a partir des preuves figees au trajet.
 

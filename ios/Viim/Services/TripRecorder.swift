@@ -13,6 +13,7 @@ final class TripRecorder: ObservableObject {
     private var processedTripIDs = Set<UUID>()
     private var vehicleType: VehicleType = .moto
     private var fuelProfile: VehicleFuelProfile?
+    private var userProfile: UserProfile?
     private var fuelSettings: FuelSettings?
 
     init(
@@ -27,6 +28,7 @@ final class TripRecorder: ObservableObject {
 
     func configure(profile: UserProfile, fuelSettings: FuelSettings? = nil) {
         vehicleType = profile.vehicleType
+        userProfile = profile
         fuelProfile = VehicleFuelCatalog.profile(for: profile)
         self.fuelSettings = fuelSettings
     }
@@ -71,7 +73,7 @@ final class TripRecorder: ObservableObject {
                 completedTrip,
                 samples: samples,
                 vehicleType: vehicleType,
-                fuelProfile: fuelProfile,
+                fuelProfile: resolvedFuelProfile(for: vehicleType),
                 fuelSettings: fuelSettings
             )
             handle(
@@ -161,7 +163,7 @@ final class TripRecorder: ObservableObject {
             completedTrip,
             samples: samples,
             vehicleType: draft.vehicleType,
-            fuelProfile: fuelProfile,
+            fuelProfile: resolvedFuelProfile(for: draft.vehicleType),
             fuelSettings: fuelSettings
         )
         handle(
@@ -178,6 +180,14 @@ final class TripRecorder: ObservableObject {
 
     static func isActiveDraftStale(lastUpdatedAt: Date, now: Date) -> Bool {
         now.timeIntervalSince(lastUpdatedAt) > maximumRecoverableActiveDraftAge
+    }
+
+    private func resolvedFuelProfile(for tripVehicleType: VehicleType) -> VehicleFuelProfile? {
+        guard let userProfile else {
+            return fuelProfile?.vehicleType == tripVehicleType ? fuelProfile : nil
+        }
+        let resolved = tripManager.calibratedFuelProfile(for: userProfile)
+        return resolved?.vehicleType == tripVehicleType ? resolved : nil
     }
 
     private func finalizeJournalTrip(

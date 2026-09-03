@@ -2,6 +2,14 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (calibration carburant par pleins — build 41 privé)
+
+- **[Consommation]** Le profil iOS peut enregistrer des pleins complets avec kilométrage et litres. Une calibration n’est appliquée qu’après au moins deux intervalles valides (trois pleins), reste liée à l’identité exacte du véhicule et écarte les intervalles aberrants.
+- **[Auditabilité]** Seuls les futurs trajets utilisent la référence calibrée. Ils figent la consommation observée, la résolution `calibratedFullTank`, la version de formule et un identifiant de preuve contenant le nombre d’intervalles, la distance couverte et la date du dernier plein. Aucun ancien trajet n’est recalculé.
+- **[Core Data]** Nouveau modèle immuable `ViimBuild41`, migration légère depuis `ViimBuild33` précédée de la sauvegarde SQLite/WAL/SHM déjà obligatoire. Les pleins restent locaux et disponibles hors ligne.
+- **[UI]** Profil affiche l’état de calibration, les preuves utilisées et une saisie explicitement réservée à la méthode plein-à-plein. Une correction confirmée peut supprimer uniquement le dernier plein du véhicule et recalcule les preuves restantes.
+- **[QA]** 341/341 tests iOS réussis, dont validation des bornes, absence d’écriture après rejet, isolement entre véhicules, filtre d’aberration, correction du dernier plein et migration Build33 → Build41 sans perte de trajet.
+
 ## 2026-09-03 (persistance versionnée — build 40 privé)
 
 - **[Core Data]** Le store est désormais ouvert avec un modèle `Viim.xcdatamodeld` versionné. La première version immuable, `ViimBuild33`, possède exactement les mêmes empreintes d’entités que le schéma programmatique déjà installé, donc cette bascule ne déclenche aucune migration des données existantes.

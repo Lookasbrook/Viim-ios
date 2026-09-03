@@ -5,8 +5,9 @@ import CoreData
 /// diagnostics and historical fixtures unambiguous.
 enum ViimStoreModelVersion: String, CaseIterable {
     case build33 = "Viim.build33"
+    case build41 = "Viim.build41"
 
-    static let current = ViimStoreModelVersion.build33
+    static let current = ViimStoreModelVersion.build41
 }
 
 enum PersistenceBackupError: LocalizedError {
@@ -304,7 +305,7 @@ struct PersistenceController {
         return VerifiedPersistenceBackup(url: destinationURL, rowCountsByEntity: actualCounts)
     }
 
-    /// Frozen build-33 reference used only by compatibility and migration tests.
+    /// Reference factory used only by schema-contract, backup and migration tests.
     /// Runtime stores are opened with the compiled model from `Viim.xcdatamodeld`.
     static func makeManagedObjectModel(
         version: ViimStoreModelVersion = .current
@@ -478,7 +479,23 @@ struct PersistenceController {
             attribute("sampleCount", .integer64AttributeType)
         ]
 
-        model.entities = [
+        let fuelFillUp = NSEntityDescription()
+        fuelFillUp.name = "FuelFillUp"
+        fuelFillUp.managedObjectClassName = NSStringFromClass(NSManagedObject.self)
+        fuelFillUp.properties = [
+            attribute("id", .UUIDAttributeType),
+            attribute("vehicleIdentity", .stringAttributeType),
+            attribute("vehicleDisplayName", .stringAttributeType),
+            attribute("fuelType", .stringAttributeType),
+            attribute("odometerKm", .doubleAttributeType),
+            attribute("liters", .doubleAttributeType),
+            attribute("isFullTank", .booleanAttributeType),
+            attribute("occurredAt", .dateAttributeType),
+            attribute("createdAt", .dateAttributeType),
+            attribute("synced", .booleanAttributeType)
+        ]
+
+        var entities = [
             trip,
             tripEvent,
             dailySummary,
@@ -487,6 +504,10 @@ struct PersistenceController {
             activeTripSample,
             tripCaptureOutcome
         ]
+        if version == .build41 {
+            entities.append(fuelFillUp)
+        }
+        model.entities = entities
         return model
     }
 

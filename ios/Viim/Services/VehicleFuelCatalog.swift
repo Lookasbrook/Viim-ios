@@ -4,6 +4,7 @@ enum VehicleFuelReferenceResolution: String, Equatable {
     case bicycleZero
     case indicativeModel
     case officialVariant
+    case calibratedFullTank
 }
 
 struct VehicleFuelProfile: Equatable {
@@ -14,6 +15,27 @@ struct VehicleFuelProfile: Equatable {
     let confidence: MetricConfidence
     let sourceIdentifier: String
     let referenceResolution: VehicleFuelReferenceResolution
+    let calibrationEvidence: FuelCalibrationEvidence?
+
+    init(
+        vehicleType: VehicleType,
+        fuelType: VehicleFuelType?,
+        canonicalName: String,
+        litersPer100Km: Double,
+        confidence: MetricConfidence,
+        sourceIdentifier: String,
+        referenceResolution: VehicleFuelReferenceResolution,
+        calibrationEvidence: FuelCalibrationEvidence? = nil
+    ) {
+        self.vehicleType = vehicleType
+        self.fuelType = fuelType
+        self.canonicalName = canonicalName
+        self.litersPer100Km = litersPer100Km
+        self.confidence = confidence
+        self.sourceIdentifier = sourceIdentifier
+        self.referenceResolution = referenceResolution
+        self.calibrationEvidence = calibrationEvidence
+    }
 }
 
 struct FuelConsumptionEstimate: Equatable {
@@ -46,7 +68,7 @@ struct VehicleCatalogSuggestion: Equatable, Identifiable {
 }
 
 enum VehicleFuelCatalog {
-    static let formulaVersion = "vehicle-fuel-catalog-v10-evidence-range-elevation"
+    static let formulaVersion = "vehicle-fuel-catalog-v11-fill-up-calibration"
     static let sourceIdentifier = "ViimCatalog.indicative.v8"
     static let minimumDynamicsCoverageRatio = 0.80
 
@@ -365,10 +387,11 @@ enum VehicleFuelCatalog {
             case .bicycleZero: 0
             case .officialVariant: 0.15
             case .indicativeModel: 0.30
+            case .calibratedFullTank: fuelProfile.calibrationEvidence?.uncertaintyRatio ?? 0.25
             }
             // Cette plage est une politique prudente, pas un intervalle de
-            // confiance statistique. Elle restera "non calibree" jusqu'aux
-            // comparaisons avec des pleins reels par vehicule.
+            // confiance statistique. Une calibration par pleins reduit
+            // l'incertitude de reference, sans supprimer celles des capteurs.
             let dynamicsUncertainty = usedDynamics ? 0.10 : 0.20
             let elevationUncertainty = usedElevation ? 0.05 : 0.10
             uncertaintyRatio = min(0.60, referenceUncertainty + dynamicsUncertainty + elevationUncertainty)

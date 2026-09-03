@@ -1577,6 +1577,8 @@ private struct TripFuelEvidenceCard: View {
             return String(localized: "trip.fuelEvidence.reference.official")
         case .indicativeModel:
             return String(localized: "trip.fuelEvidence.reference.indicative")
+        case .calibratedFullTank:
+            return String(localized: "trip.fuelEvidence.reference.calibrated")
         case nil:
             return String(localized: "trip.fuelEvidence.reference.legacy")
         }

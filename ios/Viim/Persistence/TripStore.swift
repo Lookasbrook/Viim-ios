@@ -215,7 +215,7 @@ enum TripStoreError: Error {
 }
 
 struct TripStore {
-    private let context: NSManagedObjectContext
+    let context: NSManagedObjectContext
     private let calendar: Calendar
     private static let currentUnverifiableQualityReport = TripQualityReport(
         score: 0,

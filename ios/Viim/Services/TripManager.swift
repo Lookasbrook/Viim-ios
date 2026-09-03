@@ -40,12 +40,78 @@ final class TripManager: ObservableObject {
     @Published private(set) var lastPersistenceOutcome: TripPersistenceOutcome?
 
     private let store: TripStore
+    private let fuelFillUpStore: FuelFillUpStore
 
-    init(store: TripStore) {
+    init(store: TripStore, fuelFillUpStore: FuelFillUpStore? = nil) {
         self.store = store
+        self.fuelFillUpStore = fuelFillUpStore ?? FuelFillUpStore(context: store.context)
         recalculateHistoricalQualityReports()
         repairStoredMaxSpeedValues()
         refresh()
+    }
+
+    func fuelCalibration(for profile: UserProfile?) -> FuelCalibrationEvidence? {
+        guard let profile else { return nil }
+        return try? fuelFillUpStore.calibration(
+            for: profile,
+            baseProfile: VehicleFuelCatalog.profile(for: profile)
+        )
+    }
+
+    func fuelFillUps(for profile: UserProfile, limit: Int = 20) throws -> [FuelFillUpRecord] {
+        try fuelFillUpStore.records(for: profile, limit: limit)
+    }
+
+    func calibratedFuelProfile(for profile: UserProfile) -> VehicleFuelProfile? {
+        guard let baseProfile = VehicleFuelCatalog.profile(for: profile),
+              let calibration = try? fuelFillUpStore.calibration(
+                for: profile,
+                baseProfile: baseProfile
+              ) else {
+            return VehicleFuelCatalog.profile(for: profile)
+        }
+        return VehicleFuelProfile(
+            vehicleType: baseProfile.vehicleType,
+            fuelType: profile.fuelType ?? baseProfile.fuelType,
+            canonicalName: baseProfile.canonicalName,
+            litersPer100Km: calibration.litersPer100Km,
+            confidence: .partial,
+            sourceIdentifier: calibration.sourceIdentifier,
+            referenceResolution: .calibratedFullTank,
+            calibrationEvidence: calibration
+        )
+    }
+
+    @discardableResult
+    func recordFullTankFillUp(
+        profile: UserProfile,
+        odometerKm: Double,
+        liters: Double,
+        fullTankConfirmed: Bool,
+        occurredAt: Date = Date()
+    ) throws -> FuelFillUpRecord {
+        let record = try fuelFillUpStore.recordFullTank(
+            profile: profile,
+            odometerKm: odometerKm,
+            liters: liters,
+            fullTankConfirmed: fullTankConfirmed,
+            occurredAt: occurredAt
+        )
+        ViimDiagnostics.log(
+            "fuel.fillUp.saved vehicle=\(record.vehicleIdentity) odometerKm=\(Int(record.odometerKm)) liters=\(String(format: "%.2f", record.liters))"
+        )
+        return record
+    }
+
+    @discardableResult
+    func deleteLatestFullTankFillUp(profile: UserProfile) throws -> FuelFillUpRecord? {
+        let deleted = try fuelFillUpStore.deleteLatestRecord(for: profile)
+        if let deleted {
+            ViimDiagnostics.log(
+                "fuel.fillUp.deleted vehicle=\(deleted.vehicleIdentity) odometerKm=\(Int(deleted.odometerKm))"
+            )
+        }
+        return deleted
     }
 
     func refresh() {

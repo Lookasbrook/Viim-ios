@@ -37,7 +37,8 @@ struct ViimApp: App {
         let activeTripJournal = ActiveTripJournal(context: context)
         let collectionHealthJournal = CollectionHealthJournal()
         let tripManager = TripManager(
-            store: TripStore(context: context)
+            store: TripStore(context: context),
+            fuelFillUpStore: FuelFillUpStore(context: context)
         )
         let onboardingStore = OnboardingStore()
         let tripRecorder = TripRecorder(

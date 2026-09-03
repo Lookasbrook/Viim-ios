@@ -24,6 +24,14 @@ struct ProfilView: View {
     @State private var vehicleCatalogFeedbackIsError = false
     @State private var activeVehicleCatalogRequestID: UUID?
     @State private var vehicleCatalogTask: Task<Void, Never>?
+    @State private var fillUpOdometerText = ""
+    @State private var fillUpLitersText = ""
+    @State private var isFullTankConfirmed = false
+    @State private var fillUpFeedbackKey: LocalizedStringKey?
+    @State private var fillUpFeedbackIsError = false
+    @State private var fuelCalibration: FuelCalibrationEvidence?
+    @State private var latestFuelFillUp: FuelFillUpRecord?
+    @State private var isConfirmingLatestFillUpDeletion = false
 
     var body: some View {
         Form {
@@ -137,11 +145,18 @@ struct ProfilView: View {
                     }
                 }
             }
+
+            if onboardingStore.profile?.fuelType?.supportsLiquidFuelEstimate == true {
+                fuelCalibrationSection
+            }
         }
         .viimKeyboardDismissal()
         .navigationTitle("profile.title")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: loadFuelSettings)
+        .onAppear {
+            loadFuelSettings()
+            refreshFuelCalibration()
+        }
         .onDisappear {
             cancelOfficialPriceLookup()
             cancelVehicleCatalogLookup()
@@ -151,6 +166,84 @@ struct ProfilView: View {
         }
         .onChange(of: selectedFuelType) { _ in
             synchronizeFuelEditorToSelection()
+        }
+    }
+
+    private var fuelCalibrationSection: some View {
+        Section {
+            if let fuelCalibration {
+                LabeledContent(
+                    "profile.fuelCalibration.consumption",
+                    value: fuelCalibration.litersPer100Km.formatted(
+                        .number.precision(.fractionLength(1))
+                    ) + " L/100 km"
+                )
+                LabeledContent(
+                    "profile.fuelCalibration.evidence",
+                    value: String.localizedStringWithFormat(
+                        String(localized: "profile.fuelCalibration.evidenceValue"),
+                        fuelCalibration.intervalCount,
+                        fuelCalibration.totalDistanceKm
+                    )
+                )
+            } else {
+                Text("profile.fuelCalibration.pending")
+                    .foregroundStyle(ViimColors.warning)
+            }
+
+            HStack {
+                TextField("profile.fuelCalibration.odometerPlaceholder", text: $fillUpOdometerText)
+                    .keyboardType(.decimalPad)
+                Text(verbatim: "km")
+                    .foregroundStyle(ViimColors.muted)
+            }
+
+            HStack {
+                TextField("profile.fuelCalibration.litersPlaceholder", text: $fillUpLitersText)
+                    .keyboardType(.decimalPad)
+                Text(verbatim: "L")
+                    .foregroundStyle(ViimColors.muted)
+            }
+
+            Toggle("profile.fuelCalibration.fullTankConfirmation", isOn: $isFullTankConfirmed)
+
+            Button("profile.fuelCalibration.save", action: saveFullTankFillUp)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            if let latestFuelFillUp {
+                LabeledContent(
+                    "profile.fuelCalibration.latest",
+                    value: String.localizedStringWithFormat(
+                        String(localized: "profile.fuelCalibration.latestValue"),
+                        latestFuelFillUp.odometerKm,
+                        latestFuelFillUp.liters
+                    )
+                )
+                Button("profile.fuelCalibration.deleteLatest", role: .destructive) {
+                    isConfirmingLatestFillUpDeletion = true
+                }
+            }
+        } header: {
+            Text("profile.section.fuelCalibration")
+        } footer: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("profile.fuelCalibration.help")
+                if let fillUpFeedbackKey {
+                    Text(fillUpFeedbackKey)
+                        .foregroundStyle(fillUpFeedbackIsError ? Color.red : ViimColors.success)
+                }
+            }
+        }
+        .alert(
+            "profile.fuelCalibration.deleteTitle",
+            isPresented: $isConfirmingLatestFillUpDeletion
+        ) {
+            Button("common.cancel", role: .cancel) {}
+            Button("profile.fuelCalibration.deleteConfirm", role: .destructive) {
+                deleteLatestFullTankFillUp()
+            }
+        } message: {
+            Text("profile.fuelCalibration.deleteMessage")
         }
     }
 
@@ -412,6 +505,74 @@ struct ProfilView: View {
             feedbackIsError = true
             feedbackKey = "profile.fuel.invalid"
         }
+    }
+
+    private func saveFullTankFillUp() {
+        dismissKeyboard()
+        guard let profile = onboardingStore.profile,
+              let odometer = Self.decimalValue(fillUpOdometerText),
+              let liters = Self.decimalValue(fillUpLitersText) else {
+            fillUpFeedbackIsError = true
+            fillUpFeedbackKey = "profile.fuelCalibration.invalid"
+            return
+        }
+        do {
+            try tripManager.recordFullTankFillUp(
+                profile: profile,
+                odometerKm: odometer,
+                liters: liters,
+                fullTankConfirmed: isFullTankConfirmed
+            )
+            fillUpOdometerText = ""
+            fillUpLitersText = ""
+            isFullTankConfirmed = false
+            refreshFuelCalibration()
+            fillUpFeedbackIsError = false
+            fillUpFeedbackKey = fuelCalibration == nil
+                ? "profile.fuelCalibration.savedPending"
+                : "profile.fuelCalibration.savedCalibrated"
+        } catch {
+            fillUpFeedbackIsError = true
+            switch error as? FuelFillUpValidationError {
+            case .fullTankConfirmationRequired:
+                fillUpFeedbackKey = "profile.fuelCalibration.confirmRequired"
+            case .nonMonotonicOdometer, .nonMonotonicDate:
+                fillUpFeedbackKey = "profile.fuelCalibration.nonMonotonic"
+            default:
+                fillUpFeedbackKey = "profile.fuelCalibration.invalid"
+            }
+        }
+    }
+
+    private func refreshFuelCalibration() {
+        fuelCalibration = tripManager.fuelCalibration(for: onboardingStore.profile)
+        if let profile = onboardingStore.profile {
+            latestFuelFillUp = try? tripManager.fuelFillUps(for: profile, limit: 1).first
+        } else {
+            latestFuelFillUp = nil
+        }
+    }
+
+    private func deleteLatestFullTankFillUp() {
+        guard let profile = onboardingStore.profile else { return }
+        do {
+            try tripManager.deleteLatestFullTankFillUp(profile: profile)
+            refreshFuelCalibration()
+            fillUpFeedbackIsError = false
+            fillUpFeedbackKey = "profile.fuelCalibration.deleted"
+        } catch {
+            fillUpFeedbackIsError = true
+            fillUpFeedbackKey = "profile.fuelCalibration.deleteFailed"
+        }
+    }
+
+    private static func decimalValue(_ text: String) -> Double? {
+        let normalized = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value.isFinite else { return nil }
+        return value
     }
 
     private func beginOfficialPriceLookup() {

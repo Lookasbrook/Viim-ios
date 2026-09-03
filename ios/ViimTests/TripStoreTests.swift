@@ -199,6 +199,7 @@ final class TripStoreTests: XCTestCase {
                 "ActiveTripDraft": "4jf89C+KBuE39+UqWxNBpK6WPEv+3Y9pODS0DLeqHQk=",
                 "ActiveTripSample": "AFLB97Fd8gePYDIlGzD1OJGP+9VzuHeCsDy9LPVrD14=",
                 "DailySummary": "v/1GqNAqKZVeZ5jhUC7LKfMIASI2IsrkSIADn71C3l4=",
+                "FuelFillUp": "vMS9N2zNLubsceQ3m7xa5mD5WZpNwDukCCK375jD8fA=",
                 "Trip": "erx+v4xSw/7RIgqIgjXtfDGal9pyJ/B3877fPVEuljE=",
                 "TripCaptureOutcome": "KUaAcCoZEiwc76Hm03ZuBtsnnlR8/zzkAjDWlQSa2Do=",
                 "TripEvent": "qWwt7sJI3onRYopoFtBkPA3E95uW+uwtFylzUixoHk4=",
@@ -314,7 +315,7 @@ final class TripStoreTests: XCTestCase {
 
         XCTAssertEqual(backup.url, backupURL)
         XCTAssertEqual(backup.rowCountsByEntity["Trip"], 1)
-        XCTAssertEqual(backup.rowCountsByEntity.count, 7)
+        XCTAssertEqual(backup.rowCountsByEntity.count, 8)
         XCTAssertEqual(try PersistenceController.rowCounts(at: backupURL), backup.rowCountsByEntity)
     }
 
@@ -371,6 +372,62 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(migratedTrips.count, 1)
         XCTAssertNil(migratedTrips[0].value(forKey: "fuelLitersLowerBound"))
         XCTAssertNil(migratedTrips[0].value(forKey: "fuelReferenceResolution"))
+    }
+
+    func testVersionedBuild33StoreMigratesToBuild41WithoutLosingTrip() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ViimBuild33To41-\(UUID().uuidString)", isDirectory: true)
+        let backupRoot = directory.appendingPathComponent("backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+        let build33Model = PersistenceController.makeManagedObjectModel(version: .build33)
+        let legacyContainer = NSPersistentContainer(name: "Viim", managedObjectModel: build33Model)
+        let description = NSPersistentStoreDescription(url: storeURL)
+        description.type = NSSQLiteStoreType
+        description.shouldAddStoreAsynchronously = false
+        legacyContainer.persistentStoreDescriptions = [description]
+        var loadError: Error?
+        legacyContainer.loadPersistentStores { _, error in loadError = error }
+        XCTAssertNil(loadError)
+
+        let tripEntity = try XCTUnwrap(build33Model.entitiesByName["Trip"])
+        let trip = NSManagedObject(entity: tripEntity, insertInto: legacyContainer.viewContext)
+        for attribute in tripEntity.attributesByName.values
+            where !attribute.isOptional && attribute.defaultValue == nil {
+            trip.setValue(legacyValue(for: attribute), forKey: attribute.name)
+        }
+        let tripID = UUID()
+        trip.setValue(tripID, forKey: "id")
+        trip.setValue(Date(timeIntervalSince1970: 1_788_000_000), forKey: "startDate")
+        trip.setValue(Date(timeIntervalSince1970: 1_788_000_600), forKey: "endDate")
+        trip.setValue(VehicleType.voiture.rawValue, forKey: "vehicleType")
+        try legacyContainer.viewContext.save()
+        for store in legacyContainer.persistentStoreCoordinator.persistentStores {
+            try legacyContainer.persistentStoreCoordinator.remove(store)
+        }
+
+        let result = PersistenceController.bootstrap(
+            storeURL: storeURL,
+            migrationBackupRootURL: backupRoot
+        )
+        guard case .ready(let migrated) = result else {
+            return XCTFail("Le store Build33 doit migrer vers Build41")
+        }
+        let trips = try migrated.container.viewContext.fetch(
+            NSFetchRequest<NSManagedObject>(entityName: "Trip")
+        )
+        XCTAssertEqual(trips.compactMap { $0.value(forKey: "id") as? UUID }, [tripID])
+        XCTAssertNotNil(
+            NSEntityDescription.entity(
+                forEntityName: "FuelFillUp",
+                in: migrated.container.viewContext
+            )
+        )
+        XCTAssertEqual(
+            try FileManager.default.contentsOfDirectory(at: backupRoot, includingPropertiesForKeys: nil).count,
+            1
+        )
     }
 
     func testCompletedTripIsStoredOfflineAndIncludedInSummary() throws {
