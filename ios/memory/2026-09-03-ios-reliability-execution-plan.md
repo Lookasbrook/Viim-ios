@@ -142,8 +142,18 @@ cas revus classes « collision reelle ». Les sessions sans trajet correspondant
 les trajets sans session restent comptes. Aucun de ces ratios ne mesure le rappel
 ou les faux negatifs et aucune coordonnee n'entre dans l'agregat.
 
-Prochaine tranche de mesure : figer les seuils statistiques de validation avant
-collecte terrain puis exporter un rapport agrege signe, toujours sans trace GPS.
+Lot build 48 : l'inbox minimal est implemente et restaure des le lancement, sans
+etre expose a l'interface. Un identifiant derive de la source et de la date de
+l'evenement deduplique les relectures sans prolonger le delai. La preuve est
+persistee avant publication, bornee, protegee par iOS et refuse toute corruption
+ou collision d'identifiant sans reecrire le fichier. Les etats sont volontairement
+limites a recu, attente de decision, annule, aide demandee et expire. Il n'existe
+aucun etat « livre » et aucune simulation ne peut rendre la protection disponible.
+
+Prochaine tranche collision : obtenir l'entitlement, puis brancher un adaptateur
+SafetyKit minimal sur cet inbox et ses cas position absente, doublon et lancement
+apres terminaison. Aucun backend, contact ou notification ne sera active avant
+une preuve d'idempotence et de livraison de bout en bout.
 
 Porte de sortie : entitlement approuve, tests SafetyKit complets, annulation fiable,
 livraison de bout en bout prouvee et taux d'echec publie. Avant cette porte,
@@ -227,6 +237,13 @@ futur trajet fige la consommation calibree, le nombre d'intervalles, la distance
 couverte et la date de la derniere preuve dans son identifiant de source ; aucun
 trajet historique n'est reecrit.
 
+Audit apres build 47 : la source officielle conserve deja ville, route et mixte,
+mais le profil utilise seulement la valeur mixte. Les comptes d'accelerations et
+freinages varient encore avec la cadence GPS, et une reference calibree par pleins
+peut recevoir de nouveau un multiplicateur de dynamique deja absorbe. Ces trois
+points doivent etre corriges ensemble dans `vehicle-fuel-catalog-v12` et mesures
+sur des pleins reels ; le resultat reste une estimation avant cette validation.
+
 1. Versionner un profil vehicule structure : annee, marque, modele, finition,
    moteur, transmission, carburant et provenance.
 2. Importer les references officielles via HTTPS depuis Ressources naturelles
@@ -275,6 +292,14 @@ maximale 60 jours), distincte du releve Ontario hebdomadaire (14 jours). Le cach
 est maintenant lie au pays et au marche resolu : un prix de ville ne suit plus
 l'utilisateur dans une autre ville.
 
+Risque prioritaire restant : le prix courant est attache au Profil, alors que le
+trajet ne fige pas encore sa propre preuve geographique. Un prix local valide pour
+le domicile peut donc valoriser un trajet realise dans un autre marche. Le build 49
+doit rendre la concordance trajet/prix obligatoire avant tout cout, avec repli
+national uniquement si la source est elle-meme nationale. Le contrat de preuve
+actuel est aussi canadien (CAD) et rejette structurellement une reponse BF/XOF ;
+le Burkina exige un contrat separe et une source officielle qualifiee.
+
 1. Selectionner la source par pays/region sans transmettre la trace du trajet :
    pays et subdivision suffisent dans la plupart des cas.
 2. Autoriser uniquement des domaines HTTPS explicites, imposer timeout, taille
@@ -301,7 +326,7 @@ conformes. L'utilisateur choisit explicitement la variante dans Profil. Une repo
 reseau obsolete ne peut pas ecraser un profil modifie. Les valeurs generiques restent
 affichees comme indicatives. Aucune fiche FuelEconomy.gov n'est appliquee aux motos.
 
-Etat photos : les 18 fichiers locaux ont ete verifies le 2026-09-03 via l'API
+Etat photos : 25 fichiers locaux sont presents et ont une provenance auditable via l'API
 Wikimedia Commons. Auteur, source HTTPS, licence, URL de licence, empreinte SHA-1,
 date de controle, modification et methode `photograph` sont maintenant obligatoires
 dans le manifeste executable. Les credits et liens sont visibles dans l'app. Les
@@ -311,6 +336,15 @@ Deux nouvelles photographies reelles ont ete ajoutees : Suzuki GN 125 et Honda
 Wave 110 Special Edition 2026. La Wave est bornee a l'annee 2026. Les recherches
 TVS HLX 125 et Boxer BM 100 n'ont retourne aucune preuve assez precise : aucun asset
 n'a ete ajoute pour elles.
+
+Audit apres build 47 : le catalogue carburant contient 116 references, mais moins
+d'une sur cinq atteint une photo par le chemin canonique. Les assets Toyota Land
+Cruiser et Yamaha FZ 150 existent mais leurs alias ne correspondent pas aux choix
+canoniques, donc les tests imposent actuellement une vignette neutre. Le manifeste
+doit aussi conserver le SHA-256 du fichier redimensionne embarque et des bornes
+d'annee explicites. Les prochains candidats recherches sont Ford Ranger P703,
+Hyundai Accent 2018, Hyundai i10 BA et Suzuki AX100 ; chacun reste refuse tant que
+generation, licence et source originale ne sont pas prouvees.
 
 1. Remplacer les libelles libres par des identifiants stables et suggestions
    canoniques, tout en laissant l'utilisateur confirmer son vehicule exact.
@@ -378,18 +412,36 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Ordre d'execution recommande
 
-1. Deverrouillage puis validation terrain P0-A sur le build 46.
-2. Valider sur appareil la sante persistante P0-C livree depuis le build 33,
-   sans activer d'alerte.
-3. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
-   comme instrumentation secondaire.
-4. Socle Core Data versionne P1-D avant d'ajouter de nouvelles entites persistantes.
-5. Schema vehicule versionne, puis imports officiels et photos P1-C.
-6. Integrite transversale des indicateurs P1-E.
-7. Modele de consommation/calibration par pleins P1-A.
-8. Etendre les connecteurs de prix locaux securises P1-B au-dela du Canada.
-9. Release TestFlight limitee, tableau de sante de collecte, puis ouverture
-   progressive seulement si toutes les portes sont franchies.
+1. **P0 terrain, build 48 :** deverrouiller, accorder Position `Toujours` et precise,
+   puis prouver trois trajets de 5 min/2 km ecran verrouille, un trajet hors ligne
+   et une reprise apres terminaison. Exiger 100 % de persistance et un ecart de
+   distance <= 5 % face a une reference independante.
+2. **P0 cout/localite, build 49 :** figer sur chaque trajet un marche canonique
+   prouve (pays, subdivision, marche ou niveau national, date et niveau de
+   resolution). Un prix de profil local ne peut valoriser un trajet d'un autre
+   marche ; sans concordance, le cout reste indisponible. Ajouter une migration
+   legere et des tests changement de ville, voyage, absence de geocodage et cache.
+3. **P0 Burkina/XOF, build 50 :** separer le contrat de preuve BF du contrat Canada.
+   Rechercher d'abord une source publique officielle stable ; valider HTTPS, hote,
+   schema, devise XOF, unite, carburant, date et localite. Si aucune source qualifiee
+   n'existe, conserver uniquement la saisie utilisateur datee, jamais un prix devine.
+4. **P1 consommation v12, build 51 :** conserver les references officielles ville,
+   route et mixte, choisir/interpoler le regime seulement avec vitesse qualifiee,
+   regrouper accelerations et freinages en episodes independants de la cadence GPS,
+   puis eviter de reappliquer un facteur deja absorbe par la calibration aux pleins.
+   Publier couverture, plage basse/centrale/haute, version et raison de repli.
+5. **P1 photos reelles, build 52 :** reparer d'abord les alias canoniques qui rendent
+   Toyota Land Cruiser et Yamaha FZ 150 inaccessibles, ajouter SHA-256 du fichier
+   embarque et bornes d'annee au manifeste, puis etendre la couverture avec des
+   photos Commons/licences verifiees. Aucun asset IA, aucun match par sous-chaine.
+6. **P0 collision apres accord Apple :** brancher SafetyKit sur l'inbox build 48,
+   tester doublon, position absente, lancement apres terminaison et revocation.
+   Ajouter ensuite confirmation/notification, puis seulement un transport backend
+   idempotent avec accuse fournisseur. Chaque etape garde le statut indisponible
+   tant que sa propre porte n'est pas franchie.
+7. **Diffusion :** TestFlight restreint seulement apres P0 terrain et audit des
+   migrations. Aucune promesse de collision avant preuve capteur-confirmation-
+   livraison de bout en bout et taux d'echec mesure.
 
 ## Lots precis, dependances et portes de sortie
 
@@ -405,6 +457,14 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 | P1.4 | Photos reelles | identifiants vehicule stables | auteur, URL, licence, hash, modele/generation verifies pour chaque asset | photo voisine ou licence absente |
 
 ## Etat d'execution verifie
+
+- Etat actuel : build 48 signe, installe et confirme sur l'iPhone 16 ; 375/375
+  tests iOS passent. La base appareil avant/apres installation est identique, avec
+  126 trajets et `integrity_check=ok`. Le lancement automatise expire encore : le
+  dernier lancement prouve reste le build 23 en `authorizedWhenInUse`.
+- L'inbox collision build 48 est local, durable et fail-closed, mais aucune source
+  SafetyKit, UI, notification, alerte ou livraison n'est branchee. Le statut public
+  reste `unavailable`.
 
 - Build 33 signe, installe et confirme `0.1.0 (33)` sur l'iPhone 16. La commande de
   lancement n'a produit aucun nouveau `app.launch build=33` dans le diagnostic :
@@ -460,32 +520,25 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 33 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 48 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le
    journal et mesurer completude, trous GPS et ecart de distance. Tout ecart > 5 %
    bloque la suite de diffusion.
-3. **Collision shadow — prochaine tranche logicielle puis 2 a 4 semaines de conduite :**
-   joindre le journal de couverture deja livre aux trajets finalises. Collecter ensuite
-   les etiquettes volontaires et publier la duree surveillee/duree conduite, le taux de candidats par 1 000 km, le taux de
-   revue et la precision observee parmi les candidats revus. Le rappel et les faux
-   negatifs exigent un jeu de verite terrain independant en laboratoire ou les
-   evenements de test SafetyKit ; ils ne doivent jamais etre deduits du shadow.
-   Aucun SOS automatique avant seuils signes.
-4. **Catalogue officiel — prochaine tranche logicielle :** ajouter NRCan avec le
-   meme schema de preuve, puis une plage basse/haute quand plusieurs variantes
-   restent possibles. **NRCan est livre au build 44 pour 1995-2026 ; la plage
-   d'incertitude reste a faire.** NHTSA vPIC reste limite a l'identite VIN.
-5. **Photos — en parallele du catalogue, pas d'IA :** etendre le manifeste deja
-   obligatoire a chaque nouvelle image (modele, generation, auteur, URL, licence,
-   empreinte et date de verification). Une vignette neutre couvre les manques.
-6. **Consommation — apres resolution exacte du vehicule :** figer reference et
-   version du modele au trajet, ajouter plage d'incertitude et calibration par pleins,
-   puis publier erreur mediane et P90.
-7. **Persistance — avant tout changement Core Data destructif :** modele versionne,
-   fixtures historiques, sauvegarde et recuperation sans suppression.
-8. **Diffusion :** TestFlight restreint seulement apres P0-A ; promesse de detection
+3. **Build 49 — equipe iOS :** preuve de localite figee au trajet et concordance
+   obligatoire avec la preuve de prix avant tout calcul de cout.
+4. **Build 50 — donnees publiques :** contrat BF/XOF distinct ; source officielle
+   qualifiee ou repli explicite vers saisie utilisateur seulement.
+5. **Build 51 — modelisation :** references ville/route/mixte, episodes de conduite
+   invariants a la cadence et calibration sans double comptage ; mesurer mediane/P90.
+6. **Build 52 — catalogue, sans IA :** alias canoniques, SHA-256 local, annees et
+   nouvelles photos reelles seulement apres verification du modele et de la licence.
+7. **Collision — apres entitlement :** adaptateur SafetyKit vers l'inbox deja livree,
+   puis UI et livraison en lots separes avec tests d'idempotence et d'accuse reel.
+8. **Persistance :** fixture historique et sauvegarde obligatoire a chaque nouveau
+   schema ; aucune suppression ou reecriture automatique en cas d'echec.
+9. **Diffusion :** TestFlight restreint seulement apres P0-A ; promesse de detection
    collision seulement apres la chaine capteur-confirmation-livraison complete.
 
 ## Execution build 42 — photos reelles et exactitude visuelle
@@ -613,3 +666,34 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   `integrity_check=ok`. Le lancement est refuse par iOS car l'appareil est verrouille ;
   aucun `app.launch build=47` n'est donc revendique. Le dernier lancement prouve
   reste le build 23 en `authorizedWhenInUse`, et les portes terrain restent ouvertes.
+
+## Execution build 48 — inbox collision local, sans promesse de protection
+
+- Ajout d'un journal JSON local dedie aux evenements SafetyKit futurs. Il ne
+  contient que la source, la date source, la date de reception et une position
+  optionnelle ; aucun contact, dossier medical, trace GPS ni donnees de livraison.
+- L'identifiant deterministe rend les relectures idempotentes entre instances.
+  Un doublon conserve sa reception et son echeance originales ; un contenu
+  different portant le meme identifiant ferme le journal sans ecraser la preuve.
+- L'ecriture est atomique et utilise
+  `completeFileProtectionUntilFirstUserAuthentication`. Le fichier est borne a
+  256 Ko et 128 enregistrements ; seuls les terminaux de plus de 30 jours peuvent
+  etre purges et un evenement en attente n'est jamais evince pour faire de la place.
+- Le coordinateur restaure les decisions en attente sans etendre leur delai de
+  60 secondes. Un evenement age de plus de cinq minutes expire immediatement ;
+  une horloge future de plus de cinq minutes est invalide. Toute panne disque
+  interdit la publication d'un etat en attente.
+- Le branchement au lancement reste sans UI, sans notification et sans transport.
+  Aucun producteur SafetyKit n'est present ; la source simulee n'est admise qu'en
+  Debug et n'est pas cablee dans l'app. `automaticCollision` reste `unavailable`.
+- Treize tests ciblent identite, replay, corruption, bornes, reprise, stockage,
+  position absente et transitions. La suite complete passe 375/375, sans echec
+  ni test ignore.
+- Build 48 signe, installe et confirme `0.1.0 (48)` sur l'iPhone 16. La base avant
+  et apres installation est identique au SHA-256
+  `9b26ce5bcf54778ba64268f460ecf0dedbde3d69dbd3308a5f76b48675fc01fc`,
+  avec 126 trajets et `integrity_check=ok`.
+- Deux tentatives de lancement expirent et aucun processus Viim ni ligne
+  `app.launch build=48` n'apparait. L'etat appareil indique un code requis et un
+  deverrouillage depuis le demarrage, sans exposer l'etat instantane de l'ecran.
+  Le dernier lancement prouve reste donc le build 23 en `authorizedWhenInUse`.

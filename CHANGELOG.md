@@ -2,6 +2,14 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (inbox collision local et durable — build 48 privé)
+
+- **[Persistance]** Un événement collision reçu est maintenant journalisé localement avant toute publication d’état. L’identité déterministe déduplique les relectures entre lancements sans prolonger la fenêtre de décision ; la reprise expire une échéance passée au lieu de recréer un compte à rebours.
+- **[Sécurité]** Le journal est borné, écrit atomiquement sous protection de fichiers iOS et échoue fermé en cas de corruption, conflit d’identité, dépassement de taille ou stockage indisponible. Les événements incomplets, non finis, futurs ou trop anciens sont refusés ou expirés sans alerte.
+- **[Portée honnête]** Ce lot ne branche encore ni SafetyKit, ni notification, ni interface d’alerte, ni backend, ni contact. La simulation Debug reste interne et la disponibilité publique de la détection automatique demeure explicitement `unavailable`.
+- **[Décision]** Annulation, demande d’aide et expiration sont monotones et idempotentes. Une action reçue à l’échéance est expirée localement ; elle n’est jamais transformée en demande d’aide ni en erreur de stockage.
+- **[QA/Appareil]** Treize scénarios ciblés et la suite iOS complète 375/375 passent sans échec ni test ignoré. Le build 48 est signé, installé et confirmé sur l’iPhone 16 ; la base avant/après reste strictement identique (126 trajets, intégrité `ok`). Le lancement borné expire et aucun processus ni `app.launch build=48` n’est observé : le dernier démarrage prouvé reste le build 23 en `authorizedWhenInUse`.
+
 ## 2026-09-03 (prix publics canadiens localises — build 47 privé)
 
 - **[Source officielle]** Hors Ontario, l’app interroge directement l’API WDS de Statistique Canada pour la table mensuelle 18-10-0001-01. L’Ontario conserve son relevé provincial hebdomadaire, plus précis et plus frais.

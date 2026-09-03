@@ -6,6 +6,7 @@ import UIKit
 struct ViimApp: App {
     private let persistenceController: PersistenceController
     private let persistenceRecoveryState: PersistenceRecoveryState?
+    private let collisionEventCoordinator: CollisionEventCoordinator
 
     @StateObject private var onboardingStore: OnboardingStore
     @StateObject private var locationService: LocationService
@@ -99,6 +100,13 @@ struct ViimApp: App {
             candidateJournal: collisionShadowJournal,
             coverageJournal: collisionShadowCoverageJournal
         )
+        // Inbox de collision durable mais volontairement sans source SafetyKit,
+        // notification ni transport dans ce build. La restauration headless
+        // prouve uniquement que l'etat local survit a une terminaison.
+        let collisionEventCoordinator = CollisionEventCoordinator()
+        if persistenceRecoveryState == nil {
+            collisionEventCoordinator.restore()
+        }
         if persistenceRecoveryState == nil, let profile = onboardingStore.profile {
             // Un lancement de fond peut ne jamais creer de vue. Le type de
             // vehicule doit donc etre connu avant toute activation capteur.
@@ -125,6 +133,7 @@ struct ViimApp: App {
 
         self.persistenceController = persistenceController
         self.persistenceRecoveryState = persistenceRecoveryState
+        self.collisionEventCoordinator = collisionEventCoordinator
         _onboardingStore = StateObject(wrappedValue: onboardingStore)
         _locationService = StateObject(wrappedValue: locationService)
         _motionActivityService = StateObject(wrappedValue: motionActivityService)
