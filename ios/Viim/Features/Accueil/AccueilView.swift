@@ -1075,8 +1075,8 @@ private struct RecentTripCard: View {
                             .minimumScaleFactor(0.75)
                         Spacer(minLength: 6)
                         ViimChip(
-                            titleKey: trip.isTrustedForDisplay ? "home.recentTrips.saved" : "home.recentTrips.needsReview",
-                            style: trip.isTrustedForDisplay ? .success : .warning
+                            titleKey: tripStatusTitleKey,
+                            style: tripStatusStyle
                         )
                     }
 
@@ -1115,6 +1115,21 @@ private struct RecentTripCard: View {
 
     private var scoreMetric: ReliableMetric<Int> {
         TripMetricsCalculator.scoreMetric(for: trip)
+    }
+
+    private var tripStatusTitleKey: LocalizedStringKey {
+        switch trip.qualityConfidence {
+        case .reliable:
+            return "home.recentTrips.saved"
+        case .partial:
+            return "home.recentTrips.partial"
+        case .needsReview, .rejected:
+            return "home.recentTrips.needsReview"
+        }
+    }
+
+    private var tripStatusStyle: ViimChip.Style {
+        trip.qualityConfidence == .reliable ? .success : .warning
     }
 
     private var fuelMetric: ReliableMetric<Int> {

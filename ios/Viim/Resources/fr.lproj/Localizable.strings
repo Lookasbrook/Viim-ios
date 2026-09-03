@@ -145,6 +145,7 @@
 "home.recentTrips.empty.detail" = "Les trajets détectés apparaîtront ici après confirmation GPS.";
 "home.recentTrips.empty.status" = "En attente";
 "home.recentTrips.saved" = "Enregistré";
+"home.recentTrips.partial" = "Données partielles";
 "home.recentTrips.needsReview" = "À vérifier";
 "home.recentTrips.local" = "Sur ce téléphone";
 "home.capture.persisted.title" = "Dernier trajet enregistré";

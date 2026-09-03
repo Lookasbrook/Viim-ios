@@ -4,6 +4,111 @@ import XCTest
 @testable import Viim
 
 final class TripStoreTests: XCTestCase {
+    func testCurrentPersistentSchemaContractIsPinned() {
+        let model = PersistenceController.makeManagedObjectModel()
+
+        XCTAssertEqual(
+            model.versionIdentifiers,
+            [ViimStoreModelVersion.current.rawValue]
+        )
+        XCTAssertEqual(
+            PersistenceController.schemaHashes(),
+            [
+                "ActiveTripDraft": "4jf89C+KBuE39+UqWxNBpK6WPEv+3Y9pODS0DLeqHQk=",
+                "ActiveTripSample": "AFLB97Fd8gePYDIlGzD1OJGP+9VzuHeCsDy9LPVrD14=",
+                "DailySummary": "v/1GqNAqKZVeZ5jhUC7LKfMIASI2IsrkSIADn71C3l4=",
+                "Trip": "erx+v4xSw/7RIgqIgjXtfDGal9pyJ/B3877fPVEuljE=",
+                "TripCaptureOutcome": "KUaAcCoZEiwc76Hm03ZuBtsnnlR8/zzkAjDWlQSa2Do=",
+                "TripEvent": "qWwt7sJI3onRYopoFtBkPA3E95uW+uwtFylzUixoHk4=",
+                "TripQualityTelemetry": "Bv4RWTEY/HGLL9UVlJ9wje/1s4ljHSwXJMgFUCH1oW8="
+            ]
+        )
+    }
+
+    func testSQLiteDescriptionUsesBackgroundCompatibleFileProtection() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Viim-protection-\(UUID().uuidString).sqlite")
+        let description = PersistenceController.sqliteStoreDescription(url: url)
+
+        XCTAssertEqual(description.type, NSSQLiteStoreType)
+        XCTAssertFalse(description.shouldAddStoreAsynchronously)
+        XCTAssertEqual(
+            description.options[NSPersistentStoreFileProtectionKey] as? FileProtectionType,
+            .completeUntilFirstUserAuthentication
+        )
+    }
+
+    func testCompletedTripPersistsGPSReceiptTimeline() throws {
+        let store = makeStore()
+        let trip = completedTrip(index: 0)
+        let receiptStart = trip.startedAt.addingTimeInterval(600)
+        let routeSamples = samples(start: trip.startedAt).enumerated().map { index, sample in
+            LocationSample(
+                timestamp: sample.timestamp,
+                latitude: sample.latitude,
+                longitude: sample.longitude,
+                speedKmh: sample.speedKmh,
+                horizontalAccuracy: sample.horizontalAccuracy,
+                speedAccuracy: sample.speedAccuracy,
+                altitudeMeters: sample.altitudeMeters,
+                verticalAccuracy: sample.verticalAccuracy,
+                receivedAt: receiptStart.addingTimeInterval(Double(index) * 180)
+            )
+        }
+
+        try store.insertCompletedTrip(
+            trip,
+            samples: routeSamples,
+            vehicleType: .voiture,
+            isCalibration: false
+        )
+
+        let stored = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertEqual(stored.routePoints.map(\.receivedAt), routeSamples.map(\.receivedAt))
+    }
+
+    func testLegacyPolylineWithoutReceiptTimelineFallsBackToGPSTimestamp() throws {
+        let timestamp = Date(timeIntervalSinceReferenceDate: 123_456)
+        let data = try JSONSerialization.data(withJSONObject: [[
+            "timestamp": timestamp.timeIntervalSinceReferenceDate,
+            "latitude": 45.5019,
+            "longitude": -73.5674,
+            "speedKmh": 32.0,
+            "horizontalAccuracy": 8.0
+        ]])
+
+        let point = try XCTUnwrap(JSONDecoder().decode([TripRoutePoint].self, from: data).first)
+        XCTAssertEqual(point.receivedAt, point.timestamp)
+    }
+
+    func testCoreDataBackupIsReopenedAndVerifiedWithEveryEntity() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Viim-backup-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+        let backupURL = directory.appendingPathComponent("Viim.verified-backup.sqlite")
+        let controller = PersistenceController(storeURL: storeURL)
+        let context = controller.container.viewContext
+        let tripEntity = try XCTUnwrap(NSEntityDescription.entity(forEntityName: "Trip", in: context))
+        let trip = NSManagedObject(entity: tripEntity, insertInto: context)
+        for attribute in tripEntity.attributesByName.values
+            where !attribute.isOptional && attribute.defaultValue == nil {
+            trip.setValue(legacyValue(for: attribute), forKey: attribute.name)
+        }
+        trip.setValue(UUID(), forKey: "id")
+        trip.setValue(Date(timeIntervalSince1970: 1_788_000_000), forKey: "startDate")
+        trip.setValue(Date(timeIntervalSince1970: 1_788_000_600), forKey: "endDate")
+        trip.setValue(VehicleType.voiture.rawValue, forKey: "vehicleType")
+
+        let backup = try controller.createVerifiedBackup(at: backupURL)
+
+        XCTAssertEqual(backup.url, backupURL)
+        XCTAssertEqual(backup.rowCountsByEntity["Trip"], 1)
+        XCTAssertEqual(backup.rowCountsByEntity.count, 7)
+        XCTAssertEqual(try PersistenceController.rowCounts(at: backupURL), backup.rowCountsByEntity)
+    }
+
     func testFuelEvidenceFieldsLightweightMigrateALegacySQLiteStore() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("ViimFuelMigration-\(UUID().uuidString)", isDirectory: true)
@@ -289,6 +394,10 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(summary.fuelCurrency, .cad)
         XCTAssertEqual(fuelMetric.confidence, .partial)
         XCTAssertEqual(fuelMetric.reasonCode, .fuelEstimated)
+        XCTAssertEqual(fuelMetric.evidence.nature, .estimated)
+        XCTAssertEqual(fuelMetric.evidence.validationStatus, .algorithmValidated)
+        XCTAssertEqual(fuelMetric.evidence.coverageBasis, .duration)
+        XCTAssertEqual(fuelMetric.evidence.sampleCount, recentTrip.routePoints.count)
 
         let changedCurrentSettings = FuelSettings(currency: .xof, pricePerLiter: 2_000)
         XCTAssertNotEqual(

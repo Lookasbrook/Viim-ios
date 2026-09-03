@@ -9,6 +9,47 @@ enum MetricConfidence: String, Equatable {
     case needsReview
 }
 
+enum MetricNature: String, Equatable {
+    case sensorDerived
+    case calculated
+    case estimated
+    case proxy
+    case catalogReference
+    case unknown
+}
+
+enum MetricValidationStatus: String, Equatable {
+    case unvalidated
+    case algorithmValidated
+    case fieldValidated
+}
+
+enum MetricCoverageBasis: String, Equatable {
+    case none
+    case samples
+    case segments
+    case duration
+    case trips
+}
+
+struct MetricEvidence: Equatable {
+    let nature: MetricNature
+    let validationStatus: MetricValidationStatus
+    let sampleCount: Int?
+    let coverageRatio: Double?
+    let coverageBasis: MetricCoverageBasis
+    let uncertaintyRatio: Double?
+
+    static let unknown = MetricEvidence(
+        nature: .unknown,
+        validationStatus: .unvalidated,
+        sampleCount: nil,
+        coverageRatio: nil,
+        coverageBasis: .none,
+        uncertaintyRatio: nil
+    )
+}
+
 enum MetricReasonCode: String, Equatable {
     case complete
     case partialSpeedOnly
@@ -83,19 +124,38 @@ struct ReliableMetric<Value: Equatable>: Equatable {
     let reasonCode: MetricReasonCode
     let source: String
     let formulaVersion: String
+    let evidence: MetricEvidence
+
+    init(
+        value: Value?,
+        confidence: MetricConfidence,
+        reasonCode: MetricReasonCode,
+        source: String,
+        formulaVersion: String,
+        evidence: MetricEvidence = .unknown
+    ) {
+        self.value = value
+        self.confidence = confidence
+        self.reasonCode = reasonCode
+        self.source = source
+        self.formulaVersion = formulaVersion
+        self.evidence = evidence
+    }
 
     static func reliable(
         _ value: Value,
         source: String,
         formulaVersion: String,
-        reasonCode: MetricReasonCode = .complete
+        reasonCode: MetricReasonCode = .complete,
+        evidence: MetricEvidence = .unknown
     ) -> ReliableMetric<Value> {
         ReliableMetric(
             value: value,
             confidence: .reliable,
             reasonCode: reasonCode,
             source: source,
-            formulaVersion: formulaVersion
+            formulaVersion: formulaVersion,
+            evidence: evidence
         )
     }
 
@@ -103,14 +163,16 @@ struct ReliableMetric<Value: Equatable>: Equatable {
         confidence: MetricConfidence,
         reasonCode: MetricReasonCode,
         source: String,
-        formulaVersion: String
+        formulaVersion: String,
+        evidence: MetricEvidence = .unknown
     ) -> ReliableMetric<Value> {
         ReliableMetric(
             value: nil,
             confidence: confidence,
             reasonCode: reasonCode,
             source: source,
-            formulaVersion: formulaVersion
+            formulaVersion: formulaVersion,
+            evidence: evidence
         )
     }
 }
@@ -224,7 +286,15 @@ enum TripMetricsCalculator {
         return .reliable(
             duration,
             source: "LocationService.completedTrip",
-            formulaVersion: formulaVersion
+            formulaVersion: formulaVersion,
+            evidence: MetricEvidence(
+                nature: .calculated,
+                validationStatus: .algorithmValidated,
+                sampleCount: nil,
+                coverageRatio: nil,
+                coverageBasis: .duration,
+                uncertaintyRatio: nil
+            )
         )
     }
 
@@ -267,7 +337,16 @@ enum TripMetricsCalculator {
         return .reliable(
             totalDistance,
             source: "LocationService.samples",
-            formulaVersion: formulaVersion
+            formulaVersion: formulaVersion,
+            evidence: MetricEvidence(
+                nature: .sensorDerived,
+                validationStatus: .algorithmValidated,
+                sampleCount: validSamples.count,
+                coverageRatio: Double(validSegmentCount) /
+                    Double(validSegmentCount + analysis.rejectedSegmentCount),
+                coverageBasis: .segments,
+                uncertaintyRatio: nil
+            )
         )
     }
 
@@ -275,6 +354,7 @@ enum TripMetricsCalculator {
         validRouteSamples(from: samples).map { sample in
             return TripRoutePoint(
                 timestamp: sample.timestamp,
+                receivedAt: sample.receivedAt,
                 latitude: sample.latitude,
                 longitude: sample.longitude,
                 speedKmh: sample.speedKmh,
@@ -496,7 +576,15 @@ enum TripMetricsCalculator {
                 confidence: .partial,
                 reasonCode: .fuelEstimated,
                 source: "TripStore.fuelCostSnapshot",
-                formulaVersion: VehicleFuelCatalog.formulaVersion
+                formulaVersion: VehicleFuelCatalog.formulaVersion,
+                evidence: MetricEvidence(
+                    nature: .estimated,
+                    validationStatus: .algorithmValidated,
+                    sampleCount: trip.routePoints.count,
+                    coverageRatio: trip.coverageRatio,
+                    coverageBasis: .duration,
+                    uncertaintyRatio: trip.fuelUncertaintyRatio
+                )
             )
         }
 
@@ -523,7 +611,15 @@ enum TripMetricsCalculator {
             confidence: .partial,
             reasonCode: .fuelEstimated,
             source: "TripStore.summary.fuelCostSnapshots",
-            formulaVersion: VehicleFuelCatalog.formulaVersion
+            formulaVersion: VehicleFuelCatalog.formulaVersion,
+            evidence: MetricEvidence(
+                nature: .estimated,
+                validationStatus: .algorithmValidated,
+                sampleCount: nil,
+                coverageRatio: nil,
+                coverageBasis: .trips,
+                uncertaintyRatio: nil
+            )
         )
     }
 
@@ -572,7 +668,15 @@ enum TripMetricsCalculator {
         return .reliable(
             maxSpeed,
             source: source,
-            formulaVersion: formulaVersion
+            formulaVersion: formulaVersion,
+            evidence: MetricEvidence(
+                nature: .sensorDerived,
+                validationStatus: .algorithmValidated,
+                sampleCount: accurateSpeeds.count,
+                coverageRatio: Double(accurateSpeeds.count) / Double(max(1, speeds.count)),
+                coverageBasis: .samples,
+                uncertaintyRatio: nil
+            )
         )
     }
 

@@ -125,6 +125,11 @@ final class TripReliabilityTests: XCTestCase {
 
         XCTAssertNotNil(metric.value)
         XCTAssertEqual(metric.confidence, .reliable)
+        XCTAssertEqual(metric.evidence.nature, .sensorDerived)
+        XCTAssertEqual(metric.evidence.validationStatus, .algorithmValidated)
+        XCTAssertEqual(metric.evidence.sampleCount, routeSamples.count)
+        XCTAssertEqual(metric.evidence.coverageBasis, .segments)
+        XCTAssertEqual(metric.evidence.coverageRatio ?? -1, 0.75, accuracy: 0.001)
         // Parcours par ancre : le point aberrant ne coute qu'un seul segment
         // rejete et la distance entre les points qui l'encadrent est conservee.
         XCTAssertEqual(analysis.validSegmentCount, 3)

@@ -67,6 +67,9 @@ struct TripRecord: Identifiable, Equatable {
 
 struct TripRoutePoint: Codable, Equatable, Identifiable {
     let timestamp: Date
+    /// Heure a laquelle iOS a effectivement remis le point a l'app.
+    /// Elle peut differer du timestamp GPS lors d'une relivraison en rafale.
+    let receivedAt: Date
     let latitude: Double
     let longitude: Double
     let speedKmh: Double
@@ -77,6 +80,7 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
 
     init(
         timestamp: Date,
+        receivedAt: Date? = nil,
         latitude: Double,
         longitude: Double,
         speedKmh: Double,
@@ -86,6 +90,7 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
         verticalAccuracy: CLLocationAccuracy = -1
     ) {
         self.timestamp = timestamp
+        self.receivedAt = receivedAt ?? timestamp
         self.latitude = latitude
         self.longitude = longitude
         self.speedKmh = speedKmh
@@ -97,6 +102,7 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
 
     private enum CodingKeys: String, CodingKey {
         case timestamp
+        case receivedAt
         case latitude
         case longitude
         case speedKmh
@@ -109,6 +115,7 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         timestamp = try container.decode(Date.self, forKey: .timestamp)
+        receivedAt = try container.decodeIfPresent(Date.self, forKey: .receivedAt) ?? timestamp
         latitude = try container.decode(Double.self, forKey: .latitude)
         longitude = try container.decode(Double.self, forKey: .longitude)
         speedKmh = try container.decode(Double.self, forKey: .speedKmh)
@@ -1022,7 +1029,8 @@ struct TripStore {
                 horizontalAccuracy: point.horizontalAccuracy,
                 speedAccuracy: point.speedAccuracy,
                 altitudeMeters: point.altitudeMeters,
-                verticalAccuracy: point.verticalAccuracy
+                verticalAccuracy: point.verticalAccuracy,
+                receivedAt: point.receivedAt
             )
         }
     }

@@ -1,5 +1,39 @@
 import CoreData
 
+/// Immutable identifiers for every persistent schema shipped by Viim.
+///
+/// Core Data uses entity version hashes (not this identifier) to decide
+/// compatibility. Keeping the identifier here still makes diagnostics and
+/// migration fixtures unambiguous, while `schemaHashes` lets tests pin the
+/// actual schema contract.
+enum ViimStoreModelVersion: String, CaseIterable {
+    case build33 = "Viim.build33"
+
+    static let current = ViimStoreModelVersion.build33
+}
+
+enum PersistenceBackupError: LocalizedError {
+    case noSQLiteStore
+    case destinationAlreadyExists(URL)
+    case backupVerificationMismatch(expected: [String: Int], actual: [String: Int])
+
+    var errorDescription: String? {
+        switch self {
+        case .noSQLiteStore:
+            return "Aucun store SQLite Viim n'est charge."
+        case .destinationAlreadyExists(let url):
+            return "La sauvegarde existe deja : \(url.lastPathComponent)."
+        case .backupVerificationMismatch(let expected, let actual):
+            return "La sauvegarde Core Data est incomplete (attendu \(expected), obtenu \(actual))."
+        }
+    }
+}
+
+struct VerifiedPersistenceBackup: Equatable {
+    let url: URL
+    let rowCountsByEntity: [String: Int]
+}
+
 struct PersistenceController {
     static let shared = PersistenceController()
 
@@ -8,7 +42,7 @@ struct PersistenceController {
     init(inMemory: Bool = false, storeURL: URL? = nil) {
         container = NSPersistentContainer(
             name: "Viim",
-            managedObjectModel: Self.makeManagedObjectModel()
+            managedObjectModel: Self.makeManagedObjectModel(version: .current)
         )
 
         if inMemory {
@@ -16,15 +50,11 @@ struct PersistenceController {
             description.type = NSInMemoryStoreType
             container.persistentStoreDescriptions = [description]
         } else if let storeURL {
-            let description = NSPersistentStoreDescription(url: storeURL)
-            description.type = NSSQLiteStoreType
-            description.shouldAddStoreAsynchronously = false
-            container.persistentStoreDescriptions = [description]
+            container.persistentStoreDescriptions = [Self.sqliteStoreDescription(url: storeURL)]
         }
 
         for description in container.persistentStoreDescriptions {
-            description.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
-            description.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
+            Self.configure(description)
         }
 
         container.loadPersistentStores { _, error in
@@ -35,8 +65,55 @@ struct PersistenceController {
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
 
-    static func makeManagedObjectModel() -> NSManagedObjectModel {
+    /// Cree une sauvegarde SQLite coherente, y compris lorsque le store actif
+    /// utilise WAL. `replacePersistentStore` est volontairement utilise a la
+    /// place d'une copie de fichier, puis la destination est rouverte et
+    /// comparee avant d'etre declaree valide.
+    func createVerifiedBackup(at destinationURL: URL) throws -> VerifiedPersistenceBackup {
+        guard let sourceStore = container.persistentStoreCoordinator.persistentStores.first(where: {
+            $0.type == NSSQLiteStoreType
+        }), let sourceURL = sourceStore.url else {
+            throw PersistenceBackupError.noSQLiteStore
+        }
+        guard !FileManager.default.fileExists(atPath: destinationURL.path) else {
+            throw PersistenceBackupError.destinationAlreadyExists(destinationURL)
+        }
+
+        try container.viewContext.performAndWait {
+            if container.viewContext.hasChanges {
+                try container.viewContext.save()
+            }
+        }
+        let expectedCounts = try Self.rowCounts(in: container.viewContext)
+        try container.persistentStoreCoordinator.replacePersistentStore(
+            at: destinationURL,
+            destinationOptions: [
+                NSPersistentStoreFileProtectionKey:
+                    FileProtectionType.completeUntilFirstUserAuthentication
+            ],
+            withPersistentStoreFrom: sourceURL,
+            sourceOptions: sourceStore.options,
+            ofType: NSSQLiteStoreType
+        )
+
+        let actualCounts = try Self.rowCounts(
+            at: destinationURL,
+            model: container.managedObjectModel
+        )
+        guard actualCounts == expectedCounts else {
+            throw PersistenceBackupError.backupVerificationMismatch(
+                expected: expectedCounts,
+                actual: actualCounts
+            )
+        }
+        return VerifiedPersistenceBackup(url: destinationURL, rowCountsByEntity: actualCounts)
+    }
+
+    static func makeManagedObjectModel(
+        version: ViimStoreModelVersion = .current
+    ) -> NSManagedObjectModel {
         let model = NSManagedObjectModel()
+        model.versionIdentifiers = [version.rawValue]
 
         let trip = NSEntityDescription()
         trip.name = "Trip"
@@ -214,6 +291,84 @@ struct PersistenceController {
             tripCaptureOutcome
         ]
         return model
+    }
+
+    /// Core Data's real compatibility evidence, suitable for pinning in tests.
+    static func schemaHashes(
+        version: ViimStoreModelVersion = .current
+    ) -> [String: String] {
+        makeManagedObjectModel(version: version).entityVersionHashesByName
+            .mapValues { $0.base64EncodedString() }
+    }
+
+    static func sqliteStoreDescription(url: URL) -> NSPersistentStoreDescription {
+        let description = NSPersistentStoreDescription(url: url)
+        description.type = NSSQLiteStoreType
+        description.shouldAddStoreAsynchronously = false
+        configure(description)
+        return description
+    }
+
+    static func rowCounts(
+        at storeURL: URL,
+        model: NSManagedObjectModel = makeManagedObjectModel()
+    ) throws -> [String: Int] {
+        let validationContainer = NSPersistentContainer(
+            name: "ViimBackupValidation",
+            managedObjectModel: model
+        )
+        let description = sqliteStoreDescription(url: storeURL)
+        description.setOption(true as NSNumber, forKey: NSReadOnlyPersistentStoreOption)
+        description.shouldMigrateStoreAutomatically = false
+        description.shouldInferMappingModelAutomatically = false
+        validationContainer.persistentStoreDescriptions = [description]
+
+        var loadError: Error?
+        validationContainer.loadPersistentStores { _, error in
+            loadError = error
+        }
+        if let loadError {
+            throw loadError
+        }
+        defer {
+            validationContainer.persistentStoreCoordinator.persistentStores.forEach {
+                try? validationContainer.persistentStoreCoordinator.remove($0)
+            }
+        }
+        return try rowCounts(in: validationContainer.viewContext)
+    }
+
+    private static func configure(_ description: NSPersistentStoreDescription) {
+        description.setOption(
+            true as NSNumber,
+            forKey: NSMigratePersistentStoresAutomaticallyOption
+        )
+        description.setOption(
+            true as NSNumber,
+            forKey: NSInferMappingModelAutomaticallyOption
+        )
+        guard description.type == NSSQLiteStoreType else {
+            return
+        }
+        description.shouldAddStoreAsynchronously = false
+        // La collecte doit rester possible ecran verrouille apres le premier
+        // deverrouillage, sans rendre le store accessible avant celui-ci.
+        description.setOption(
+            FileProtectionType.completeUntilFirstUserAuthentication as NSObject,
+            forKey: NSPersistentStoreFileProtectionKey
+        )
+    }
+
+    private static func rowCounts(
+        in context: NSManagedObjectContext
+    ) throws -> [String: Int] {
+        try context.performAndWait {
+            var counts: [String: Int] = [:]
+            for name in context.persistentStoreCoordinator?.managedObjectModel.entities.compactMap(\.name) ?? [] {
+                counts[name] = try context.count(for: NSFetchRequest<NSFetchRequestResult>(entityName: name))
+            }
+            return counts
+        }
     }
 
     private static func attribute(
