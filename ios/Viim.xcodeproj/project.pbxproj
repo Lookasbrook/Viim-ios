@@ -62,6 +62,7 @@
 		990000000000000000000001 /* ProtectionReadiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 990000000000000000000101 /* ProtectionReadiness.swift */; };
 		9A0000000000000000000001 /* CollectionHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0000000000000000000101 /* CollectionHealth.swift */; };
 		9A0000000000000000000002 /* CollectionHealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0000000000000000000102 /* CollectionHealthTests.swift */; };
+		9B0000000000000000000001 /* Viim.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 9B0000000000000000000101 /* Viim.xcdatamodeld */; };
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
@@ -142,6 +143,7 @@
 		990000000000000000000101 /* ProtectionReadiness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/ProtectionReadiness.swift; sourceTree = "<group>"; };
 		9A0000000000000000000101 /* CollectionHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CollectionHealth.swift; sourceTree = "<group>"; };
 		9A0000000000000000000102 /* CollectionHealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionHealthTests.swift; sourceTree = "<group>"; };
+		9B0000000000000000000102 /* ViimBuild33.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = ViimBuild33.xcdatamodel; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -162,6 +164,7 @@
 		100000000000000000000302 /* Viim */ = {
 			isa = PBXGroup;
 			children = (
+				9B0000000000000000000101 /* Viim.xcdatamodeld */,
 				100000000000000000000101 /* ViimApp.swift */,
 				100000000000000000000102 /* RootTabView.swift */,
 				100000000000000000000305 /* Onboarding */,
@@ -402,6 +405,7 @@
 				980000000000000000000001 /* PublicVehicleCatalog.swift in Sources */,
 				990000000000000000000001 /* ProtectionReadiness.swift in Sources */,
 				9A0000000000000000000001 /* CollectionHealth.swift in Sources */,
+				9B0000000000000000000001 /* Viim.xcdatamodeld in Sources */,
 				910000000000000000000001 /* ActiveTripJournal.swift in Sources */,
 				910000000000000000000002 /* TripRecorder.swift in Sources */,
 			);
@@ -433,6 +437,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCVersionGroup section */
+		9B0000000000000000000101 /* Viim.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				9B0000000000000000000102 /* ViimBuild33.xcdatamodel */,
+			);
+			currentVersion = 9B0000000000000000000102 /* ViimBuild33.xcdatamodel */;
+			path = Persistence/Viim.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 
 /* Begin PBXTargetDependency section */
 		200000000000000000000901 /* PBXTargetDependency */ = {
@@ -565,7 +582,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;
@@ -589,7 +606,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;

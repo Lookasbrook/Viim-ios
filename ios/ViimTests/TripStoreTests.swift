@@ -90,9 +90,19 @@ final class TripStoreTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let storeURL = directory.appendingPathComponent("Viim.sqlite")
-        let controller = PersistenceController(storeURL: storeURL)
-        for store in controller.container.persistentStoreCoordinator.persistentStores {
-            try controller.container.persistentStoreCoordinator.remove(store)
+        let legacyProgrammaticContainer = NSPersistentContainer(
+            name: "Viim",
+            managedObjectModel: PersistenceController.makeManagedObjectModel()
+        )
+        let description = NSPersistentStoreDescription(url: storeURL)
+        description.type = NSSQLiteStoreType
+        description.shouldAddStoreAsynchronously = false
+        legacyProgrammaticContainer.persistentStoreDescriptions = [description]
+        var loadError: Error?
+        legacyProgrammaticContainer.loadPersistentStores { _, error in loadError = error }
+        XCTAssertNil(loadError)
+        for store in legacyProgrammaticContainer.persistentStoreCoordinator.persistentStores {
+            try legacyProgrammaticContainer.persistentStoreCoordinator.remove(store)
         }
 
         let snapshot = try PersistenceController.createPreMigrationSnapshotIfNeeded(
@@ -195,6 +205,33 @@ final class TripStoreTests: XCTestCase {
                 "TripQualityTelemetry": "Bv4RWTEY/HGLL9UVlJ9wje/1s4ljHSwXJMgFUCH1oW8="
             ]
         )
+    }
+
+    func testBundledVersionedModelExactlyMatchesCurrentProgrammaticSchema() throws {
+        let bundledModel = try XCTUnwrap(PersistenceController.bundledManagedObjectModel())
+        let currentModel = PersistenceController.makeManagedObjectModel()
+
+        XCTAssertEqual(bundledModel.versionIdentifiers, currentModel.versionIdentifiers)
+        XCTAssertEqual(bundledModel.entityVersionHashesByName, currentModel.entityVersionHashesByName)
+        XCTAssertEqual(Set(bundledModel.entitiesByName.keys), Set(currentModel.entitiesByName.keys))
+        for (entityName, currentEntity) in currentModel.entitiesByName {
+            let bundledEntity = try XCTUnwrap(bundledModel.entitiesByName[entityName])
+            XCTAssertEqual(
+                Set(bundledEntity.attributesByName.keys),
+                Set(currentEntity.attributesByName.keys),
+                entityName
+            )
+            for (attributeName, currentAttribute) in currentEntity.attributesByName {
+                let bundledAttribute = try XCTUnwrap(bundledEntity.attributesByName[attributeName])
+                XCTAssertEqual(bundledAttribute.attributeType, currentAttribute.attributeType, attributeName)
+                XCTAssertEqual(bundledAttribute.isOptional, currentAttribute.isOptional, attributeName)
+                XCTAssertEqual(
+                    String(describing: bundledAttribute.defaultValue),
+                    String(describing: currentAttribute.defaultValue),
+                    "\(entityName).\(attributeName)"
+                )
+            }
+        }
     }
 
     func testSQLiteDescriptionUsesBackgroundCompatibleFileProtection() throws {

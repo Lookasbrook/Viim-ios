@@ -297,6 +297,13 @@ des vehicules les plus utilises au Burkina Faso et au Canada.
 
 ## P1-D — Persistance et migrations
 
+Etat logiciel : le build 40 remplace le modèle d’exécution programmatique par un
+`Viim.xcdatamodeld` versionné. Sa version initiale immuable `ViimBuild33` est
+bloquée par un test d’égalité exacte des empreintes des sept entités avec le
+schéma déjà installé. Une sauvegarde brute SQLite/WAL/SHM précède toute migration
+future ; son échec bloque l’ouverture migrante. En mode récupération, l’utilisateur
+peut exporter ces fichiers sans modification du store source.
+
 1. Passer du modele Core Data programme a un modele versionne.
 2. Ajouter migrations legeres, tests d'ouverture de copies des stores historiques
    et sauvegarde recuperable avant migration.
@@ -306,6 +313,11 @@ des vehicules les plus utilises au Burkina Faso et au Canada.
 
 Porte de sortie : ouverture et migration de chaque fixture historique, interruption
 simulee pendant migration, aucune suppression automatique de donnees.
+
+Reste à franchir : ajouter une fixture de chaque futur schéma dès sa livraison et
+tester explicitement les migrations interrompues dès qu’une deuxième version du
+modèle existera. Avec une seule version historique aujourd’hui, aucune chaîne
+multi-étapes ne peut encore être exercée honnêtement.
 
 ## P1-E — Rendre tous les indicateurs coherents et auditables
 

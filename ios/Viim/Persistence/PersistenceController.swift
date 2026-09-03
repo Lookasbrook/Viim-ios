@@ -1,11 +1,8 @@
 import CoreData
 
-/// Immutable identifiers for every persistent schema shipped by Viim.
-///
-/// Core Data uses entity version hashes (not this identifier) to decide
-/// compatibility. Keeping the identifier here still makes diagnostics and
-/// migration fixtures unambiguous, while `schemaHashes` lets tests pin the
-/// actual schema contract.
+/// Immutable identifiers for every schema shipped in `Viim.xcdatamodeld`.
+/// Core Data uses entity version hashes, while these identifiers keep migration
+/// diagnostics and historical fixtures unambiguous.
 enum ViimStoreModelVersion: String, CaseIterable {
     case build33 = "Viim.build33"
 
@@ -28,6 +25,17 @@ enum PersistenceBackupError: LocalizedError {
             return "La sauvegarde existe deja : \(url.lastPathComponent)."
         case .backupVerificationMismatch(let expected, let actual):
             return "La sauvegarde Core Data est incomplete (attendu \(expected), obtenu \(actual))."
+        }
+    }
+}
+
+enum PersistenceModelError: LocalizedError {
+    case bundledModelMissing
+
+    var errorDescription: String? {
+        switch self {
+        case .bundledModelMissing:
+            return "Le modele Core Data versionne Viim est absent du bundle."
         }
     }
 }
@@ -109,9 +117,10 @@ struct PersistenceController {
     }
 
     private init(loadingInMemory inMemory: Bool, storeURL: URL?) throws {
+        let managedObjectModel = try Self.requireBundledManagedObjectModel()
         container = NSPersistentContainer(
             name: "Viim",
-            managedObjectModel: Self.makeManagedObjectModel(version: .current)
+            managedObjectModel: managedObjectModel
         )
 
         if inMemory {
@@ -164,7 +173,8 @@ struct PersistenceController {
             at: storeURL,
             options: nil
         )
-        guard !makeManagedObjectModel().isConfiguration(
+        let currentModel = try requireBundledManagedObjectModel()
+        guard !currentModel.isConfiguration(
             withName: nil,
             compatibleWithStoreMetadata: metadata
         ) else {
@@ -294,6 +304,8 @@ struct PersistenceController {
         return VerifiedPersistenceBackup(url: destinationURL, rowCountsByEntity: actualCounts)
     }
 
+    /// Frozen build-33 reference used only by compatibility and migration tests.
+    /// Runtime stores are opened with the compiled model from `Viim.xcdatamodeld`.
     static func makeManagedObjectModel(
         version: ViimStoreModelVersion = .current
     ) -> NSManagedObjectModel {
@@ -478,7 +490,23 @@ struct PersistenceController {
         return model
     }
 
-    /// Core Data's real compatibility evidence, suitable for pinning in tests.
+    static func bundledManagedObjectModel(bundle: Bundle = .main) -> NSManagedObjectModel? {
+        guard let modelURL = bundle.url(forResource: "Viim", withExtension: "momd") else {
+            return nil
+        }
+        return NSManagedObjectModel(contentsOf: modelURL)
+    }
+
+    private static func requireBundledManagedObjectModel(
+        bundle: Bundle = .main
+    ) throws -> NSManagedObjectModel {
+        guard let model = bundledManagedObjectModel(bundle: bundle) else {
+            throw PersistenceModelError.bundledModelMissing
+        }
+        return model
+    }
+
+    /// Hashes of the frozen reference model, pinned against the bundled model.
     static func schemaHashes(
         version: ViimStoreModelVersion = .current
     ) -> [String: String] {

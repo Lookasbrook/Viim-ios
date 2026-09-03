@@ -2,6 +2,12 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (persistance versionnée — build 40 privé)
+
+- **[Core Data]** Le store est désormais ouvert avec un modèle `Viim.xcdatamodeld` versionné. La première version immuable, `ViimBuild33`, possède exactement les mêmes empreintes d’entités que le schéma programmatique déjà installé, donc cette bascule ne déclenche aucune migration des données existantes.
+- **[Protection des données]** Une copie brute SQLite/WAL/SHM est créée avant toute migration future ; si cette sauvegarde échoue, la migration ne démarre pas. L’écran de récupération permet d’exporter la famille complète du store sans la modifier.
+- **[QA]** Des tests bloquent toute dérive entre le modèle compilé, la référence historique et les empreintes de schéma attendues.
+
 ## 2026-09-02 (carburant contextualisé — build 18 privé)
 
 - **[Estimation carburant]** La consommation réagit maintenant aux mesures du trajet : vitesse, accélérations/freinages, phases quasi immobiles et dénivelé GPS filtré. La formule, la consommation de référence et le multiplicateur sont figés sur chaque trajet pour rester auditables.
