@@ -905,6 +905,92 @@ final class LocationServiceTests: XCTestCase {
         XCTAssertEqual(manager.actions, [.startStandard, .stopStandard])
     }
 
+    func testForegroundUseAutoRequestsAlwaysUpgradeOnceWhenOnlyWhenInUse() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
+        let service = LocationService(manager: manager)
+
+        service.prepareForForegroundUse()
+        service.prepareForForegroundUse()
+
+        // Escalade demandee, mais une seule fois par session de premier plan :
+        // iOS n'affiche la bascule qu'une fois, ensuite c'est le role de la
+        // banniere d'accueil de renvoyer vers les Reglages.
+        XCTAssertEqual(manager.requestAlwaysCallCount, 1)
+    }
+
+    func testForegroundUseDoesNotRequestAlwaysWhenAlreadyAlways() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
+        let service = LocationService(manager: manager)
+
+        service.prepareForForegroundUse()
+
+        XCTAssertEqual(manager.requestAlwaysCallCount, 0)
+    }
+
+    func testForegroundUseDoesNotRequestAlwaysWhenLocationDenied() {
+        let manager = LocationManagerSpy(authorizationStatus: .denied)
+        let service = LocationService(manager: manager)
+
+        service.prepareForForegroundUse()
+
+        XCTAssertEqual(manager.requestAlwaysCallCount, 0)
+    }
+
+    func testIdleTeardownKeepsBackgroundSessionWhenSplitLeftNoPassiveWakeup() {
+        // Always + gpsSessionSplit actif, mais SLC et geofence non armes :
+        // la session d'activite est le dernier lien de relance, on la garde.
+        XCTAssertFalse(
+            LocationService.shouldEndIdleBackgroundActivitySession(
+                authorization: .authorizedAlways,
+                gpsSessionSplit: true,
+                passiveWakeupArmed: false,
+                departureRegionArmed: false
+            )
+        )
+    }
+
+    func testIdleTeardownReleasesBackgroundSessionOncePassiveWakeupArmed() {
+        XCTAssertTrue(
+            LocationService.shouldEndIdleBackgroundActivitySession(
+                authorization: .authorizedAlways,
+                gpsSessionSplit: true,
+                passiveWakeupArmed: true,
+                departureRegionArmed: false
+            )
+        )
+        XCTAssertTrue(
+            LocationService.shouldEndIdleBackgroundActivitySession(
+                authorization: .authorizedAlways,
+                gpsSessionSplit: true,
+                passiveWakeupArmed: false,
+                departureRegionArmed: true
+            )
+        )
+    }
+
+    func testIdleTeardownKeepsHistoricRetentionWithoutSplitAndReleasesUnderWhenInUse() {
+        // Sans le spike, Always conserve la session visuelle (comportement
+        // historique).
+        XCTAssertFalse(
+            LocationService.shouldEndIdleBackgroundActivitySession(
+                authorization: .authorizedAlways,
+                gpsSessionSplit: false,
+                passiveWakeupArmed: false,
+                departureRegionArmed: false
+            )
+        )
+        // En When In Use, aucune collecte d'arriere-plan possible : on ne
+        // laisse pas l'indicateur de localisation allume a l'idle.
+        XCTAssertTrue(
+            LocationService.shouldEndIdleBackgroundActivitySession(
+                authorization: .authorizedWhenInUse,
+                gpsSessionSplit: true,
+                passiveWakeupArmed: false,
+                departureRegionArmed: false
+            )
+        )
+    }
+
     func testCandidateExpiresOnlyAfterFullRecoveryWindow() {
         let now = Date(timeIntervalSince1970: 1_783_000_000)
 
@@ -981,13 +1067,15 @@ private final class LocationManagerSpy: LocationManaging {
     var desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyBest
     var distanceFilter: CLLocationDistance = kCLDistanceFilterNone
     var actions: [Action] = []
+    var requestWhenInUseCallCount = 0
+    var requestAlwaysCallCount = 0
 
     init(authorizationStatus: CLAuthorizationStatus) {
         self.authorizationStatus = authorizationStatus
     }
 
-    func requestWhenInUseAuthorization() {}
-    func requestAlwaysAuthorization() {}
+    func requestWhenInUseAuthorization() { requestWhenInUseCallCount += 1 }
+    func requestAlwaysAuthorization() { requestAlwaysCallCount += 1 }
     func requestLocation() {}
     func startUpdatingLocation() { actions.append(.startStandard) }
     func stopUpdatingLocation() { actions.append(.stopStandard) }

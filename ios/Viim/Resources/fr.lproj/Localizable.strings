@@ -83,6 +83,8 @@
 "home.monitoring.whenInUse.detail" = "Viim détecte les trajets pendant que l'app est ouverte. Activez l'arrière-plan pour l'écran verrouillé.";
 "home.monitoring.passive.detail" = "Viim reste en veille légère et démarrera le GPS au prochain déplacement.";
 "home.monitoring.background.action" = "Activer l'arrière-plan";
+"home.monitoring.background.headline" = "Trajets non enregistrés en arrière-plan";
+"home.monitoring.background.openSettings" = "Ouvrir les réglages iOS";
 "home.monitoring.status.needsPermission" = "Autorisation requise";
 "home.monitoring.status.gpsConfirming" = "Confirmation GPS active";
 "home.monitoring.status.passiveWakeup" = "Réveil automatique actif";

@@ -192,6 +192,7 @@ final class LocationService: NSObject, ObservableObject {
     private let carburantFeatureFlags: CarburantFeatureFlags
     private var shouldMonitorAfterAuthorization = false
     private var shouldRequestCurrentLocationAfterAuthorization = false
+    private var didRequestAlwaysUpgrade = false
     private var batterySavingMode = false
     private var vehicleType: VehicleType = .moto
     private var aboveStartSpeedSince: Date?
@@ -317,9 +318,25 @@ final class LocationService: NSObject, ObservableObject {
         shouldMonitorAfterAuthorization = false
         configureManager()
         requestAuthorization()
+        requestAlwaysUpgradeOnceIfNeeded()
         beginAlwaysServiceSessionIfNeeded()
         beginBackgroundActivitySessionForIdleIfNeeded()
         startPassiveWakeupMonitoringIfAllowed()
+    }
+
+    /// La collecte de trajets de Viim n'a de sens qu'en autorisation Always :
+    /// telephone verrouille, app suspendue, iOS doit pouvoir relancer le
+    /// processus. Quand l'utilisateur n'a accorde que « Lorsque l'app est
+    /// active », on demande l'escalade une fois par session de premier plan.
+    /// iOS n'affiche la bascule qu'une seule fois par installation ; au-dela,
+    /// la banniere d'accueil renvoie vers les Reglages.
+    func requestAlwaysUpgradeOnceIfNeeded() {
+        guard authorizationState == .authorizedWhenInUse, !didRequestAlwaysUpgrade else {
+            return
+        }
+        didRequestAlwaysUpgrade = true
+        ViimDiagnostics.log("location.always.autoRequest state=\(authorizationState)")
+        manager.requestAlwaysAuthorization()
     }
 
     /// Restaure les attentes de collecte sans dependre de la creation d'une
@@ -335,6 +352,22 @@ final class LocationService: NSObject, ObservableObject {
         beginBackgroundActivitySessionForIdleIfNeeded()
         startPassiveWakeupMonitoringIfAllowed()
         ViimDiagnostics.log("location.automaticSession.restored state=\(authorizationState)")
+        logCollectionReadiness(context: "restore")
+    }
+
+    /// Une seule ligne, a chaque lancement, qui dit sans ambiguite si Viim
+    /// PEUT capturer un trajet quand l'app n'est pas au premier plan. C'est
+    /// l'absence de cette ligne qui a rendu l'incident 2026-09-02 invisible :
+    /// il a fallu extraire le conteneur du telephone pour voir
+    /// `authorizedWhenInUse`.
+    private func logCollectionReadiness(context: String) {
+        let backgroundCapable = authorizationState == .authorizedAlways
+        ViimDiagnostics.log(
+            "location.readiness context=\(context) auth=\(authorizationState) "
+            + "backgroundCapable=\(backgroundCapable) "
+            + "passiveWakeups=\(isPassiveWakeupMonitoring) "
+            + "gpsSessionSplit=\(carburantFeatureFlags.gpsSessionSplit)"
+        )
     }
 
     func startMonitoring() {
@@ -387,8 +420,21 @@ final class LocationService: NSObject, ObservableObject {
             // sur Always. Le spike `gpsSessionSplit` l'invalide au contraire
             // apres chaque trajet tout en gardant SLC/geofence/service session
             // armes ; la validation terrain decide lequel est retenu.
-            if !shouldRetainBackgroundActivitySessionWhileIdle {
+            //
+            // Filet de securite (incident 2026-09-02) : sous `gpsSessionSplit`
+            // en Always, ne demonter la session d'activite QUE si un reveil
+            // passif l'a effectivement remplacee. Si SLC/geofence n'ont pas pu
+            // s'armer, la session reste le dernier lien qui permet a iOS de
+            // relancer la collecte apres terminaison.
+            if Self.shouldEndIdleBackgroundActivitySession(
+                authorization: authorizationState,
+                gpsSessionSplit: carburantFeatureFlags.gpsSessionSplit,
+                passiveWakeupArmed: isPassiveWakeupMonitoring,
+                departureRegionArmed: departureRegion != nil
+            ) {
                 endBackgroundActivitySession()
+            } else if !shouldRetainBackgroundActivitySessionWhileIdle {
+                ViimDiagnostics.log("location.backgroundSession.retain reason=noPassiveWakeup")
             }
         } else {
             stopPassiveWakeupMonitoring()
@@ -557,6 +603,27 @@ final class LocationService: NSObject, ObservableObject {
 
     private var shouldRetainBackgroundActivitySessionWhileIdle: Bool {
         authorizationState == .authorizedAlways && !carburantFeatureFlags.gpsSessionSplit
+    }
+
+    /// Decide si la session d'activite d'arriere-plan peut etre demontee a
+    /// l'arret d'un trajet. Retourne `false` (donc on la garde) quand le spike
+    /// `gpsSessionSplit` est actif en Always mais qu'aucun reveil passif
+    /// (SLC ou geofence de depart) n'a pu prendre le relais : sans ce garde,
+    /// une seule defaillance d'armement SLC laisse l'app sans aucun moyen
+    /// d'etre relancee par iOS (incident 2026-09-02).
+    static func shouldEndIdleBackgroundActivitySession(
+        authorization: LocationAuthorizationState,
+        gpsSessionSplit: Bool,
+        passiveWakeupArmed: Bool,
+        departureRegionArmed: Bool
+    ) -> Bool {
+        if authorization == .authorizedAlways && !gpsSessionSplit {
+            return false
+        }
+        if authorization == .authorizedAlways && !passiveWakeupArmed && !departureRegionArmed {
+            return false
+        }
+        return true
     }
 
     private func beginBackgroundActivitySessionForIdleIfNeeded() {

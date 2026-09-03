@@ -39,7 +39,12 @@ struct ViimApp: App {
         tripRecorder.recoverActiveTrips()
 
         CarburantFeatureFlags.persistDebugOverridesIfRequested()
-        let locationService = LocationService(activeTripJournal: activeTripJournal)
+        let carburantFeatureFlags = CarburantFeatureFlags.resolved()
+        ViimDiagnostics.log("carburant.featureFlags \(carburantFeatureFlags.diagnosticSummary)")
+        let locationService = LocationService(
+            activeTripJournal: activeTripJournal,
+            carburantFeatureFlags: carburantFeatureFlags
+        )
         let motionActivityService = MotionActivityService()
         let tripDetectionCoordinator = TripDetectionCoordinator(
             locationService: locationService,

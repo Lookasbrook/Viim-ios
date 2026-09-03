@@ -1,5 +1,6 @@
 import MapKit
 import SwiftUI
+import UIKit
 
 struct AccueilView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
@@ -33,6 +34,11 @@ struct AccueilView: View {
                         speedKmh: locationService.currentSpeedKmh,
                         onEnableBackgroundDetection: {
                             locationService.requestBackgroundAuthorization()
+                        },
+                        onOpenSettings: {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
                         }
                     )
                     .staggeredAppear(hasAppeared, index: 2)
@@ -524,10 +530,27 @@ private struct AutoDetectionStatusCard: View {
     let tripPhase: TripDetectionPhase
     let speedKmh: Double
     let onEnableBackgroundDetection: () -> Void
+    let onOpenSettings: () -> Void
+
+    private var isBackgroundCapable: Bool {
+        authorizationState == .authorizedAlways
+    }
 
     var body: some View {
         ViimCard {
             VStack(alignment: .leading, spacing: 8) {
+                if !isBackgroundCapable {
+                    HStack(spacing: 7) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption.weight(.bold))
+                        Text("home.monitoring.background.headline")
+                            .font(.system(size: 13, weight: .heavy))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(authorizationState == .denied ? ViimColors.danger : ViimColors.warning)
+                }
+
                 HStack(spacing: 10) {
                     Image(systemName: "location.viewfinder")
                         .font(.headline.weight(.bold))
@@ -571,6 +594,18 @@ private struct AutoDetectionStatusCard: View {
                             .font(.caption.weight(.bold))
                             .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(ViimColors.blue)
+                }
+
+                if !isBackgroundCapable, authorizationState != .notDetermined {
+                    Button {
+                        onOpenSettings()
+                    } label: {
+                        Label("home.monitoring.background.openSettings", systemImage: "gearshape.fill")
+                            .font(.caption.weight(.bold))
+                            .frame(maxWidth: .infinity)
+                    }
                     .buttonStyle(.bordered)
                     .tint(ViimColors.blue)
                 }
@@ -581,6 +616,12 @@ private struct AutoDetectionStatusCard: View {
     private var tint: Color {
         if !authorizationState.canTrackLocation {
             return authorizationState == .denied ? ViimColors.danger : ViimColors.warning
+        }
+        // En « Lorsque l'app est active », Viim n'enregistre RIEN telephone
+        // verrouille : ne jamais afficher de vert rassurant, meme si un suivi
+        // au premier plan est en cours.
+        if authorizationState == .authorizedWhenInUse {
+            return ViimColors.warning
         }
         if isPassiveWakeupMonitoring {
             return ViimColors.success
