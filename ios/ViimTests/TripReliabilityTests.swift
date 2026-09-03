@@ -213,6 +213,7 @@ final class TripReliabilityTests: XCTestCase {
             scoreFluidite: nil,
             scoreVigilance: nil,
             scoreEco: nil,
+            scoreFormulaVersion: "score-legacy-test",
             fuelLiters: nil,
             fuelLitersLowerBound: nil,
             fuelLitersUpperBound: nil,
@@ -224,10 +225,10 @@ final class TripReliabilityTests: XCTestCase {
             fuelUncertaintyRatio: nil,
             fuelReferenceResolution: nil,
             fuelFCFA: nil,
-            fuelCostMinorUnits: nil,
+            fuelCostMinorUnits: 123,
             fuelCostLowerBoundMinorUnits: nil,
             fuelCostUpperBoundMinorUnits: nil,
-            fuelCurrency: nil,
+            fuelCurrency: .cad,
             fuelPricePerLiter: nil,
             fuelPriceCapturedAt: nil,
             fuelPriceSource: nil,
@@ -237,7 +238,7 @@ final class TripReliabilityTests: XCTestCase {
             fuelProfileName: nil,
             fuelProfileLitersPer100Km: nil,
             fuelProfileSource: nil,
-            fuelFormulaVersion: "legacy",
+            fuelFormulaVersion: "vehicle-fuel-catalog-v11-test",
             routePoints: [
                 routePoint(timestamp: start, speedKmh: 12),
                 routePoint(timestamp: start.addingTimeInterval(30), speedKmh: 18)
@@ -267,6 +268,11 @@ final class TripReliabilityTests: XCTestCase {
         XCTAssertEqual(metric.value, 100)
         XCTAssertEqual(metric.confidence, .partial)
         XCTAssertEqual(metric.reasonCode, .partialSpeedOnly)
+        XCTAssertEqual(metric.formulaVersion, "score-legacy-test")
+
+        let historicalCost = TripMetricsCalculator.fuelCostMetric(for: trip)
+        XCTAssertEqual(historicalCost.value, 123)
+        XCTAssertEqual(historicalCost.formulaVersion, "vehicle-fuel-catalog-v11-test")
     }
 
     private func samples(start: Date) -> [LocationSample] {

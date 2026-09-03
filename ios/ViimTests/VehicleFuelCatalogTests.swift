@@ -128,6 +128,176 @@ final class VehicleFuelCatalogTests: XCTestCase {
         XCTAssertEqual(estimate.formulaVersion, VehicleFuelCatalog.formulaVersion)
     }
 
+    func testOfficialCityAndHighwayReferencesAreSelectedOnlyWithQualifiedSpeedCoverage() throws {
+        let profile = VehicleFuelProfile(
+            vehicleType: .voiture,
+            fuelType: .gasoline,
+            canonicalName: "Vehicle 2026",
+            litersPer100Km: 6.5,
+            cityLitersPer100Km: 8,
+            highwayLitersPer100Km: 5,
+            confidence: .partial,
+            sourceIdentifier: "official#1",
+            referenceResolution: .officialVariant
+        )
+        let cityDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 20,
+            idleRatio: 0,
+            hardAccelerationCount: 0,
+            hardBrakingCount: 0,
+            accelerationRms: 0.4,
+            analyzedDurationSec: 600,
+            distanceKm: 10
+        )
+        let highwayDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 90,
+            idleRatio: 0,
+            hardAccelerationCount: 0,
+            hardBrakingCount: 0,
+            accelerationRms: 0.4,
+            analyzedDurationSec: 600,
+            distanceKm: 10
+        )
+
+        let city = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 10,
+                fuelProfile: profile,
+                dynamics: cityDynamics,
+                tripDurationSec: 600
+            )
+        )
+        let highway = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 10,
+                fuelProfile: profile,
+                dynamics: highwayDynamics,
+                tripDurationSec: 600
+            )
+        )
+        let uncovered = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(distanceKm: 10, fuelProfile: profile)
+        )
+
+        XCTAssertEqual(city.appliedReferenceLitersPer100Km, 8, accuracy: 0.000_001)
+        XCTAssertEqual(highway.appliedReferenceLitersPer100Km, 5, accuracy: 0.000_001)
+        XCTAssertEqual(uncovered.appliedReferenceLitersPer100Km, 6.5, accuracy: 0.000_001)
+        XCTAssertEqual(city.referenceApplicationMode, .officialCity)
+        XCTAssertEqual(highway.referenceApplicationMode, .officialHighway)
+        XCTAssertEqual(uncovered.referenceApplicationMode, .officialCombined)
+        XCTAssertGreaterThan(city.liters, highway.liters)
+        XCTAssertEqual(city.dynamicsMultiplier, cityDynamics.drivingBehaviorFuelConsumptionMultiplier, accuracy: 0.000_001)
+    }
+
+    func testOfficialCycleUsesStopAndGoTimeInsteadOfOnlyMovingSpeed() throws {
+        let profile = VehicleFuelProfile(
+            vehicleType: .voiture,
+            fuelType: .gasoline,
+            canonicalName: "Vehicle 2026",
+            litersPer100Km: 6.5,
+            cityLitersPer100Km: 8,
+            highwayLitersPer100Km: 5,
+            confidence: .partial,
+            sourceIdentifier: "official#stop-and-go",
+            referenceResolution: .officialVariant
+        )
+        let stopAndGo = DrivingDynamics(
+            meanMovingSpeedKmh: 50,
+            idleRatio: 0.5,
+            hardAccelerationCount: 0,
+            hardBrakingCount: 0,
+            accelerationRms: 0.4,
+            analyzedDurationSec: 600,
+            distanceKm: 10
+        )
+
+        let estimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 10,
+                fuelProfile: profile,
+                dynamics: stopAndGo,
+                tripDurationSec: 600
+            )
+        )
+
+        XCTAssertEqual(estimate.appliedReferenceLitersPer100Km, 8, accuracy: 0.000_001)
+        XCTAssertEqual(estimate.referenceApplicationMode, .officialCity)
+    }
+
+    func testFullTankCalibrationIsNotAdjustedAgainByAbsoluteTripFactors() throws {
+        let calibration = FuelCalibrationEvidence(
+            litersPer100Km: 8,
+            intervalCount: 3,
+            totalDistanceKm: 1_200,
+            lastFillUpAt: Date(timeIntervalSince1970: 1_800_000_000),
+            uncertaintyRatio: 0.12,
+            sourceIdentifier: "ViimFullTank.v1#test"
+        )
+        let profile = VehicleFuelProfile(
+            vehicleType: .voiture,
+            fuelType: .gasoline,
+            canonicalName: "Vehicle calibrated",
+            litersPer100Km: 8,
+            confidence: .partial,
+            sourceIdentifier: calibration.sourceIdentifier,
+            referenceResolution: .calibratedFullTank,
+            calibrationEvidence: calibration
+        )
+        let harshDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 15,
+            idleRatio: 0.5,
+            hardAccelerationCount: 10,
+            hardBrakingCount: 10,
+            accelerationRms: 2,
+            analyzedDurationSec: 600,
+            distanceKm: 10
+        )
+        let elevation = ElevationProfile(
+            gainMeters: 300,
+            lossMeters: 0,
+            analyzedDistanceMeters: 10_000,
+            coverageRatio: 1
+        )
+
+        let estimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 10,
+                fuelProfile: profile,
+                dynamics: harshDynamics,
+                tripDurationSec: 600,
+                elevationProfile: elevation
+            )
+        )
+
+        XCTAssertEqual(estimate.liters, 0.8, accuracy: 0.000_001)
+        XCTAssertEqual(estimate.dynamicsMultiplier, 1, accuracy: 0.000_001)
+        XCTAssertEqual(estimate.elevationMultiplier, 1, accuracy: 0.000_001)
+        XCTAssertFalse(estimate.usedDynamics)
+        XCTAssertFalse(estimate.usedElevation)
+        XCTAssertNil(estimate.dynamicsCoverageRatio)
+        XCTAssertNil(estimate.elevationCoverageRatio)
+        XCTAssertEqual(estimate.referenceApplicationMode, .calibratedFullTank)
+    }
+
+    func testInvalidFuelReferenceCannotProduceLiters() {
+        let invalid = VehicleFuelProfile(
+            vehicleType: .voiture,
+            fuelType: .gasoline,
+            canonicalName: "Invalid",
+            litersPer100Km: .nan,
+            confidence: .partial,
+            sourceIdentifier: "invalid",
+            referenceResolution: .indicativeModel
+        )
+
+        XCTAssertNil(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 10,
+                fuelProfile: invalid
+            )
+        )
+    }
+
     func testInsufficientDynamicsCoverageIsDisclosedEvenWhenBaselineIsUsed() throws {
         let profile = try XCTUnwrap(
             VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
@@ -518,6 +688,8 @@ final class VehicleFuelCatalogTests: XCTestCase {
         let resolved = try XCTUnwrap(VehicleFuelCatalog.profile(for: exactProfile))
 
         XCTAssertEqual(resolved.litersPer100Km, specification.combinedLitersPer100Km, accuracy: 0.000_001)
+        XCTAssertEqual(resolved.cityLitersPer100Km, specification.cityLitersPer100Km)
+        XCTAssertEqual(resolved.highwayLitersPer100Km, specification.highwayLitersPer100Km)
         XCTAssertEqual(resolved.fuelType, .gasoline)
         XCTAssertEqual(resolved.sourceIdentifier, "fueleconomy.gov.vehicle#47343")
         XCTAssertEqual(resolved.referenceResolution, .officialVariant)

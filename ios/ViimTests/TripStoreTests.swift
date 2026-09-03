@@ -200,7 +200,7 @@ final class TripStoreTests: XCTestCase {
                 "ActiveTripSample": "AFLB97Fd8gePYDIlGzD1OJGP+9VzuHeCsDy9LPVrD14=",
                 "DailySummary": "v/1GqNAqKZVeZ5jhUC7LKfMIASI2IsrkSIADn71C3l4=",
                 "FuelFillUp": "vMS9N2zNLubsceQ3m7xa5mD5WZpNwDukCCK375jD8fA=",
-                "Trip": "Ua2G5omlAlix7Bq1iw5EQV6cXyEubG+h45j83PyGW0A=",
+                "Trip": "k6z+8YjryHWPz+UdhUpeE3jYjF45cBgvWpAbjQisHWM=",
                 "TripCaptureOutcome": "KUaAcCoZEiwc76Hm03ZuBtsnnlR8/zzkAjDWlQSa2Do=",
                 "TripEvent": "qWwt7sJI3onRYopoFtBkPA3E95uW+uwtFylzUixoHk4=",
                 "TripQualityTelemetry": "Bv4RWTEY/HGLL9UVlJ9wje/1s4ljHSwXJMgFUCH1oW8="
@@ -328,6 +328,7 @@ final class TripStoreTests: XCTestCase {
 
         let legacyModel = PersistenceController.makeManagedObjectModel()
         let newFuelEvidenceFields: Set<String> = [
+            "scoreFormulaVersion",
             "fuelLitersLowerBound",
             "fuelLitersUpperBound",
             "fuelDynamicsCoverageRatio",
@@ -335,6 +336,9 @@ final class TripStoreTests: XCTestCase {
             "fuelElevationCoverageRatio",
             "fuelUncertaintyRatio",
             "fuelReferenceResolution",
+            "fuelReferenceApplicationMode",
+            "fuelProfileCityLitersPer100Km",
+            "fuelProfileHighwayLitersPer100Km",
             "fuelCostLowerBoundMinorUnits",
             "fuelCostUpperBoundMinorUnits"
         ]
@@ -372,6 +376,8 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(migratedTrips.count, 1)
         XCTAssertNil(migratedTrips[0].value(forKey: "fuelLitersLowerBound"))
         XCTAssertNil(migratedTrips[0].value(forKey: "fuelReferenceResolution"))
+        XCTAssertEqual(migratedTrips[0].value(forKey: "scoreFormulaVersion") as? String, "legacy")
+        XCTAssertNil(migratedTrips[0].value(forKey: "fuelReferenceApplicationMode"))
     }
 
     func testVersionedBuild33StoreMigratesToCurrentWithoutLosingTrip() throws {
@@ -430,9 +436,9 @@ final class TripStoreTests: XCTestCase {
         )
     }
 
-    func testVersionedBuild41StoreMigratesToBuild49WithoutInventingGeography() throws {
+    func testVersionedBuild41StoreMigratesToCurrentWithoutInventingGeography() throws {
         let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ViimBuild41To49-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("ViimBuild41ToCurrent-\(UUID().uuidString)", isDirectory: true)
         let backupRoot = directory.appendingPathComponent("backups", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -468,7 +474,7 @@ final class TripStoreTests: XCTestCase {
             migrationBackupRootURL: backupRoot
         )
         guard case .ready(let migrated) = result else {
-            return XCTFail("Le store Build41 doit migrer vers Build49")
+            return XCTFail("Le store Build41 doit migrer vers le modele courant")
         }
         let trips = try migrated.container.viewContext.fetch(
             NSFetchRequest<NSManagedObject>(entityName: "Trip")
@@ -481,6 +487,67 @@ final class TripStoreTests: XCTestCase {
         XCTAssertNil(migratedTrip.value(forKey: "fuelProfileFuelType"))
         XCTAssertNil(migratedTrip.value(forKey: "fuelTripStartLocality"))
         XCTAssertNil(migratedTrip.value(forKey: "fuelTripEndLocality"))
+        XCTAssertEqual(
+            try FileManager.default.contentsOfDirectory(
+                at: backupRoot,
+                includingPropertiesForKeys: nil
+            ).count,
+            1
+        )
+    }
+
+    func testVersionedBuild49StoreMigratesToBuild51WithoutInventingFormulaEvidence() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ViimBuild49To51-\(UUID().uuidString)", isDirectory: true)
+        let backupRoot = directory.appendingPathComponent("backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+        let build49Model = PersistenceController.makeManagedObjectModel(version: .build49)
+        let legacyContainer = NSPersistentContainer(name: "Viim", managedObjectModel: build49Model)
+        let description = NSPersistentStoreDescription(url: storeURL)
+        description.type = NSSQLiteStoreType
+        description.shouldAddStoreAsynchronously = false
+        legacyContainer.persistentStoreDescriptions = [description]
+        var loadError: Error?
+        legacyContainer.loadPersistentStores { _, error in loadError = error }
+        XCTAssertNil(loadError)
+
+        let tripEntity = try XCTUnwrap(build49Model.entitiesByName["Trip"])
+        XCTAssertNil(tripEntity.attributesByName["scoreFormulaVersion"])
+        XCTAssertNil(tripEntity.attributesByName["fuelReferenceApplicationMode"])
+        let trip = NSManagedObject(entity: tripEntity, insertInto: legacyContainer.viewContext)
+        for attribute in tripEntity.attributesByName.values
+            where !attribute.isOptional && attribute.defaultValue == nil {
+            trip.setValue(legacyValue(for: attribute), forKey: attribute.name)
+        }
+        let tripID = UUID()
+        trip.setValue(tripID, forKey: "id")
+        trip.setValue(Date(timeIntervalSince1970: 1_788_200_000), forKey: "startDate")
+        trip.setValue(Date(timeIntervalSince1970: 1_788_200_600), forKey: "endDate")
+        trip.setValue(VehicleType.voiture.rawValue, forKey: "vehicleType")
+        try legacyContainer.viewContext.save()
+        for store in legacyContainer.persistentStoreCoordinator.persistentStores {
+            try legacyContainer.persistentStoreCoordinator.remove(store)
+        }
+
+        let result = PersistenceController.bootstrap(
+            storeURL: storeURL,
+            migrationBackupRootURL: backupRoot
+        )
+        guard case .ready(let migrated) = result else {
+            return XCTFail("Le store Build49 doit migrer vers Build51")
+        }
+        let migratedTrip = try XCTUnwrap(
+            migrated.container.viewContext.fetch(
+                NSFetchRequest<NSManagedObject>(entityName: "Trip")
+            ).first
+        )
+        XCTAssertEqual(migratedTrip.value(forKey: "id") as? UUID, tripID)
+        XCTAssertEqual(migratedTrip.value(forKey: "scoreFormulaVersion") as? String, "legacy")
+        XCTAssertNil(migratedTrip.value(forKey: "fuelReferenceApplicationMode"))
+        XCTAssertNil(migratedTrip.value(forKey: "fuelProfileCityLitersPer100Km"))
+        XCTAssertNil(migratedTrip.value(forKey: "fuelProfileHighwayLitersPer100Km"))
         XCTAssertEqual(
             try FileManager.default.contentsOfDirectory(
                 at: backupRoot,
@@ -693,6 +760,8 @@ final class TripStoreTests: XCTestCase {
         XCTAssertNil(recentTrip.fuelElevationCoverageRatio)
         XCTAssertNil(expectedFuelConsumption.elevationCoverageRatio)
         XCTAssertEqual(recentTrip.fuelReferenceResolution, .indicativeModel)
+        XCTAssertEqual(recentTrip.fuelReferenceApplicationMode, .indicativeCombined)
+        XCTAssertEqual(recentTrip.scoreFormulaVersion, ScoreEngine.version)
         XCTAssertEqual(summary.fuelLiters ?? -1, expectedFuelConsumption.liters, accuracy: 0.000_001)
         XCTAssertEqual(summary.fuelLitersLowerBound ?? -1, expectedFuelConsumption.lowerBoundLiters, accuracy: 0.000_001)
         XCTAssertEqual(summary.fuelLitersUpperBound ?? -1, expectedFuelConsumption.upperBoundLiters, accuracy: 0.000_001)
@@ -713,6 +782,8 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(recentTrip.fuelPriceSource, .userProvided)
         XCTAssertEqual(recentTrip.fuelProfileName, "Toyota Corolla")
         XCTAssertEqual(recentTrip.fuelProfileLitersPer100Km, 6.8)
+        XCTAssertNil(recentTrip.fuelProfileCityLitersPer100Km)
+        XCTAssertNil(recentTrip.fuelProfileHighwayLitersPer100Km)
         XCTAssertEqual(recentTrip.fuelProfileSource, VehicleFuelCatalog.sourceIdentifier)
         XCTAssertEqual(summary.fuelCostMinorUnits, fuelMetric.value)
         XCTAssertEqual(summary.fuelCostLowerBoundMinorUnits, recentTrip.fuelCostLowerBoundMinorUnits)
@@ -731,6 +802,47 @@ final class TripStoreTests: XCTestCase {
             recentTrip.fuelCostMinorUnits
         )
         XCTAssertEqual(TripMetricsCalculator.fuelCostMetric(for: recentTrip).value, recentTrip.fuelCostMinorUnits)
+    }
+
+    func testOfficialCycleChoiceAndSourceReferencesArePersisted() throws {
+        let store = makeStore()
+        let trip = completedTrip(index: 0)
+        let profile = VehicleFuelProfile(
+            vehicleType: .voiture,
+            fuelType: .gasoline,
+            canonicalName: "Vehicle 2026",
+            litersPer100Km: 6.5,
+            cityLitersPer100Km: 8,
+            highwayLitersPer100Km: 5,
+            confidence: .partial,
+            sourceIdentifier: "official#persistence",
+            referenceResolution: .officialVariant
+        )
+        let routeSamples = (0...120).map { index in
+            sample(
+                latitude: 12.0 + Double(index) * 0.001,
+                longitude: -1.5,
+                speed: 25,
+                timestamp: trip.startedAt.addingTimeInterval(Double(index) * 5)
+            )
+        }
+
+        try store.insertCompletedTrip(
+            trip,
+            samples: routeSamples,
+            vehicleType: .voiture,
+            isCalibration: false,
+            fuelProfile: profile
+        )
+
+        let stored = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertEqual(stored.fuelReferenceResolution, .officialVariant)
+        XCTAssertEqual(stored.fuelReferenceApplicationMode, .officialHighway)
+        XCTAssertEqual(stored.fuelProfileLitersPer100Km ?? -1, 5, accuracy: 0.000_001)
+        XCTAssertEqual(stored.fuelProfileCityLitersPer100Km ?? -1, 8, accuracy: 0.000_001)
+        XCTAssertEqual(stored.fuelProfileHighwayLitersPer100Km ?? -1, 5, accuracy: 0.000_001)
+        XCTAssertEqual(stored.fuelFormulaVersion, VehicleFuelCatalog.formulaVersion)
+        XCTAssertEqual(stored.scoreFormulaVersion, ScoreEngine.version)
     }
 
     func testValidElevationEvidenceIsAppliedAndPersisted() throws {

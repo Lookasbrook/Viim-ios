@@ -476,7 +476,7 @@ enum TripMetricsCalculator {
                 confidence: .unavailable,
                 reasonCode: .scoreUnavailable,
                 source: "ScoreEngine",
-                formulaVersion: ScoreEngine.version
+                formulaVersion: trip.scoreFormulaVersion
             )
         }
 
@@ -493,14 +493,14 @@ enum TripMetricsCalculator {
                 confidence: .partial,
                 reasonCode: .partialSpeedOnly,
                 source: "ScoreEngine",
-                formulaVersion: ScoreEngine.version
+                formulaVersion: trip.scoreFormulaVersion
             )
         }
 
         return .reliable(
             score,
             source: "ScoreEngine",
-            formulaVersion: ScoreEngine.version
+            formulaVersion: trip.scoreFormulaVersion
         )
     }
 
@@ -596,7 +596,7 @@ enum TripMetricsCalculator {
                 confidence: .partial,
                 reasonCode: .fuelEstimated,
                 source: "TripStore.fuelCostSnapshot",
-                formulaVersion: VehicleFuelCatalog.formulaVersion,
+                formulaVersion: trip.fuelFormulaVersion,
                 evidence: MetricEvidence(
                     nature: .estimated,
                     validationStatus: .algorithmValidated,

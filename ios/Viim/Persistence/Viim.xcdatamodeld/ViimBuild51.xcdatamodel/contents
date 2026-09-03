@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="26100" systemVersion="25G30" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="Viim.build51">
+    <entity name="Trip" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="activeDurationSec" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="avgSpeedKmh" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="burstCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="coverageRatio" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date"/>
+        <attribute name="distanceKm" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="durationSec" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="endDate" attributeType="Date"/>
+        <attribute name="fuelBaselineLiters" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelCostLowerBoundMinorUnits" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="fuelCostMinorUnits" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="fuelCostUpperBoundMinorUnits" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="fuelCurrencyCode" optional="YES" attributeType="String"/>
+        <attribute name="fuelDynamicsCoverageRatio" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelDynamicsMultiplier" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelElevationCoverageRatio" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelElevationMultiplier" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelFCFA" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="fuelFormulaVersion" attributeType="String" defaultValueString="legacy"/>
+        <attribute name="fuelLiters" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelLitersLowerBound" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelLitersUpperBound" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelPriceCapturedAt" optional="YES" attributeType="Date"/>
+        <attribute name="fuelPriceCountryCode" optional="YES" attributeType="String"/>
+        <attribute name="fuelPriceGeographyMatchedAt" optional="YES" attributeType="Date"/>
+        <attribute name="fuelPriceGeographyMatchVersion" optional="YES" attributeType="String"/>
+        <attribute name="fuelPriceLocality" optional="YES" attributeType="String"/>
+        <attribute name="fuelPriceLocationResolvedAt" optional="YES" attributeType="Date"/>
+        <attribute name="fuelPricePerLiter" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelPriceRegionCode" optional="YES" attributeType="String"/>
+        <attribute name="fuelPriceRequestedLocality" optional="YES" attributeType="String"/>
+        <attribute name="fuelPriceSource" optional="YES" attributeType="String"/>
+        <attribute name="fuelPriceSourceIdentifier" optional="YES" attributeType="String"/>
+        <attribute name="fuelPriceSourceURL" optional="YES" attributeType="String"/>
+        <attribute name="fuelProfileLitersPer100Km" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelProfileCityLitersPer100Km" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelProfileHighwayLitersPer100Km" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="fuelProfileFuelType" optional="YES" attributeType="String"/>
+        <attribute name="fuelProfileName" optional="YES" attributeType="String"/>
+        <attribute name="fuelProfileSource" optional="YES" attributeType="String"/>
+        <attribute name="fuelReferenceResolution" optional="YES" attributeType="String"/>
+        <attribute name="fuelReferenceApplicationMode" optional="YES" attributeType="String"/>
+        <attribute name="fuelTripEndCountryCode" optional="YES" attributeType="String"/>
+        <attribute name="fuelTripEndLocality" optional="YES" attributeType="String"/>
+        <attribute name="fuelTripEndRegionCode" optional="YES" attributeType="String"/>
+        <attribute name="fuelTripStartCountryCode" optional="YES" attributeType="String"/>
+        <attribute name="fuelTripStartLocality" optional="YES" attributeType="String"/>
+        <attribute name="fuelTripStartRegionCode" optional="YES" attributeType="String"/>
+        <attribute name="fuelUncertaintyRatio" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="gpsAccuracyAvg" attributeType="Double" defaultValueString="-1.0" usesScalarValueType="YES"/>
+        <attribute name="gpsAccuracyP95" attributeType="Double" defaultValueString="-1.0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID"/>
+        <attribute name="isCalibration" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="maxSampleGapSec" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="maxSpeedKmh" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="motionAgreementRate" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="p95SampleGapSec" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="polyline" optional="YES" attributeType="Binary"/>
+        <attribute name="qualityConfidence" attributeType="String" defaultValueString="needsReview"/>
+        <attribute name="qualityFormulaVersion" attributeType="String" defaultValueString="legacy"/>
+        <attribute name="qualityReasonCodes" attributeType="String" defaultValueString="legacyUnverified"/>
+        <attribute name="qualityScore" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="rejectedSegmentCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="role" attributeType="String"/>
+        <attribute name="score" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="scoreEco" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="scoreFormulaVersion" attributeType="String" defaultValueString="legacy"/>
+        <attribute name="scoreFluidite" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="scoreVigilance" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="scoreVitesse" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="startDate" attributeType="Date"/>
+        <attribute name="stationaryTailSec" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="synced" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="validSegmentCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="vehicleType" attributeType="String"/>
+    </entity>
+    <entity name="TripEvent" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="createdAt" attributeType="Date"/>
+        <attribute name="gpsConfirmed" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID"/>
+        <attribute name="intensity" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="latitude" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="longitude" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="synced" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="timestamp" attributeType="Date"/>
+        <attribute name="tripId" attributeType="UUID"/>
+        <attribute name="type" attributeType="String"/>
+    </entity>
+    <entity name="DailySummary" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="avgScore" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date"/>
+        <attribute name="date" attributeType="Date"/>
+        <attribute name="fuelFCFA" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="synced" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="totalDurationSec" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="totalKm" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="tripsCount" attributeType="Integer 64" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="TripQualityTelemetry" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="acceptedForStorage" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="burstCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="coverageRatio" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date"/>
+        <attribute name="decisionSource" attributeType="String"/>
+        <attribute name="formulaVersion" attributeType="String"/>
+        <attribute name="gpsAccuracyAvg" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="gpsAccuracyP95" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID"/>
+        <attribute name="includedInSummaryAtDecision" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="maxSampleGapSec" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="p95SampleGapSec" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="qualityConfidence" attributeType="String"/>
+        <attribute name="qualityReasonCodes" attributeType="String"/>
+        <attribute name="qualityScore" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="rejectedSegmentCount" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="sampleCount" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="synced" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="tripId" optional="YES" attributeType="UUID"/>
+        <attribute name="validSegmentCount" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="vehicleType" attributeType="String"/>
+    </entity>
+    <entity name="ActiveTripDraft" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="createdAt" attributeType="Date"/>
+        <attribute name="distanceMeters" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID"/>
+        <attribute name="lastMovingAt" attributeType="Date"/>
+        <attribute name="lastUpdatedAt" attributeType="Date"/>
+        <attribute name="phase" attributeType="String" defaultValueString="active"/>
+        <attribute name="sampleCount" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="startedAt" attributeType="Date"/>
+        <attribute name="vehicleType" attributeType="String"/>
+    </entity>
+    <entity name="ActiveTripSample" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="altitudeMeters" optional="YES" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date"/>
+        <attribute name="horizontalAccuracy" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID"/>
+        <attribute name="latitude" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="longitude" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="speedAccuracy" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="speedKmh" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="timestamp" attributeType="Date"/>
+        <attribute name="tripId" attributeType="UUID"/>
+        <attribute name="verticalAccuracy" attributeType="Double" defaultValueString="-1.0" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="TripCaptureOutcome" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="createdAt" attributeType="Date"/>
+        <attribute name="id" attributeType="UUID"/>
+        <attribute name="reason" attributeType="String"/>
+        <attribute name="sampleCount" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="source" attributeType="String"/>
+        <attribute name="status" attributeType="String"/>
+        <attribute name="tripId" attributeType="UUID"/>
+    </entity>
+    <entity name="FuelFillUp" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="createdAt" attributeType="Date"/>
+        <attribute name="fuelType" attributeType="String"/>
+        <attribute name="id" attributeType="UUID"/>
+        <attribute name="isFullTank" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="liters" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="occurredAt" attributeType="Date"/>
+        <attribute name="odometerKm" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="synced" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="vehicleDisplayName" attributeType="String"/>
+        <attribute name="vehicleIdentity" attributeType="String"/>
+    </entity>
+</model>

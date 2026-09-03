@@ -124,7 +124,10 @@ final class BackendAPIClientTests: XCTestCase {
             countryCode: "CA",
             regionCode: "ON",
             locality: "Toronto",
-            fuelType: .gasoline
+            fuelType: .gasoline,
+            now: try XCTUnwrap(
+                ISO8601DateFormatter().date(from: "2026-09-02T13:00:00Z")
+            )
         )
 
         XCTAssertEqual(quote.pricePerLiter, 1.55)

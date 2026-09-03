@@ -7,8 +7,9 @@ enum ViimStoreModelVersion: String, CaseIterable {
     case build33 = "Viim.build33"
     case build41 = "Viim.build41"
     case build49 = "Viim.build49"
+    case build51 = "Viim.build51"
 
-    static let current = ViimStoreModelVersion.build49
+    static let current = ViimStoreModelVersion.build51
 }
 
 enum PersistenceBackupError: LocalizedError {
@@ -377,7 +378,15 @@ struct PersistenceController {
             attribute("synced", .booleanAttributeType),
             attribute("createdAt", .dateAttributeType)
         ]
-        if version == .build49 {
+        if version == .build51 {
+            trip.properties.append(contentsOf: [
+                attribute("scoreFormulaVersion", .stringAttributeType, defaultValue: "legacy"),
+                attribute("fuelReferenceApplicationMode", .stringAttributeType, isOptional: true),
+                attribute("fuelProfileCityLitersPer100Km", .doubleAttributeType, isOptional: true),
+                attribute("fuelProfileHighwayLitersPer100Km", .doubleAttributeType, isOptional: true)
+            ])
+        }
+        if version == .build49 || version == .build51 {
             trip.properties.append(contentsOf: [
                 attribute("fuelPriceCountryCode", .stringAttributeType, isOptional: true),
                 attribute("fuelPriceRegionCode", .stringAttributeType, isOptional: true),

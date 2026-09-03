@@ -158,6 +158,7 @@
 		9E0000000000000000000101 /* FuelPriceGeography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/FuelPriceGeography.swift; sourceTree = "<group>"; };
 		9E0000000000000000000102 /* FuelPriceGeographyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelPriceGeographyTests.swift; sourceTree = "<group>"; };
 		9B0000000000000000000104 /* ViimBuild49.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = ViimBuild49.xcdatamodel; sourceTree = "<group>"; };
+		9B0000000000000000000105 /* ViimBuild51.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = ViimBuild51.xcdatamodel; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -471,8 +472,9 @@
 				9B0000000000000000000102 /* ViimBuild33.xcdatamodel */,
 				9B0000000000000000000103 /* ViimBuild41.xcdatamodel */,
 				9B0000000000000000000104 /* ViimBuild49.xcdatamodel */,
+				9B0000000000000000000105 /* ViimBuild51.xcdatamodel */,
 			);
-			currentVersion = 9B0000000000000000000104 /* ViimBuild49.xcdatamodel */;
+			currentVersion = 9B0000000000000000000105 /* ViimBuild51.xcdatamodel */;
 			path = Persistence/Viim.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;
@@ -610,7 +612,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 50;
+				CURRENT_PROJECT_VERSION = 51;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;
@@ -634,7 +636,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 50;
+				CURRENT_PROJECT_VERSION = 51;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;

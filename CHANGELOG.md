@@ -2,6 +2,15 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (consommation v12 — build 51 privé)
+
+- **[Dynamique]** Les accélérations et freinages GPS sont désormais regroupés en épisodes avec hystérésis. Cela réduit le surcomptage d'une même manœuvre lorsque l'iPhone livre davantage de points, sans prétendre détecter tout événement à n'importe quelle cadence.
+- **[Référence véhicule]** Une variante officielle conserve ses consommations ville, route et mixte. Avec au moins 80 % de couverture de vitesse qualifiée, Viim interpole ville/route entre 30 et 80 km/h en intégrant le temps d'arrêt ; sans cette preuve, la référence mixte reste utilisée.
+- **[Calibration]** Une référence calculée à partir des pleins complets n'est plus remultipliée par les facteurs absolus de vitesse, d'arrêt ou de dénivelé, déjà absorbés dans la moyenne observée.
+- **[Audit]** Le trajet conserve la référence effectivement appliquée, son mode (ville, route, interpolation ou mixte), les trois valeurs source et les versions exactes des formules carburant et score. Les anciens trajets ne sont plus ré-étiquetés avec la version courante. Les valeurs invalides (`NaN`, infinies ou négatives) sont refusées et le détail Conduite distingue la couverture des litres de celle du coût.
+- **[Persistance]** Le modèle Core Data versionné `Viim.build51` ajoute les preuves de référence et de score par migration légère, précédée du mécanisme existant de sauvegarde brute.
+- **[QA/Appareil]** Tests ajoutés pour le non-surcomptage aux cadences GPS 0,5/2 s, le stop-and-go, les cycles officiels, la persistance des preuves, les migrations Build 33/41/49, la calibration sans double comptage et les références invalides. Suite complète 397/397. Release `0.1.0 (51)` signé, installé et lancé sur l'iPhone 16 ; migration réelle avec sauvegarde préalable, SQLite `ok`, quatre nouvelles colonnes et 126 trajets conservés. L'autorisation reste `authorizedWhenInUse`, donc la capture écran verrouillé n'est toujours pas validée.
+
 ## 2026-09-03 (prix Burkina fail-closed — build 50 privé)
 
 - **[Fiabilité]** Une localité hors des deux fournisseurs canadiens qualifiés est désormais refusée avant tout appel HTTP au backend ou à un fournisseur de prix. L'app iOS n'utilise plus le backend Viim comme proxy implicite vers une source non contractualisée et le prix existant n'est jamais écrasé.

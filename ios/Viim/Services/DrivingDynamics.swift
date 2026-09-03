@@ -43,11 +43,15 @@ struct DrivingDynamics: Equatable {
 }
 
 enum DrivingDynamicsAnalyzer {
-    static let formulaVersion = "driving-dynamics-v1"
+    static let formulaVersion = "driving-dynamics-v2-episodes"
 
     /// Seuils issus des standards telematiques assurantiels (m/s2).
     static let hardAccelerationThreshold = 2.5
     static let hardBrakingThreshold = -3.0
+    /// Hysteresis : une paire legerement sous le seuil ne doit pas transformer
+    /// une meme manoeuvre en plusieurs evenements selon la cadence GPS.
+    private static let accelerationEpisodeReleaseThreshold = 1.0
+    private static let brakingEpisodeReleaseThreshold = -1.0
     /// En dessous, le vehicule est considere quasi a l'arret par le GPS.
     static let idleSpeedThresholdKmh = 4.0
     /// Paires d'echantillons exploitables pour une derivee de vitesse.
@@ -116,10 +120,14 @@ enum DrivingDynamicsAnalyzer {
         var hardBrakings = 0
         var positiveAccelerationSquaredSum = 0.0
         var positiveAccelerationDuration: TimeInterval = 0
+        var accelerationEpisodeIsActive = false
+        var brakingEpisodeIsActive = false
 
         for (previous, current) in zip(validPoints, validPoints.dropFirst()) {
             let interval = current.timestamp.timeIntervalSince(previous.timestamp)
             guard interval >= minimumPairInterval, interval <= maximumPairInterval else {
+                accelerationEpisodeIsActive = false
+                brakingEpisodeIsActive = false
                 continue
             }
 
@@ -134,9 +142,24 @@ enum DrivingDynamicsAnalyzer {
 
             let accelerationMs2 = (current.speedKmh - previous.speedKmh) / 3.6 / interval
             if accelerationMs2 >= hardAccelerationThreshold {
-                hardAccelerations += 1
+                if !accelerationEpisodeIsActive {
+                    hardAccelerations += 1
+                }
+                accelerationEpisodeIsActive = true
+                brakingEpisodeIsActive = false
             } else if accelerationMs2 <= hardBrakingThreshold {
-                hardBrakings += 1
+                if !brakingEpisodeIsActive {
+                    hardBrakings += 1
+                }
+                brakingEpisodeIsActive = true
+                accelerationEpisodeIsActive = false
+            } else {
+                if accelerationMs2 < accelerationEpisodeReleaseThreshold {
+                    accelerationEpisodeIsActive = false
+                }
+                if accelerationMs2 > brakingEpisodeReleaseThreshold {
+                    brakingEpisodeIsActive = false
+                }
             }
             if accelerationMs2 > 0 {
                 positiveAccelerationSquaredSum += accelerationMs2 * accelerationMs2 * interval
@@ -174,16 +197,14 @@ extension DrivingDynamics {
     ///   sait pas si le moteur tourne, ce facteur reste donc volontairement
     ///   faible et ne doit pas etre presente comme du ralenti mesure.
     var fuelConsumptionMultiplier: Double {
-        let speedFactor: Double
-        switch meanMovingSpeedKmh {
-        case ..<20: speedFactor = 1.20
-        case 20..<35: speedFactor = 1.12
-        case 35..<55: speedFactor = 1.05
-        case 55..<90: speedFactor = 1.0
-        case 90..<110: speedFactor = 1.05
-        default: speedFactor = 1.12
-        }
+        let combined = speedFuelConsumptionFactor * drivingBehaviorFuelConsumptionMultiplier
+        return min(1.5, max(0.85, combined))
+    }
 
+    /// Ajustement comportemental sans le regime de vitesse. Les profils
+    /// officiels ville/route utilisent deja la vitesse pour choisir leur
+    /// reference et ne doivent donc pas compter ce facteur deux fois.
+    var drivingBehaviorFuelConsumptionMultiplier: Double {
         let smoothRms = 0.5
         let aggressivenessFactor = accelerationRms <= smoothRms
             ? 0.97
@@ -198,8 +219,18 @@ extension DrivingDynamics {
             eventsFactor = 1.0
         }
 
-        let combined = speedFactor * aggressivenessFactor * idleFactor * eventsFactor
-        return min(1.5, max(0.85, combined))
+        return min(1.35, max(0.90, aggressivenessFactor * idleFactor * eventsFactor))
+    }
+
+    private var speedFuelConsumptionFactor: Double {
+        switch meanMovingSpeedKmh {
+        case ..<20: 1.20
+        case 20..<35: 1.12
+        case 35..<55: 1.05
+        case 55..<90: 1.0
+        case 90..<110: 1.05
+        default: 1.12
+        }
     }
 }
 

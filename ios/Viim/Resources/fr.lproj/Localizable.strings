@@ -298,6 +298,8 @@
 "driving.eco.litersFormat" = "≈ %.1f L";
 "driving.eco.estimatedTag" = "Estimation indicative";
 "driving.eco.coverageSuffixFormat" = " · %d/%d trajets";
+"driving.eco.fuelCoverageSuffixFormat" = " · carburant %d/%d trajets";
+"driving.eco.costCoverageSuffixFormat" = " · coût %d/%d trajets";
 "driving.eco.shortTitle" = "Éco";
 "driving.eco.improvement" = "--";
 "driving.badges.title" = "Badges de conduite";

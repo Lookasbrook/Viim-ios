@@ -17,7 +17,7 @@ struct TripScores: Equatable {
 }
 
 enum ScoreEngine {
-    static let version = "score-speed-fluidity-eco-v3"
+    static let version = "score-speed-fluidity-eco-v4-episodes"
 
     private static let speedToleranceKmh = 5.0
     private static let speedPenaltyPerKmh = 2.5

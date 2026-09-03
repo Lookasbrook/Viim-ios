@@ -427,7 +427,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
    source officielle, stabilite, fraicheur, licence et semantique non ambigue. Toute
    localite non couverte est refusee avant l'appel HTTP de prix ; le Burkina conserve
    uniquement la saisie utilisateur datee, jamais un prix devine.
-4. **P1 consommation v12, build 51 :** conserver les references officielles ville,
+4. **P1 consommation v12, build 51 livre :** conserver les references officielles ville,
    route et mixte, choisir/interpoler le regime seulement avec vitesse qualifiee,
    regrouper accelerations et freinages en episodes independants de la cadence GPS,
    puis eviter de reappliquer un facteur deja absorbe par la calibration aux pleins.
@@ -759,3 +759,27 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 - Apres migration, le SQLite passe `integrity_check=ok`, contient toujours 126
   trajets et expose les colonnes Build 49 de preuve geographique. La porte terrain
   reste ouverte tant que l'utilisateur n'accorde pas Position `Toujours`.
+
+## Execution build 51 — consommation v12 et preuves historiques
+
+- `driving-dynamics-v2-episodes` regroupe les paires consecutives en episodes avec
+  hysteresis. Le test 0,5/2 s prouve l'absence de surcomptage sur le scenario
+  couvert ; un echantillonnage rare peut encore diluer et manquer une manoeuvre.
+- Les variantes officielles conservent ville, route et mixte. Le choix utilise une
+  vitesse effective qui integre le temps sous 4 km/h, seulement apres 80 % de
+  couverture dynamique ; sinon Viim conserve le cycle mixte.
+- Une calibration issue des pleins ne recoit plus une seconde fois les facteurs
+  absolus de vitesse, arret et altitude. Les references non finies ou negatives
+  sont refusees.
+- `Viim.build51` fige le mode applique, les references ville/route et les versions
+  carburant et score. Les metriques historiques lisent la version du trajet et
+  non celle du binaire courant. La migration legere et la persistance officielle
+  sont testees.
+- La suite complete passe 397/397, sans echec ni test ignore, avec migration
+  explicite Build 49 vers Build 51. Le Release
+  `0.1.0 (51)` est signe, installe et lance sur l'iPhone 16. Une sauvegarde brute
+  pre-migration a ete creee ; le SQLite passe `integrity_check=ok`, conserve 126
+  trajets et contient les quatre nouvelles colonnes de preuve.
+- Le journal confirme `app.launch build=51`. L'appareil reste en
+  `authorizedWhenInUse` et `foregroundOnly` : aucun trajet ecran verrouille ni
+  calibration par plein reel n'est revendique comme valide sur le terrain.

@@ -49,6 +49,29 @@ final class DrivingDynamicsTests: XCTestCase {
         XCTAssertGreaterThan(dynamics.fuelConsumptionMultiplier, 1.1)
     }
 
+    func testHardEventsAreGroupedIntoEpisodesIndependentOfGpsCadence() throws {
+        let dense = try XCTUnwrap(
+            DrivingDynamicsAnalyzer.dynamics(
+                samples: episodeSamples(step: 0.5),
+                vehicleType: .voiture,
+                distanceKm: 1.2
+            )
+        )
+        let sparse = try XCTUnwrap(
+            DrivingDynamicsAnalyzer.dynamics(
+                samples: episodeSamples(step: 2),
+                vehicleType: .voiture,
+                distanceKm: 1.2
+            )
+        )
+
+        XCTAssertEqual(dense.hardAccelerationCount, 1)
+        XCTAssertEqual(sparse.hardAccelerationCount, 1)
+        XCTAssertEqual(dense.hardBrakingCount, 1)
+        XCTAssertEqual(sparse.hardBrakingCount, 1)
+        XCTAssertEqual(dense.abruptEventsPer10Km, sparse.abruptEventsPer10Km)
+    }
+
     func testInsufficientCoverageReturnsNil() {
         let start = Date(timeIntervalSince1970: 1_783_000_000)
         let samples = [
@@ -273,6 +296,24 @@ final class DrivingDynamicsTests: XCTestCase {
             horizontalAccuracy: 5,
             speedAccuracy: 1
         )
+    }
+
+    private func episodeSamples(step: Double) -> [LocationSample] {
+        let start = Date(timeIntervalSince1970: 1_783_000_000)
+        return stride(from: 0.0, through: 80.0, by: step).map { elapsed in
+            let speed: Double
+            switch elapsed {
+            case ...4:
+                speed = elapsed * 12.5
+            case 4..<70:
+                speed = 50
+            case 70...74:
+                speed = 50 - (elapsed - 70) * 12.5
+            default:
+                speed = 0
+            }
+            return sample(speedKmh: speed, timestamp: start.addingTimeInterval(elapsed))
+        }
     }
 
     private struct LegacyRoutePoint: Encodable {

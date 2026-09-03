@@ -7,11 +7,23 @@ enum VehicleFuelReferenceResolution: String, Equatable {
     case calibratedFullTank
 }
 
+enum FuelReferenceApplicationMode: String, Equatable {
+    case bicycleZero
+    case calibratedFullTank
+    case indicativeCombined
+    case officialCombined
+    case officialCity
+    case officialHighway
+    case officialInterpolated
+}
+
 struct VehicleFuelProfile: Equatable {
     let vehicleType: VehicleType
     let fuelType: VehicleFuelType?
     let canonicalName: String
     let litersPer100Km: Double
+    let cityLitersPer100Km: Double?
+    let highwayLitersPer100Km: Double?
     let confidence: MetricConfidence
     let sourceIdentifier: String
     let referenceResolution: VehicleFuelReferenceResolution
@@ -22,6 +34,8 @@ struct VehicleFuelProfile: Equatable {
         fuelType: VehicleFuelType?,
         canonicalName: String,
         litersPer100Km: Double,
+        cityLitersPer100Km: Double? = nil,
+        highwayLitersPer100Km: Double? = nil,
         confidence: MetricConfidence,
         sourceIdentifier: String,
         referenceResolution: VehicleFuelReferenceResolution,
@@ -31,6 +45,8 @@ struct VehicleFuelProfile: Equatable {
         self.fuelType = fuelType
         self.canonicalName = canonicalName
         self.litersPer100Km = litersPer100Km
+        self.cityLitersPer100Km = cityLitersPer100Km
+        self.highwayLitersPer100Km = highwayLitersPer100Km
         self.confidence = confidence
         self.sourceIdentifier = sourceIdentifier
         self.referenceResolution = referenceResolution
@@ -43,6 +59,8 @@ struct FuelConsumptionEstimate: Equatable {
     let lowerBoundLiters: Double
     let upperBoundLiters: Double
     let baselineLiters: Double
+    let appliedReferenceLitersPer100Km: Double
+    let referenceApplicationMode: FuelReferenceApplicationMode
     let dynamicsMultiplier: Double
     let elevationMultiplier: Double
     let dynamicsCoverageRatio: Double?
@@ -68,7 +86,7 @@ struct VehicleCatalogSuggestion: Equatable, Identifiable {
 }
 
 enum VehicleFuelCatalog {
-    static let formulaVersion = "vehicle-fuel-catalog-v11-fill-up-calibration"
+    static let formulaVersion = "vehicle-fuel-catalog-v12-speed-cycle-episodes"
     static let sourceIdentifier = "ViimCatalog.indicative.v8"
     static let minimumDynamicsCoverageRatio = 0.80
 
@@ -233,6 +251,8 @@ enum VehicleFuelCatalog {
                 fuelType: matched.fuelType,
                 canonicalName: "\(matched.make) \(matched.model) \(matched.year)",
                 litersPer100Km: matched.combinedLitersPer100Km,
+                cityLitersPer100Km: matched.cityLitersPer100Km,
+                highwayLitersPer100Km: matched.highwayLitersPer100Km,
                 confidence: .partial,
                 sourceIdentifier: matched.qualifiedSourceIdentifier,
                 referenceResolution: .officialVariant
@@ -317,11 +337,12 @@ enum VehicleFuelCatalog {
     ) -> FuelConsumptionEstimate? {
         guard let fuelProfile,
               distanceKm.isFinite,
-              distanceKm >= 0 else {
+              distanceKm >= 0,
+              fuelProfile.litersPer100Km.isFinite,
+              fuelProfile.litersPer100Km >= 0 else {
             return nil
         }
 
-        let baseLiters = distanceKm * fuelProfile.litersPer100Km / 100
         var dynamicsCoverageRatio: Double?
         let matchingDynamics = dynamics.flatMap { candidate -> DrivingDynamics? in
             guard candidate.isUsableForFuelEstimate else {
@@ -347,7 +368,58 @@ enum VehicleFuelCatalog {
             }
             return candidate
         }
-        let dynamicsMultiplier = matchingDynamics?.fuelConsumptionMultiplier ?? 1
+        let officialCycleReference = matchingDynamics.flatMap { dynamics -> (value: Double, mode: FuelReferenceApplicationMode)? in
+            guard fuelProfile.referenceResolution == .officialVariant,
+                  let city = fuelProfile.cityLitersPer100Km,
+                  let highway = fuelProfile.highwayLitersPer100Km,
+                  city.isFinite,
+                  highway.isFinite,
+                  city > 0,
+                  highway > 0 else {
+                return nil
+            }
+            // La reference officielle est interpolee seulement a partir de la
+            // vitesse moyenne couverte et qualifiee. Sous 30 km/h : cycle ville ;
+            // au-dessus de 80 km/h : cycle route ; entre les deux : transition.
+            // Inclure le temps passe sous 4 km/h evite de classer un trajet
+            // urbain stop-and-go comme routier sur sa seule vitesse en mouvement.
+            let effectiveSpeedKmh = dynamics.meanMovingSpeedKmh * (1 - dynamics.idleRatio)
+            let highwayWeight = min(1, max(0, (effectiveSpeedKmh - 30) / 50))
+            let mode: FuelReferenceApplicationMode
+            if highwayWeight == 0 {
+                mode = .officialCity
+            } else if highwayWeight == 1 {
+                mode = .officialHighway
+            } else {
+                mode = .officialInterpolated
+            }
+            return (city + (highway - city) * highwayWeight, mode)
+        }
+        let appliedReferenceLitersPer100Km = officialCycleReference?.value ?? fuelProfile.litersPer100Km
+        let referenceApplicationMode: FuelReferenceApplicationMode
+        if let officialCycleReference {
+            referenceApplicationMode = officialCycleReference.mode
+        } else {
+            switch fuelProfile.referenceResolution {
+            case .bicycleZero: referenceApplicationMode = .bicycleZero
+            case .calibratedFullTank: referenceApplicationMode = .calibratedFullTank
+            case .officialVariant: referenceApplicationMode = .officialCombined
+            case .indicativeModel: referenceApplicationMode = .indicativeCombined
+            }
+        }
+        let baseLiters = distanceKm * appliedReferenceLitersPer100Km / 100
+
+        let dynamicsMultiplier: Double
+        if fuelProfile.referenceResolution == .calibratedFullTank {
+            // Les pleins mesurent deja le comportement et les conditions reels
+            // sur plusieurs intervalles. Sans modele relatif a cette baseline,
+            // reappliquer des facteurs absolus compterait ces effets deux fois.
+            dynamicsMultiplier = 1
+        } else if officialCycleReference != nil, let matchingDynamics {
+            dynamicsMultiplier = matchingDynamics.drivingBehaviorFuelConsumptionMultiplier
+        } else {
+            dynamicsMultiplier = matchingDynamics?.fuelConsumptionMultiplier ?? 1
+        }
 
         let matchingElevation = elevationProfile.flatMap { candidate -> ElevationProfile? in
             guard distanceKm > 0,
@@ -364,9 +436,13 @@ enum VehicleFuelCatalog {
             }
             return candidate
         }
-        let elevationCoverageRatio = matchingElevation?.coverageRatio
+        let elevationCoverageRatio = fuelProfile.referenceResolution == .calibratedFullTank
+            ? nil
+            : matchingElevation?.coverageRatio
         let elevationMultiplier: Double
-        if let matchingElevation, distanceKm > 0 {
+        if fuelProfile.referenceResolution == .calibratedFullTank {
+            elevationMultiplier = 1
+        } else if let matchingElevation, distanceKm > 0 {
             // Proxy volontairement faible : sans masse, rapport engage ou etat
             // moteur, l'altitude GPS ne permet pas un calcul energetique exact.
             // Les descentes ne creent jamais de "gain" suppose.
@@ -377,8 +453,8 @@ enum VehicleFuelCatalog {
         }
 
         let liters = baseLiters * dynamicsMultiplier * elevationMultiplier
-        let usedDynamics = matchingDynamics != nil
-        let usedElevation = matchingElevation != nil
+        let usedDynamics = matchingDynamics != nil && fuelProfile.referenceResolution != .calibratedFullTank
+        let usedElevation = matchingElevation != nil && fuelProfile.referenceResolution != .calibratedFullTank
         let uncertaintyRatio: Double
         if fuelProfile.referenceResolution == .bicycleZero || liters == 0 {
             uncertaintyRatio = 0
@@ -402,9 +478,13 @@ enum VehicleFuelCatalog {
             lowerBoundLiters: max(0, liters * (1 - uncertaintyRatio)),
             upperBoundLiters: liters * (1 + uncertaintyRatio),
             baselineLiters: baseLiters,
+            appliedReferenceLitersPer100Km: appliedReferenceLitersPer100Km,
+            referenceApplicationMode: referenceApplicationMode,
             dynamicsMultiplier: dynamicsMultiplier,
             elevationMultiplier: elevationMultiplier,
-            dynamicsCoverageRatio: dynamicsCoverageRatio,
+            dynamicsCoverageRatio: fuelProfile.referenceResolution == .calibratedFullTank
+                ? nil
+                : dynamicsCoverageRatio,
             elevationCoverageRatio: elevationCoverageRatio,
             usedDynamics: usedDynamics,
             usedElevation: usedElevation,

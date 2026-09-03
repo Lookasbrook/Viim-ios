@@ -2,6 +2,29 @@
 
 Objectif : aucune valeur metier ne doit etre affichee sans source de verite, formule, condition de validite et raison explicite quand la valeur manque.
 
+## Etat au 2026-09-03 — consommation v12, build 51
+
+- `driving-dynamics-v2-episodes` regroupe une acceleration ou un freinage continu
+  en un episode avec hysteresis. Cela reduit le surcomptage lie a la cadence GPS ;
+  une manoeuvre trop diluee par un echantillonnage rare peut encore etre manquee.
+- Une fiche officielle conserve ville, route et mixte. L'interpolation ville/route
+  n'est activee qu'avec une dynamique valide couvrant au moins 80 % du trajet ;
+  la vitesse effective integre le temps sous 4 km/h. Sous 30 km/h elle utilise la
+  ville, au-dessus de 80 km/h la route, et entre les deux une transition lineaire.
+  Sans couverture, la reference mixte est conservee.
+- Une calibration par pleins complets est une moyenne observee. Les multiplicateurs
+  absolus de dynamique et d'altitude restent donc a `1` tant qu'un modele relatif
+  a cette calibration n'a pas ete valide sur le terrain.
+- La reference effectivement appliquee, les multiplicateurs, les couvertures, la
+  plage basse/centrale/haute et `vehicle-fuel-catalog-v12-speed-cycle-episodes`
+  sont figes avec le trajet. Il s'agit toujours d'une estimation, jamais d'une
+  mesure de carburant instantanee.
+- `Viim.build51` fige aussi le mode de reference, les valeurs officielles ville et
+  route, et `score-speed-fluidity-eco-v4-episodes`. Un ancien cout ou score garde
+  desormais sa propre version au lieu de recevoir celle du binaire courant.
+- Le detail Conduite publie separement la couverture des litres et du cout afin
+  qu'un sous-total de prix ne paraisse pas couvrir tous les trajets.
+
 ## Etat au 2026-09-03 — prix Burkina fail-closed, build 50
 
 - Les seules recherches automatiques actives sont le releve officiel Ontario et

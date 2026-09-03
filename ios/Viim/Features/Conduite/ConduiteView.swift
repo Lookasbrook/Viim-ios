@@ -464,12 +464,23 @@ private struct EcoSummaryRow: View {
     }
 
     private var coverageSuffix: String {
-        guard summary.fuelEligibleTripCount < summary.includedTripCount else { return "" }
-        return String.localizedStringWithFormat(
-            String(localized: "driving.eco.coverageSuffixFormat"),
-            summary.fuelEligibleTripCount,
-            summary.includedTripCount
-        )
+        var suffix = ""
+        if summary.fuelEligibleTripCount < summary.includedTripCount {
+            suffix += String.localizedStringWithFormat(
+                String(localized: "driving.eco.fuelCoverageSuffixFormat"),
+                summary.fuelEligibleTripCount,
+                summary.includedTripCount
+            )
+        }
+        if summary.fuelCostMinorUnits != nil,
+           summary.fuelCostEligibleTripCount < summary.includedTripCount {
+            suffix += String.localizedStringWithFormat(
+                String(localized: "driving.eco.costCoverageSuffixFormat"),
+                summary.fuelCostEligibleTripCount,
+                summary.includedTripCount
+            )
+        }
+        return suffix
     }
 
     private func rangeMoneyText(_ minorUnits: Int, currency: SupportedCurrency) -> String {

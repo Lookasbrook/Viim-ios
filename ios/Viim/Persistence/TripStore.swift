@@ -15,6 +15,7 @@ struct TripRecord: Identifiable, Equatable {
     let scoreFluidite: Int?
     let scoreVigilance: Int?
     let scoreEco: Int?
+    var scoreFormulaVersion: String = "legacy"
     let fuelLiters: Double?
     let fuelLitersLowerBound: Double?
     let fuelLitersUpperBound: Double?
@@ -25,6 +26,7 @@ struct TripRecord: Identifiable, Equatable {
     let fuelElevationCoverageRatio: Double?
     let fuelUncertaintyRatio: Double?
     let fuelReferenceResolution: VehicleFuelReferenceResolution?
+    var fuelReferenceApplicationMode: FuelReferenceApplicationMode? = nil
     let fuelFCFA: Int?
     let fuelCostMinorUnits: Int?
     let fuelCostLowerBoundMinorUnits: Int?
@@ -49,6 +51,8 @@ struct TripRecord: Identifiable, Equatable {
     var fuelTripEndRegionCode: String? = nil
     var fuelTripEndLocality: String? = nil
     var fuelProfileFuelType: VehicleFuelType? = nil
+    var fuelProfileCityLitersPer100Km: Double? = nil
+    var fuelProfileHighwayLitersPer100Km: Double? = nil
     let fuelProfileName: String?
     let fuelProfileLitersPer100Km: Double?
     let fuelProfileSource: String?
@@ -487,6 +491,7 @@ struct TripStore {
             Self.setOptionalInt(scores.scoreFluidite, forKey: "scoreFluidite", on: object)
             Self.setOptionalInt(scores.scoreVigilance, forKey: "scoreVigilance", on: object)
             Self.setOptionalInt(scores.scoreEco, forKey: "scoreEco", on: object)
+            object.setValue(ScoreEngine.version, forKey: "scoreFormulaVersion")
             if let fuelEstimate {
                 object.setValue(fuelEstimate.liters, forKey: "fuelLiters")
                 object.setValue(fuelEstimate.lowerBoundLiters, forKey: "fuelLitersLowerBound")
@@ -498,13 +503,18 @@ struct TripStore {
                 object.setValue(fuelEstimate.elevationCoverageRatio, forKey: "fuelElevationCoverageRatio")
                 object.setValue(fuelEstimate.uncertaintyRatio, forKey: "fuelUncertaintyRatio")
                 object.setValue(fuelEstimate.referenceResolution.rawValue, forKey: "fuelReferenceResolution")
+                object.setValue(fuelEstimate.referenceApplicationMode.rawValue, forKey: "fuelReferenceApplicationMode")
                 object.setValue(nil, forKey: "fuelFCFA")
                 object.setValue(resolvedFuelProfile?.canonicalName, forKey: "fuelProfileName")
                 object.setValue(
                     (resolvedFuelProfile?.fuelType ?? fuelSettings?.fuelType)?.rawValue,
                     forKey: "fuelProfileFuelType"
                 )
-                object.setValue(resolvedFuelProfile?.litersPer100Km, forKey: "fuelProfileLitersPer100Km")
+                // Il s'agit de la reference effectivement appliquee : mixte,
+                // interpolation ville/route, ou calibration par pleins.
+                object.setValue(fuelEstimate.appliedReferenceLitersPer100Km, forKey: "fuelProfileLitersPer100Km")
+                object.setValue(resolvedFuelProfile?.cityLitersPer100Km, forKey: "fuelProfileCityLitersPer100Km")
+                object.setValue(resolvedFuelProfile?.highwayLitersPer100Km, forKey: "fuelProfileHighwayLitersPer100Km")
                 object.setValue(resolvedFuelProfile?.sourceIdentifier, forKey: "fuelProfileSource")
 
                 if vehicleType == .velo {
@@ -566,6 +576,7 @@ struct TripStore {
                 object.setValue(nil, forKey: "fuelElevationCoverageRatio")
                 object.setValue(nil, forKey: "fuelUncertaintyRatio")
                 object.setValue(nil, forKey: "fuelReferenceResolution")
+                object.setValue(nil, forKey: "fuelReferenceApplicationMode")
                 object.setValue(nil, forKey: "fuelFCFA")
                 object.setValue(nil, forKey: "fuelCostMinorUnits")
                 object.setValue(nil, forKey: "fuelCostLowerBoundMinorUnits")
@@ -580,6 +591,8 @@ struct TripStore {
                 object.setValue(nil, forKey: "fuelProfileName")
                 object.setValue(nil, forKey: "fuelProfileFuelType")
                 object.setValue(nil, forKey: "fuelProfileLitersPer100Km")
+                object.setValue(nil, forKey: "fuelProfileCityLitersPer100Km")
+                object.setValue(nil, forKey: "fuelProfileHighwayLitersPer100Km")
                 object.setValue(nil, forKey: "fuelProfileSource")
             }
             object.setValue(VehicleFuelCatalog.formulaVersion, forKey: "fuelFormulaVersion")
@@ -768,6 +781,7 @@ struct TripStore {
             scoreFluidite: optionalInt(object.value(forKey: "scoreFluidite")),
             scoreVigilance: optionalInt(object.value(forKey: "scoreVigilance")),
             scoreEco: optionalInt(object.value(forKey: "scoreEco")),
+            scoreFormulaVersion: object.value(forKey: "scoreFormulaVersion") as? String ?? "legacy",
             fuelLiters: object.value(forKey: "fuelLiters") as? Double,
             fuelLitersLowerBound: object.value(forKey: "fuelLitersLowerBound") as? Double,
             fuelLitersUpperBound: object.value(forKey: "fuelLitersUpperBound") as? Double,
@@ -779,6 +793,8 @@ struct TripStore {
             fuelUncertaintyRatio: object.value(forKey: "fuelUncertaintyRatio") as? Double,
             fuelReferenceResolution: (object.value(forKey: "fuelReferenceResolution") as? String)
                 .flatMap(VehicleFuelReferenceResolution.init(rawValue:)),
+            fuelReferenceApplicationMode: (object.value(forKey: "fuelReferenceApplicationMode") as? String)
+                .flatMap(FuelReferenceApplicationMode.init(rawValue:)),
             fuelFCFA: optionalInt(object.value(forKey: "fuelFCFA")),
             fuelCostMinorUnits: officialCostIsAuditable
                 ? optionalInt(object.value(forKey: "fuelCostMinorUnits")) : nil,
@@ -810,6 +826,8 @@ struct TripStore {
             fuelTripEndLocality: object.value(forKey: "fuelTripEndLocality") as? String,
             fuelProfileFuelType: (object.value(forKey: "fuelProfileFuelType") as? String)
                 .flatMap(VehicleFuelType.init(rawValue:)),
+            fuelProfileCityLitersPer100Km: object.value(forKey: "fuelProfileCityLitersPer100Km") as? Double,
+            fuelProfileHighwayLitersPer100Km: object.value(forKey: "fuelProfileHighwayLitersPer100Km") as? Double,
             fuelProfileName: object.value(forKey: "fuelProfileName") as? String,
             fuelProfileLitersPer100Km: object.value(forKey: "fuelProfileLitersPer100Km") as? Double,
             fuelProfileSource: object.value(forKey: "fuelProfileSource") as? String,
