@@ -104,6 +104,8 @@
 "home.activeTrip.title" = "Trajet en cours";
 "home.summary.title" = "Résumé du jour";
 "home.summary.status" = "À jour";
+"home.summary.waiting" = "En attente";
+"home.summary.partial" = "Données partielles";
 "home.summary.persistenceError" = "Mise à jour";
 "home.summary.score.ready" = "Score calculé sur vos trajets récents.";
 "home.summary.score.pending" = "Le score s'affiche dès qu'un trajet est enregistré.";
@@ -116,6 +118,7 @@
 "home.metric.duration.label" = "Conduite";
 "home.metric.speed.label" = "Vitesse";
 "home.metric.cost.label" = "Coût estimé";
+"home.metric.cost.subtotal.label" = "Sous-total estimé";
 "home.metric.fuel.empty" = "0 L";
 "home.metric.fuel.label" = "Essence";
 "home.metric.savings.empty" = "0 F";
@@ -274,6 +277,7 @@
 "driving.performance.badges" = "Vos badges de conduite apparaîtront avec vos prochains trajets.";
 "driving.performance.cityAverage" = "Comparaison Ouagadougou disponible avec les données communautaires.";
 "driving.performance.basedOnTrips" = "Score moyen basé sur vos %d trajets des 30 derniers jours.";
+"driving.performance.basedOnCoveredTrips" = "Score moyen calculé sur %d trajets parmi %d fiables.";
 "driving.performance.detail" = "Score global calculé séparément à partir des critères GPS disponibles : seuil technique de vitesse, fluidité et éco-conduite.";
 "driving.performance.empty" = "Votre score apparaîtra dès votre premier trajet enregistré.";
 "driving.performance.empty.detail" = "Roulez normalement : Viim détecte et note vos trajets automatiquement.";
@@ -290,6 +294,7 @@
 "driving.eco.savings" = "Avec vos prochains trajets";
 "driving.eco.litersFormat" = "≈ %.1f L";
 "driving.eco.estimatedTag" = "Estimation indicative";
+"driving.eco.coverageSuffixFormat" = " · %d/%d trajets";
 "driving.eco.shortTitle" = "Éco";
 "driving.eco.improvement" = "--";
 "driving.badges.title" = "Badges de conduite";

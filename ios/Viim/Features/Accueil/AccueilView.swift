@@ -893,7 +893,7 @@ private struct DailySummaryCard: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(ViimColors.text)
                     Spacer()
-                    ViimChip(titleKey: summaryStatusKey, style: hasPersistenceError ? .danger : .success)
+                    ViimChip(titleKey: summaryStatusKey, style: summaryStatusStyle)
                 }
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 10) {
@@ -917,7 +917,7 @@ private struct DailySummaryCard: View {
                     )
                     SummaryMetricTile(
                         value: costText,
-                        labelKey: "home.metric.cost.label",
+                        labelKey: costLabelKey,
                         color: ViimColors.green
                     )
                 }
@@ -926,7 +926,17 @@ private struct DailySummaryCard: View {
     }
 
     private var summaryStatusKey: LocalizedStringKey {
-        hasPersistenceError ? "home.summary.persistenceError" : "home.summary.status"
+        if hasPersistenceError { return "home.summary.persistenceError" }
+        if summary.candidateTripCount == 0 { return "home.summary.waiting" }
+        if summary.excludedTripCount > 0 { return "home.summary.partial" }
+        return "home.summary.status"
+    }
+
+    private var summaryStatusStyle: ViimChip.Style {
+        if hasPersistenceError { return .danger }
+        if summary.candidateTripCount == 0 { return .neutral }
+        if summary.excludedTripCount > 0 { return .warning }
+        return .success
     }
 
     private var scoreMetric: ReliableMetric<Int> {
@@ -940,6 +950,14 @@ private struct DailySummaryCard: View {
             upperMinorUnits: summary.fuelCostUpperBoundMinorUnits,
             currency: currency
         ) ?? DrivingValueFormatter.moneyText(costMetric, currency: currency)
+    }
+
+    private var costLabelKey: LocalizedStringKey {
+        if costMetric.value != nil,
+           summary.fuelCostEligibleTripCount < summary.includedTripCount {
+            return "home.metric.cost.subtotal.label"
+        }
+        return "home.metric.cost.label"
     }
 
     private var scoreColor: Color {

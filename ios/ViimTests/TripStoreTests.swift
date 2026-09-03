@@ -669,7 +669,7 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(metric.confidence, .reliable)
     }
 
-    func testSummaryCostIsUnavailableWhenAnyTripLacksAPriceSnapshot() throws {
+    func testSummaryKeepsProvenCostSubtotalAndReportsCoverage() throws {
         let store = makeStore()
         let profile = try XCTUnwrap(
             VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
@@ -683,7 +683,11 @@ final class TripStoreTests: XCTestCase {
             vehicleType: .voiture,
             isCalibration: false,
             fuelProfile: profile,
-            fuelSettings: FuelSettings(currency: .cad, pricePerLiter: 1.70)
+            fuelSettings: FuelSettings(
+                currency: .cad,
+                pricePerLiter: 1.70,
+                capturedAt: pricedTrip.endedAt
+            )
         )
         try store.insertCompletedTrip(
             unpricedTrip,
@@ -694,14 +698,19 @@ final class TripStoreTests: XCTestCase {
         )
 
         let summary = try store.fetchSummary()
+        let pricedRecord = try XCTUnwrap(store.fetchTrips().first { $0.id == pricedTrip.id })
 
         XCTAssertNotNil(summary.fuelLiters)
-        XCTAssertNil(summary.fuelCostMinorUnits)
-        XCTAssertNil(summary.fuelCurrency)
-        XCTAssertNil(TripMetricsCalculator.summaryFuelCostMetric(summary).value)
+        XCTAssertEqual(summary.fuelCostMinorUnits, pricedRecord.fuelCostMinorUnits)
+        XCTAssertEqual(summary.fuelCurrency, .cad)
+        XCTAssertEqual(summary.fuelCostEligibleTripCount, 1)
+        XCTAssertEqual(summary.fuelCostCoverageRatio ?? -1, 0.5, accuracy: 0.000_001)
+        let metric = TripMetricsCalculator.summaryFuelCostMetric(summary)
+        XCTAssertEqual(metric.value, pricedRecord.fuelCostMinorUnits)
+        XCTAssertEqual(metric.evidence.coverageRatio ?? -1, 0.5, accuracy: 0.000_001)
     }
 
-    func testSummaryFuelIsUnavailableWhenAnyTripLacksAVehicleProfile() throws {
+    func testSummaryKeepsProvenFuelSubtotalAndReportsCoverage() throws {
         let store = makeStore()
         let profile = try XCTUnwrap(
             VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
@@ -724,9 +733,12 @@ final class TripStoreTests: XCTestCase {
         )
 
         let summary = try store.fetchSummary()
+        let profiledRecord = try XCTUnwrap(store.fetchTrips().first { $0.id == profiledTrip.id })
 
-        XCTAssertNil(summary.fuelLiters)
+        XCTAssertEqual(summary.fuelLiters, profiledRecord.fuelLiters)
         XCTAssertNil(summary.fuelCostMinorUnits)
+        XCTAssertEqual(summary.fuelEligibleTripCount, 1)
+        XCTAssertEqual(summary.fuelCoverageRatio ?? -1, 0.5, accuracy: 0.000_001)
     }
 
     func testMismatchedVehicleProfileDoesNotInventFuelEstimate() throws {
@@ -752,7 +764,7 @@ final class TripStoreTests: XCTestCase {
         XCTAssertNil(recentTrip.fuelProfileName)
     }
 
-    func testSummaryScoreStaysPartialWhenAnyTripLacksCriteria() throws {
+    func testSummaryAveragesAvailableScoreCriteriaAndReportsCoverage() throws {
         let store = makeStore()
         let completeTrip = completedTrip(index: 0)
         let partialTrip = completedTrip(index: 1)
@@ -789,10 +801,46 @@ final class TripStoreTests: XCTestCase {
 
         XCTAssertEqual(summary.avgScore, 85)
         XCTAssertEqual(summary.avgScoreVitesse, 85)
-        XCTAssertNil(summary.avgScoreFluidite)
-        XCTAssertNil(summary.avgScoreEco)
+        XCTAssertEqual(summary.avgScoreFluidite, 90)
+        XCTAssertEqual(summary.avgScoreEco, 90)
+        XCTAssertEqual(summary.scoreEligibleTripCount, 2)
+        XCTAssertEqual(summary.completeScoreTripCount, 1)
+        XCTAssertEqual(summary.scoreCoverageRatio, 1)
         XCTAssertEqual(metric.value, 85)
         XCTAssertEqual(metric.confidence, .partial)
+        XCTAssertEqual(metric.evidence.sampleCount, 2)
+        XCTAssertEqual(metric.evidence.coverageRatio, 1)
+    }
+
+    func testSummaryScoreKeepsAvailableSubtotalWhenAnotherTripHasNoScore() throws {
+        let store = makeStore()
+        let scoredTrip = completedTrip(index: 0)
+        let unscoredTrip = completedTrip(index: 1)
+
+        try store.insertCompletedTrip(
+            scoredTrip,
+            samples: samples(start: scoredTrip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            scores: TripScores(score: 88, scoreVitesse: 88, scoreFluidite: 90, scoreVigilance: nil, scoreEco: 86)
+        )
+        try store.insertCompletedTrip(
+            unscoredTrip,
+            samples: samples(start: unscoredTrip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            scores: .unavailable
+        )
+
+        let summary = try store.fetchSummary()
+        let metric = TripMetricsCalculator.summaryScoreMetric(summary)
+
+        XCTAssertEqual(summary.avgScore, 88)
+        XCTAssertEqual(summary.scoreEligibleTripCount, 1)
+        XCTAssertEqual(summary.scoreCoverageRatio ?? -1, 0.5, accuracy: 0.000_001)
+        XCTAssertEqual(metric.value, 88)
+        XCTAssertEqual(metric.confidence, .partial)
+        XCTAssertEqual(metric.evidence.coverageRatio ?? -1, 0.5, accuracy: 0.000_001)
     }
 
     func testLegacyBicycleTripWithoutStoredFuelDoesNotInventZeroCost() throws {
@@ -976,7 +1024,11 @@ final class TripStoreTests: XCTestCase {
         )
 
         XCTAssertEqual(try store.fetchRecentTrips(limit: 1).count, 1)
-        XCTAssertEqual(try store.fetchSummary().tripsCount, 0)
+        let initialSummary = try store.fetchSummary()
+        XCTAssertEqual(initialSummary.candidateTripCount, 1)
+        XCTAssertEqual(initialSummary.includedTripCount, 0)
+        XCTAssertEqual(initialSummary.excludedTripCount, 1)
+        XCTAssertEqual(initialSummary.tripsCount, 0)
 
         let updatedCount = try store.recalculateLegacyQualityReports()
         let recentTrip = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
@@ -1007,6 +1059,9 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(updatedCount, 1)
         XCTAssertEqual(recentTrip.qualityConfidence, .rejected)
         XCTAssertTrue(recentTrip.qualityReasonCodes.contains(.impossibleSpeed))
+        XCTAssertEqual(summary.candidateTripCount, 1)
+        XCTAssertEqual(summary.includedTripCount, 0)
+        XCTAssertEqual(summary.excludedTripCount, 1)
         XCTAssertEqual(summary.tripsCount, 0)
         XCTAssertEqual(summary.totalKm, 0)
     }
@@ -1035,7 +1090,7 @@ final class TripStoreTests: XCTestCase {
         XCTAssertTrue(profile.topReasonCodes.contains(.gpsAccuracyTooLow))
     }
 
-    func testProtectiveLearningExcludesPartialTripsFromReliableSummary() throws {
+    func testProtectiveLearningDoesNotRewriteHistoricalSummaryEligibility() throws {
         let store = makeStore()
         let trip = completedTrip(index: 0)
 
@@ -1063,8 +1118,8 @@ final class TripStoreTests: XCTestCase {
         let summary = try store.fetchSummary()
 
         XCTAssertTrue(profile.isProtectiveModeEnabled)
-        XCTAssertEqual(summary.tripsCount, 0)
-        XCTAssertEqual(summary.totalKm, 0)
+        XCTAssertEqual(summary.tripsCount, 1)
+        XCTAssertGreaterThan(summary.totalKm, 0)
     }
 
     private func makeStore() -> TripStore {

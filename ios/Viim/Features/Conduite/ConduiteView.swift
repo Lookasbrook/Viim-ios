@@ -150,9 +150,16 @@ struct ConduiteView: View {
         guard globalScoreMetric.value != nil else {
             return String(localized: "driving.performance.empty")
         }
+        if summary.scoreEligibleTripCount < summary.includedTripCount {
+            return String.localizedStringWithFormat(
+                String(localized: "driving.performance.basedOnCoveredTrips"),
+                summary.scoreEligibleTripCount,
+                summary.includedTripCount
+            )
+        }
         return String.localizedStringWithFormat(
             String(localized: "driving.performance.basedOnTrips"),
-            summary.tripsCount
+            summary.scoreEligibleTripCount
         )
     }
 
@@ -450,10 +457,19 @@ private struct EcoSummaryRow: View {
             } else {
                 costText = DrivingValueFormatter.moneyText(costMetric, currency: currency)
             }
-            return "\(litersText) · \(costText)"
+            return "\(litersText) · \(costText)\(coverageSuffix)"
         }
 
-        return litersText
+        return "\(litersText)\(coverageSuffix)"
+    }
+
+    private var coverageSuffix: String {
+        guard summary.fuelEligibleTripCount < summary.includedTripCount else { return "" }
+        return String.localizedStringWithFormat(
+            String(localized: "driving.eco.coverageSuffixFormat"),
+            summary.fuelEligibleTripCount,
+            summary.includedTripCount
+        )
     }
 
     private func rangeMoneyText(_ minorUnits: Int, currency: SupportedCurrency) -> String {

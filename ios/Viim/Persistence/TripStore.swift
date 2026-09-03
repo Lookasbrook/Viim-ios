@@ -135,6 +135,13 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
 }
 
 struct DrivingSummary: Equatable {
+    static let aggregationFormulaVersion = "summary-v2"
+
+    /// Nombre de trajets lus pour la periode, avant la porte de qualite.
+    var candidateTripCount: Int
+    /// Nombre de trajets retenus par la porte de qualite. Identique a `tripsCount`.
+    var includedTripCount: Int
+    var excludedTripCount: Int
     var tripsCount: Int
     var totalKm: Double
     var totalDurationSec: Int
@@ -142,6 +149,8 @@ struct DrivingSummary: Equatable {
     var avgScoreVitesse: Int?
     var avgScoreFluidite: Int?
     var avgScoreEco: Int?
+    var scoreEligibleTripCount: Int
+    var completeScoreTripCount: Int
     var fuelLiters: Double?
     var fuelLitersLowerBound: Double?
     var fuelLitersUpperBound: Double?
@@ -149,12 +158,34 @@ struct DrivingSummary: Equatable {
     var fuelCostLowerBoundMinorUnits: Int?
     var fuelCostUpperBoundMinorUnits: Int?
     var fuelCurrency: SupportedCurrency?
+    var fuelEligibleTripCount: Int
+    var fuelCostEligibleTripCount: Int
     // Champ historique conserve uniquement pour la compatibilite du modele.
     // Il n'alimente plus aucun affichage sans instantane prix/devise/source.
     var fuelFCFA: Int?
     var pendingSyncCount: Int
 
+    var scoreCoverageRatio: Double? {
+        Self.coverage(eligible: scoreEligibleTripCount, total: includedTripCount)
+    }
+
+    var fuelCoverageRatio: Double? {
+        Self.coverage(eligible: fuelEligibleTripCount, total: includedTripCount)
+    }
+
+    var fuelCostCoverageRatio: Double? {
+        Self.coverage(eligible: fuelCostEligibleTripCount, total: includedTripCount)
+    }
+
+    private static func coverage(eligible: Int, total: Int) -> Double? {
+        guard total > 0 else { return nil }
+        return min(max(Double(eligible) / Double(total), 0), 1)
+    }
+
     static let empty = DrivingSummary(
+        candidateTripCount: 0,
+        includedTripCount: 0,
+        excludedTripCount: 0,
         tripsCount: 0,
         totalKm: 0,
         totalDurationSec: 0,
@@ -162,6 +193,8 @@ struct DrivingSummary: Equatable {
         avgScoreVitesse: nil,
         avgScoreFluidite: nil,
         avgScoreEco: nil,
+        scoreEligibleTripCount: 0,
+        completeScoreTripCount: 0,
         fuelLiters: nil,
         fuelLitersLowerBound: nil,
         fuelLitersUpperBound: nil,
@@ -169,6 +202,8 @@ struct DrivingSummary: Equatable {
         fuelCostLowerBoundMinorUnits: nil,
         fuelCostUpperBoundMinorUnits: nil,
         fuelCurrency: nil,
+        fuelEligibleTripCount: 0,
+        fuelCostEligibleTripCount: 0,
         fuelFCFA: nil,
         pendingSyncCount: 0
     )
@@ -581,10 +616,11 @@ struct TripStore {
             }
 
             let records = try context.fetch(request).compactMap(Self.record(from:))
-            let learningProfile = TripQualityLearningEngine.profile(
-                from: try Self.fetchQualityTelemetryEvents(limit: 50, in: context)
+            let eligibilityByTripID = try Self.summaryEligibilityByTripID(
+                tripIDs: records.map(\.id),
+                in: context
             )
-            return Self.summary(from: records, learningProfile: learningProfile)
+            return Self.summary(from: records, eligibilityByTripID: eligibilityByTripID)
         }
     }
 
@@ -692,53 +728,65 @@ struct TripStore {
 
     private static func summary(
         from records: [TripRecord],
-        learningProfile: TripQualityLearningProfile = .insufficientData
+        eligibilityByTripID: [UUID: Bool] = [:]
     ) -> DrivingSummary {
-        let records = records.filter { $0.isReliableEnoughForSummary(learningProfile: learningProfile) }
-        let fuelLiters = records.map(\.fuelLiters)
-        let totalFuelLiters = records.isEmpty || fuelLiters.contains(where: { $0 == nil })
+        let candidateTripCount = records.count
+        let records = records.filter { record in
+            eligibilityByTripID[record.id]
+                ?? record.isReliableEnoughForSummary(learningProfile: .insufficientData)
+        }
+        let scoreEligibleTripCount = records.compactMap(\.score).count
+        let completeScoreTripCount = records.filter {
+            $0.score != nil && $0.scoreVitesse != nil && $0.scoreFluidite != nil && $0.scoreEco != nil
+        }.count
+        let fuelRecords = records.filter { $0.fuelLiters != nil }
+        let totalFuelLiters = fuelRecords.isEmpty
             ? nil
-            : fuelLiters.compactMap { $0 }.reduce(0, +)
-        let fuelLowerBounds = records.map(\.fuelLitersLowerBound)
-        let totalFuelLowerBound = records.isEmpty || fuelLowerBounds.contains(where: { $0 == nil })
-            ? nil
-            : fuelLowerBounds.compactMap { $0 }.reduce(0, +)
-        let fuelUpperBounds = records.map(\.fuelLitersUpperBound)
-        let totalFuelUpperBound = records.isEmpty || fuelUpperBounds.contains(where: { $0 == nil })
-            ? nil
-            : fuelUpperBounds.compactMap { $0 }.reduce(0, +)
-        let costSnapshots = records.compactMap { record -> (amount: Int, currency: SupportedCurrency)? in
+            : fuelRecords.compactMap(\.fuelLiters).reduce(0, +)
+        let fuelLowerBounds = fuelRecords.compactMap(\.fuelLitersLowerBound)
+        let totalFuelLowerBound = !fuelRecords.isEmpty && fuelLowerBounds.count == fuelRecords.count
+            ? fuelLowerBounds.reduce(0, +)
+            : nil
+        let fuelUpperBounds = fuelRecords.compactMap(\.fuelLitersUpperBound)
+        let totalFuelUpperBound = !fuelRecords.isEmpty && fuelUpperBounds.count == fuelRecords.count
+            ? fuelUpperBounds.reduce(0, +)
+            : nil
+        let costSnapshots = records.compactMap { record -> (amount: Int, lower: Int?, upper: Int?, currency: SupportedCurrency)? in
             guard let amount = record.fuelCostMinorUnits,
                   let currency = record.fuelCurrency else {
                 return nil
             }
-            return (amount, currency)
+            return (amount, record.fuelCostLowerBoundMinorUnits, record.fuelCostUpperBoundMinorUnits, currency)
         }
         let snapshotCurrencies = Set(costSnapshots.map(\.currency))
-        let hasCompleteCostCoverage = !records.isEmpty && costSnapshots.count == records.count
-        let summaryCurrency = hasCompleteCostCoverage && snapshotCurrencies.count == 1
+        let summaryCurrency = !costSnapshots.isEmpty && snapshotCurrencies.count == 1
             ? snapshotCurrencies.first
             : nil
         let snapshotCost = summaryCurrency == nil
             ? nil
             : costSnapshots.reduce(0) { $0 + $1.amount }
-        let lowerCostSnapshots = records.compactMap(\.fuelCostLowerBoundMinorUnits)
-        let upperCostSnapshots = records.compactMap(\.fuelCostUpperBoundMinorUnits)
-        let snapshotLowerCost = summaryCurrency != nil && lowerCostSnapshots.count == records.count
+        let lowerCostSnapshots = costSnapshots.compactMap(\.lower)
+        let upperCostSnapshots = costSnapshots.compactMap(\.upper)
+        let snapshotLowerCost = summaryCurrency != nil && lowerCostSnapshots.count == costSnapshots.count
             ? lowerCostSnapshots.reduce(0, +)
             : nil
-        let snapshotUpperCost = summaryCurrency != nil && upperCostSnapshots.count == records.count
+        let snapshotUpperCost = summaryCurrency != nil && upperCostSnapshots.count == costSnapshots.count
             ? upperCostSnapshots.reduce(0, +)
             : nil
 
         return DrivingSummary(
+            candidateTripCount: candidateTripCount,
+            includedTripCount: records.count,
+            excludedTripCount: candidateTripCount - records.count,
             tripsCount: records.count,
             totalKm: records.reduce(0) { $0 + $1.distanceKm },
             totalDurationSec: records.reduce(0) { $0 + $1.durationSec },
-            avgScore: completeAverageScore(records.map(\.score)),
-            avgScoreVitesse: completeAverageScore(records.map(\.scoreVitesse)),
-            avgScoreFluidite: completeAverageScore(records.map(\.scoreFluidite)),
-            avgScoreEco: completeAverageScore(records.map(\.scoreEco)),
+            avgScore: averageScore(records.compactMap(\.score)),
+            avgScoreVitesse: averageScore(records.compactMap(\.scoreVitesse)),
+            avgScoreFluidite: averageScore(records.compactMap(\.scoreFluidite)),
+            avgScoreEco: averageScore(records.compactMap(\.scoreEco)),
+            scoreEligibleTripCount: scoreEligibleTripCount,
+            completeScoreTripCount: completeScoreTripCount,
             fuelLiters: totalFuelLiters,
             fuelLitersLowerBound: totalFuelLowerBound,
             fuelLitersUpperBound: totalFuelUpperBound,
@@ -746,6 +794,8 @@ struct TripStore {
             fuelCostLowerBoundMinorUnits: snapshotLowerCost,
             fuelCostUpperBoundMinorUnits: snapshotUpperCost,
             fuelCurrency: summaryCurrency,
+            fuelEligibleTripCount: fuelRecords.count,
+            fuelCostEligibleTripCount: costSnapshots.count,
             fuelFCFA: nil,
             pendingSyncCount: records.filter { !$0.synced }.count
         )
@@ -758,11 +808,23 @@ struct TripStore {
         return Int((Double(values.reduce(0, +)) / Double(values.count)).rounded())
     }
 
-    private static func completeAverageScore(_ values: [Int?]) -> Int? {
-        guard !values.isEmpty, values.allSatisfy({ $0 != nil }) else {
-            return nil
+    /// La decision d'inclusion est figee au moment de la capture dans la
+    /// telemetrie. Un profil de qualite degrade plus tard ne doit jamais
+    /// reecrire silencieusement l'historique de l'utilisateur.
+    private static func summaryEligibilityByTripID(
+        tripIDs: [UUID],
+        in context: NSManagedObjectContext
+    ) throws -> [UUID: Bool] {
+        guard !tripIDs.isEmpty else { return [:] }
+
+        let request = NSFetchRequest<NSManagedObject>(entityName: "TripQualityTelemetry")
+        request.predicate = NSPredicate(format: "tripId IN %@", tripIDs)
+        request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
+
+        return try context.fetch(request).reduce(into: [:]) { result, object in
+            guard let tripID = object.value(forKey: "tripId") as? UUID else { return }
+            result[tripID] = object.value(forKey: "includedInSummaryAtDecision") as? Bool ?? false
         }
-        return averageScore(values.compactMap { $0 })
     }
 
     private static func defaultFuelProfile(for vehicleType: VehicleType) -> VehicleFuelProfile? {

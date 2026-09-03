@@ -519,11 +519,23 @@ enum TripMetricsCalculator {
             summary.avgScoreFluidite,
             summary.avgScoreEco
         ].compactMap { $0 }.count
-        if availableCriteria == 3 {
-            return .reliable(
-                score,
+        let hasCompleteTripCoverage = summary.scoreEligibleTripCount == summary.includedTripCount
+            && summary.completeScoreTripCount == summary.includedTripCount
+        if availableCriteria == 3, hasCompleteTripCoverage {
+            return ReliableMetric(
+                value: score,
+                confidence: .reliable,
+                reasonCode: .complete,
                 source: "TripStore.summary",
-                formulaVersion: ScoreEngine.version
+                formulaVersion: DrivingSummary.aggregationFormulaVersion,
+                evidence: MetricEvidence(
+                    nature: .calculated,
+                    validationStatus: .algorithmValidated,
+                    sampleCount: summary.scoreEligibleTripCount,
+                    coverageRatio: summary.scoreCoverageRatio,
+                    coverageBasis: .trips,
+                    uncertaintyRatio: nil
+                )
             )
         }
         return ReliableMetric(
@@ -531,7 +543,15 @@ enum TripMetricsCalculator {
             confidence: .partial,
             reasonCode: .partialSpeedOnly,
             source: "TripStore.summary",
-            formulaVersion: ScoreEngine.version
+            formulaVersion: DrivingSummary.aggregationFormulaVersion,
+            evidence: MetricEvidence(
+                nature: .calculated,
+                validationStatus: .algorithmValidated,
+                sampleCount: summary.scoreEligibleTripCount,
+                coverageRatio: summary.scoreCoverageRatio,
+                coverageBasis: .trips,
+                uncertaintyRatio: nil
+            )
         )
     }
 
@@ -611,12 +631,12 @@ enum TripMetricsCalculator {
             confidence: .partial,
             reasonCode: .fuelEstimated,
             source: "TripStore.summary.fuelCostSnapshots",
-            formulaVersion: VehicleFuelCatalog.formulaVersion,
+            formulaVersion: DrivingSummary.aggregationFormulaVersion,
             evidence: MetricEvidence(
                 nature: .estimated,
                 validationStatus: .algorithmValidated,
-                sampleCount: nil,
-                coverageRatio: nil,
+                sampleCount: summary.fuelCostEligibleTripCount,
+                coverageRatio: summary.fuelCostCoverageRatio,
                 coverageBasis: .trips,
                 uncertaintyRatio: nil
             )
