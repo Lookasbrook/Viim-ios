@@ -356,7 +356,11 @@
 "assistance.collisionCalibration.coverage.sessions" = "Sessions";
 "assistance.collisionCalibration.coverage.gps" = "Frames avec GPS qualifié";
 "assistance.collisionCalibration.coverage.gaps" = "Interruptions";
+"assistance.collisionCalibration.coverage.driving" = "Temps de conduite suivi";
+"assistance.collisionCalibration.coverage.candidateRate" = "Candidats / 1 000 km suivis";
+"assistance.collisionCalibration.coverage.reviewedRatio" = "Collisions parmi les cas revus";
 "assistance.collisionCalibration.coverage.detail %lld %lld %lld" = "%lld session(s) clôturée(s), %lld non clôturée(s), %lld erreur(s) capteur. Ces chiffres mesurent la collecte, pas la détection des collisions.";
+"assistance.collisionCalibration.coverage.tripDetail %lld %lld %lld %.1f" = "%lld trajet(s) couvert(s) sur %lld éligible(s), %lld session(s) sans trajet finalisé correspondant, %.1f km suivis estimés. Aucun de ces chiffres ne mesure les collisions manquées.";
 "assistance.collisionCalibration.coverage.empty" = "Aucune session mesurée sur ce build. Cela ne prouve pas que la détection fonctionne.";
 "assistance.collisionCalibration.coverage.unavailable" = "Le journal de couverture local est illisible. Aucune conclusion de fiabilité ne peut être tirée.";
 "assistance.location.title" = "Voir ma localisation";

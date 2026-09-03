@@ -1025,6 +1025,212 @@ final class CollisionDetectionEngineTests: XCTestCase {
         XCTAssertEqual(summary.motionErrorCount, 1)
     }
 
+    func testCoverageSummaryJoinsFinalizedTripsWithoutDoubleCountingSessions() throws {
+        let origin = Date(timeIntervalSinceReferenceDate: 10_000)
+        let tripID = UUID()
+        let first = coverageRecord(
+            tripID: tripID,
+            tripStartedAt: origin,
+            vehicleType: .voiture,
+            startedAt: origin,
+            endedAt: origin.addingTimeInterval(60),
+            candidateCount: 1
+        )
+        let overlapping = coverageRecord(
+            tripID: tripID,
+            tripStartedAt: origin,
+            vehicleType: .voiture,
+            startedAt: origin.addingTimeInterval(30),
+            endedAt: origin.addingTimeInterval(90),
+            candidateCount: 2
+        )
+        let unmatched = coverageRecord(
+            tripID: UUID(),
+            tripStartedAt: origin,
+            vehicleType: .moto,
+            startedAt: origin,
+            endedAt: origin.addingTimeInterval(50),
+            candidateCount: 1
+        )
+        let trips = [
+            CollisionShadowFinalizedTripEvidence(
+                id: tripID,
+                startDate: origin,
+                endDate: origin.addingTimeInterval(100),
+                drivingDuration: 100,
+                distanceKm: 10,
+                vehicleType: .voiture
+            ),
+            CollisionShadowFinalizedTripEvidence(
+                id: UUID(),
+                startDate: origin.addingTimeInterval(200),
+                endDate: origin.addingTimeInterval(300),
+                drivingDuration: 100,
+                distanceKm: 20,
+                vehicleType: .voiture
+            )
+        ]
+        let realCollision = shadowCandidate(at: origin.addingTimeInterval(40))
+            .contextualized(tripID: tripID, vehicleType: .voiture)
+        let roadImpact = shadowCandidate(at: origin.addingTimeInterval(70))
+            .contextualized(tripID: tripID, vehicleType: .voiture)
+        let annotations = [
+            CollisionShadowReviewAnnotation(
+                candidateID: realCollision.id,
+                label: .realCollision,
+                reviewedAt: origin.addingTimeInterval(400)
+            ),
+            CollisionShadowReviewAnnotation(
+                candidateID: roadImpact.id,
+                label: .roadImpact,
+                reviewedAt: origin.addingTimeInterval(400)
+            )
+        ]
+
+        let summary = CollisionShadowCoverageSummary.summarize(
+            [first, overlapping, unmatched],
+            finalizedTrips: trips,
+            candidates: [realCollision, roadImpact],
+            annotations: annotations,
+            observationEndedAt: origin.addingTimeInterval(500)
+        )
+
+        XCTAssertEqual(summary.eligibleTripCount, 2)
+        XCTAssertEqual(summary.coveredTripCount, 1)
+        XCTAssertEqual(summary.unmatchedSessionCount, 1)
+        XCTAssertEqual(summary.eligibleDrivingDuration, 200)
+        XCTAssertEqual(summary.monitoredDrivingDuration, 90)
+        XCTAssertEqual(summary.monitoringCoverageRatio, 0.45)
+        XCTAssertEqual(summary.estimatedMonitoredDistanceKm, 9, accuracy: 0.001)
+        XCTAssertEqual(summary.matchedCandidateCount, 2)
+        XCTAssertEqual(
+            try XCTUnwrap(summary.candidatesPerThousandMonitoredKm),
+            2_000 / 9,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(summary.reviewedCandidateCount, 2)
+        XCTAssertEqual(summary.realCollisionReviewCount, 1)
+        XCTAssertEqual(summary.realCollisionRatioAmongReviewed, 0.5)
+    }
+
+    func testCoverageSummaryRejectsVehicleMismatchAndItsReviews() {
+        let origin = Date(timeIntervalSinceReferenceDate: 20_000)
+        let tripID = UUID()
+        let record = coverageRecord(
+            tripID: tripID,
+            tripStartedAt: origin,
+            vehicleType: .moto,
+            startedAt: origin,
+            endedAt: origin.addingTimeInterval(60),
+            candidateCount: 1
+        )
+        let trip = CollisionShadowFinalizedTripEvidence(
+            id: tripID,
+            startDate: origin,
+            endDate: origin.addingTimeInterval(60),
+            drivingDuration: 60,
+            distanceKm: 1,
+            vehicleType: .voiture
+        )
+        let candidate = shadowCandidate(at: origin.addingTimeInterval(30))
+            .contextualized(tripID: tripID, vehicleType: .moto)
+        let annotation = CollisionShadowReviewAnnotation(
+            candidateID: candidate.id,
+            label: .realCollision,
+            reviewedAt: origin.addingTimeInterval(70)
+        )
+
+        let summary = CollisionShadowCoverageSummary.summarize(
+            [record],
+            finalizedTrips: [trip],
+            candidates: [candidate],
+            annotations: [annotation],
+            observationEndedAt: origin.addingTimeInterval(100)
+        )
+
+        XCTAssertEqual(summary.eligibleTripCount, 1)
+        XCTAssertEqual(summary.coveredTripCount, 0)
+        XCTAssertEqual(summary.unmatchedSessionCount, 1)
+        XCTAssertEqual(summary.monitoredDrivingDuration, 0)
+        XCTAssertNil(summary.candidatesPerThousandMonitoredKm)
+        XCTAssertEqual(summary.reviewedCandidateCount, 0)
+        XCTAssertNil(summary.realCollisionRatioAmongReviewed)
+    }
+
+    func testCoverageSummaryDoesNotPublishCandidateRateWhenEvidenceJournalFailed() {
+        let origin = Date(timeIntervalSinceReferenceDate: 30_000)
+        let tripID = UUID()
+        let record = coverageRecord(
+            tripID: tripID,
+            tripStartedAt: origin,
+            vehicleType: .voiture,
+            startedAt: origin,
+            endedAt: origin.addingTimeInterval(60),
+            candidateCount: 1
+        )
+        let trip = CollisionShadowFinalizedTripEvidence(
+            id: tripID,
+            startDate: origin,
+            endDate: origin.addingTimeInterval(60),
+            drivingDuration: 60,
+            distanceKm: 1,
+            vehicleType: .voiture
+        )
+
+        let summary = CollisionShadowCoverageSummary.summarize(
+            [record],
+            finalizedTrips: [trip],
+            candidateEvidenceAvailable: false,
+            observationEndedAt: origin.addingTimeInterval(100)
+        )
+
+        XCTAssertEqual(summary.candidateCount, 1)
+        XCTAssertNil(summary.candidatesPerThousandMonitoredKm)
+    }
+
+    func testCoverageSummaryDoesNotTreatAnEmptyOpenSessionAsMonitoredTime() {
+        let origin = Date(timeIntervalSinceReferenceDate: 40_000)
+        let tripID = UUID()
+        let emptySession = CollisionShadowCoverageRecord(
+            id: UUID(),
+            tripID: tripID,
+            tripStartedAt: origin,
+            vehicleType: .voiture,
+            algorithmVersion: CollisionDetectionEngine.algorithmVersion,
+            shadowStartedAt: origin,
+            lastCheckpointAt: origin.addingTimeInterval(60),
+            endedAt: origin.addingTimeInterval(60),
+            endReason: .tripEnded,
+            frameCount: 0,
+            qualifiedGPSFrameCount: 0,
+            gapCount: 0,
+            missingMotionDuration: 0,
+            maximumMotionGap: 0,
+            candidateCount: 0,
+            motionErrorCount: 1,
+            version: CollisionShadowCoverageRecord.schemaVersion
+        )
+        let trip = CollisionShadowFinalizedTripEvidence(
+            id: tripID,
+            startDate: origin,
+            endDate: origin.addingTimeInterval(60),
+            drivingDuration: 60,
+            distanceKm: 1,
+            vehicleType: .voiture
+        )
+
+        let summary = CollisionShadowCoverageSummary.summarize(
+            [emptySession],
+            finalizedTrips: [trip],
+            observationEndedAt: origin.addingTimeInterval(100)
+        )
+
+        XCTAssertEqual(summary.eligibleTripCount, 1)
+        XCTAssertEqual(summary.coveredTripCount, 0)
+        XCTAssertEqual(summary.monitoredDrivingDuration, 0)
+        XCTAssertEqual(summary.monitoringCoverageRatio, 0)
+    }
+
     private func shadowCandidate(at impactAt: Date) -> CollisionShadowCandidate {
         CollisionShadowCandidate(
             id: UUID(),
@@ -1036,6 +1242,40 @@ final class CollisionDetectionEngineTests: XCTestCase {
             preImpactSpeedKmh: 50,
             postImpactSpeedKmh: 5,
             speedLossKmh: 45
+        )
+    }
+
+    private func coverageRecord(
+        tripID: UUID,
+        tripStartedAt: Date,
+        vehicleType: VehicleType,
+        startedAt: Date,
+        endedAt: Date,
+        candidateCount: Int
+    ) -> CollisionShadowCoverageRecord {
+        let frameCount = max(
+            candidateCount,
+            Int(endedAt.timeIntervalSince(startedAt) /
+                CollisionShadowCoverageAccumulator.expectedFrameInterval)
+        )
+        return CollisionShadowCoverageRecord(
+            id: UUID(),
+            tripID: tripID,
+            tripStartedAt: tripStartedAt,
+            vehicleType: vehicleType,
+            algorithmVersion: CollisionDetectionEngine.algorithmVersion,
+            shadowStartedAt: startedAt,
+            lastCheckpointAt: endedAt,
+            endedAt: endedAt,
+            endReason: .tripEnded,
+            frameCount: frameCount,
+            qualifiedGPSFrameCount: frameCount,
+            gapCount: 0,
+            missingMotionDuration: 0,
+            maximumMotionGap: 0,
+            candidateCount: candidateCount,
+            motionErrorCount: 0,
+            version: CollisionShadowCoverageRecord.schemaVersion
         )
     }
 

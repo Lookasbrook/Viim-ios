@@ -133,9 +133,17 @@ pas etre rouverte. L'ecran de revue affiche uniquement le resume de la version
 d'algorithme courante et rappelle que ces chiffres mesurent la collecte, pas la
 detection des collisions.
 
-Prochaine tranche de mesure : joindre ces sessions aux trajets finalises pour publier
-le ratio duree surveillee/duree conduite et les candidats par 1 000 km. Definir avant
-la collecte les seuils de validation, puis exporter un rapport agrege sans trace GPS.
+Lot build 45 : les sessions sont jointes par UUID et type de vehicule aux trajets
+motorises finalises et affichables. Les intervalles sont rognés aux bornes du trajet
+et fusionnes avant calcul afin qu'un redemarrage ou un chevauchement ne double pas
+la duree. Assistance publie le ratio duree surveillee/duree conduite, la distance
+suivie estimee par prorata temporel, les candidats par 1 000 km suivis et la part des
+cas revus classes « collision reelle ». Les sessions sans trajet correspondant et
+les trajets sans session restent comptes. Aucun de ces ratios ne mesure le rappel
+ou les faux negatifs et aucune coordonnee n'entre dans l'agregat.
+
+Prochaine tranche de mesure : figer les seuils statistiques de validation avant
+collecte terrain puis exporter un rapport agrege signe, toujours sans trace GPS.
 
 Porte de sortie : entitlement approuve, tests SafetyKit complets, annulation fiable,
 livraison de bout en bout prouvee et taux d'echec publie. Avant cette porte,
@@ -516,3 +524,23 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   dernier lancement build 23, `authorizedWhenInUse`, et l'entite `FuelFillUp`
   n'existe pas encore dans la base appareil : migration et capture arriere-plan
   ne sont toujours pas prouvees tant que l'iPhone n'est pas ouvert manuellement.
+
+## Execution build 45 — metriques de couverture collision shadow
+
+- Les sessions de la version courante sont jointes aux trajets finalises par UUID
+  et type de vehicule. Seuls les trajets motorises `reliable` ou `partial`, avec
+  duree et distance valides, entrent dans le denominateur.
+- Les intervalles sont rognés aux dates du trajet et fusionnes. La distance suivie
+  est explicitement une estimation par prorata temporel ; elle ne remplace pas une
+  trace kilometrique capteur.
+- Le taux de candidats repose sur les preuves candidates uniques et devient
+  indisponible si leur journal ne peut pas etre lu. La part « collision reelle »
+  utilise uniquement les cas revus et ne constitue pas une mesure de rappel.
+- Quatre tests nouveaux couvrent les chevauchements, les trajets non couverts, les
+  sessions orphelines, un mauvais type de vehicule, une session ouverte sans frame
+  et l'indisponibilite du journal. Suite complete 351/351, zero echec ou test ignore.
+- Build 45 signe, installe et confirme sur l'iPhone 16. Base avant/apres identique
+  au SHA-256 historique, 126 trajets et `integrity_check=ok`. Le lancement automatise
+  expire encore ; le dernier lancement prouve reste le build 23 en
+  `authorizedWhenInUse`. Ce lot mesure mieux la calibration mais n'active aucune
+  alerte et ne ferme aucune porte terrain.

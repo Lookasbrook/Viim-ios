@@ -17,6 +17,7 @@ final class CollisionCalibrationReviewStore: ObservableObject {
     private let candidateJournal: CollisionShadowJournal
     private let reviewJournal: CollisionShadowReviewJournal
     private let coverageJournal: CollisionShadowCoverageJournal
+    private var finalizedTrips: [CollisionShadowFinalizedTripEvidence] = []
 
     init(
         candidateJournal: CollisionShadowJournal = CollisionShadowJournal(),
@@ -28,10 +29,19 @@ final class CollisionCalibrationReviewStore: ObservableObject {
         self.coverageJournal = coverageJournal
     }
 
-    func reload() {
+    func reload(trips: [TripRecord]? = nil) {
+        if let trips {
+            finalizedTrips = trips.compactMap(Self.finalizedTripEvidence)
+        }
+        var loadedCandidates: [CollisionShadowCandidate] = []
+        var loadedAnnotations: [CollisionShadowReviewAnnotation] = []
+        var candidateEvidenceAvailable = false
         do {
             let candidates = try candidateJournal.load()
             let annotations = try reviewJournal.load()
+            loadedCandidates = candidates
+            loadedAnnotations = annotations
+            candidateEvidenceAvailable = true
             pendingCandidates = Self.pending(
                 candidates: candidates,
                 annotations: annotations
@@ -51,7 +61,11 @@ final class CollisionCalibrationReviewStore: ObservableObject {
                 $0.algorithmVersion == CollisionDetectionEngine.algorithmVersion
             }
             coverageSummary = CollisionShadowCoverageSummary.summarize(
-                currentAlgorithmRecords
+                currentAlgorithmRecords,
+                finalizedTrips: finalizedTrips,
+                candidates: loadedCandidates,
+                annotations: loadedAnnotations,
+                candidateEvidenceAvailable: candidateEvidenceAvailable
             )
             isCoverageUnavailable = false
         } catch {
@@ -89,6 +103,25 @@ final class CollisionCalibrationReviewStore: ObservableObject {
         return candidates
             .filter { !reviewedIDs.contains($0.id) }
             .sorted { $0.impactAt > $1.impactAt }
+    }
+
+    private static func finalizedTripEvidence(
+        _ trip: TripRecord
+    ) -> CollisionShadowFinalizedTripEvidence? {
+        guard trip.isTrustedForDisplay,
+              trip.vehicleType != .velo,
+              trip.durationSec > 0,
+              trip.distanceKm.isFinite,
+              trip.distanceKm > 0,
+              trip.endDate >= trip.startDate else { return nil }
+        return CollisionShadowFinalizedTripEvidence(
+            id: trip.id,
+            startDate: trip.startDate,
+            endDate: trip.endDate,
+            drivingDuration: TimeInterval(trip.durationSec),
+            distanceKm: trip.distanceKm,
+            vehicleType: trip.vehicleType
+        )
     }
 }
 
@@ -454,6 +487,7 @@ struct AssistanceView: View {
 
 private struct CollisionCalibrationReviewView: View {
     @EnvironmentObject private var store: CollisionCalibrationReviewStore
+    @EnvironmentObject private var tripManager: TripManager
     @State private var alertMessage: AssistanceAlertMessage?
 
     var body: some View {
@@ -510,7 +544,7 @@ private struct CollisionCalibrationReviewView: View {
         }
         .background(ViimColors.background.ignoresSafeArea())
         .navigationTitle("assistance.collisionCalibration.reviewTitle")
-        .task { store.reload() }
+        .task { store.reload(trips: tripManager.recentTrips) }
         .alert(item: $alertMessage) { message in
             Alert(
                 title: Text(message.titleKey),
@@ -551,7 +585,25 @@ private struct CollisionCalibrationCoverageCard: View {
                             labelKey: "assistance.collisionCalibration.coverage.gaps"
                         )
                     }
+                    HStack(spacing: 8) {
+                        CollisionCoverageMetric(
+                            value: monitoredDrivingPercentage(summary),
+                            labelKey: "assistance.collisionCalibration.coverage.driving"
+                        )
+                        CollisionCoverageMetric(
+                            value: candidateRate(summary),
+                            labelKey: "assistance.collisionCalibration.coverage.candidateRate"
+                        )
+                        CollisionCoverageMetric(
+                            value: reviewedRatio(summary),
+                            labelKey: "assistance.collisionCalibration.coverage.reviewedRatio"
+                        )
+                    }
                     Text("assistance.collisionCalibration.coverage.detail \(summary.completedSessionCount) \(summary.unfinishedSessionCount) \(summary.motionErrorCount)")
+                        .font(.caption2)
+                        .foregroundStyle(ViimColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("assistance.collisionCalibration.coverage.tripDetail \(summary.coveredTripCount) \(summary.eligibleTripCount) \(summary.unmatchedSessionCount) \(summary.estimatedMonitoredDistanceKm, specifier: "%.1f")")
                         .font(.caption2)
                         .foregroundStyle(ViimColors.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -567,6 +619,21 @@ private struct CollisionCalibrationCoverageCard: View {
 
     private func qualifiedGPSPercentage(_ summary: CollisionShadowCoverageSummary) -> String {
         guard let ratio = summary.qualifiedGPSRatio else { return "--" }
+        return ratio.formatted(.percent.precision(.fractionLength(0)))
+    }
+
+    private func monitoredDrivingPercentage(_ summary: CollisionShadowCoverageSummary) -> String {
+        guard let ratio = summary.monitoringCoverageRatio else { return "--" }
+        return ratio.formatted(.percent.precision(.fractionLength(0)))
+    }
+
+    private func candidateRate(_ summary: CollisionShadowCoverageSummary) -> String {
+        guard let rate = summary.candidatesPerThousandMonitoredKm else { return "--" }
+        return rate.formatted(.number.precision(.fractionLength(1)))
+    }
+
+    private func reviewedRatio(_ summary: CollisionShadowCoverageSummary) -> String {
+        guard let ratio = summary.realCollisionRatioAmongReviewed else { return "--" }
         return ratio.formatted(.percent.precision(.fractionLength(0)))
     }
 }

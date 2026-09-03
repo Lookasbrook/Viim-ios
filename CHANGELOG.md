@@ -2,6 +2,14 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (couverture collision shadow reliée aux trajets — build 45 privé)
+
+- **[Mesure]** Les sessions locales de recherche collision sont désormais jointes aux trajets motorisés finalisés et fiables. Les intervalles sont rognés aux bornes du trajet puis fusionnés : un redémarrage ou deux sessions qui se chevauchent ne gonflent plus la durée suivie.
+- **[Indicateurs]** Assistance distingue le temps de conduite suivi, la distance suivie estimée, les candidats par 1 000 km suivis et la part de cas revus classés « collision réelle ». Les trajets sans session et les sessions sans trajet correspondant restent visibles dans les dénominateurs.
+- **[Limites]** Ces statistiques calibrent le moteur shadow ; elles ne mesurent ni le rappel, ni les collisions manquées et n'activent aucune alerte. SafetyKit et une preuve de livraison fournisseur restent obligatoires avant toute promesse de protection automatique.
+- **[Confidentialité]** L'agrégation utilise uniquement UUID du trajet, dates, durée, distance, type de véhicule et compteurs ; aucune coordonnée ni trace GPS n'est copiée dans la preuve collision.
+- **[QA/Appareil]** Suite iOS complète 351/351, zéro échec ou test ignoré. Le build 45 est signé, installé et confirmé sur l'iPhone 16 ; la base avant/après reste identique (126 trajets, intégrité `ok`). L'ouverture automatisée expire encore et le dernier lancement prouvé reste le build 23 : l'autorisation `Toujours` et la collecte écran verrouillé nécessitent toujours l'action terrain décrite dans le plan.
+
 ## 2026-09-03 (catalogue véhicule officiel canadien — build 44 privé)
 
 - **[Localité]** Les profils Canada interrogent désormais les fichiers publics officiels de Ressources naturelles Canada pour les années 1995 à 2026. Les autres pays conservent FuelEconomy.gov tant qu’une source locale qualifiée n’est pas disponible. Seuls l’année, la marque et le modèle sont envoyés ; aucune position ni trace de trajet ne quitte l’app pour cette recherche.

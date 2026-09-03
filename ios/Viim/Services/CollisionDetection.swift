@@ -862,23 +862,172 @@ struct CollisionShadowCoverageSummary: Equatable {
     let gapCount: Int
     let candidateCount: Int
     let motionErrorCount: Int
+    let eligibleTripCount: Int
+    let coveredTripCount: Int
+    let unmatchedSessionCount: Int
+    let eligibleDrivingDuration: TimeInterval
+    let monitoredDrivingDuration: TimeInterval
+    let estimatedMonitoredDistanceKm: Double
+    let matchedCandidateCount: Int
+    let isCandidateEvidenceAvailable: Bool
+    let reviewedCandidateCount: Int
+    let realCollisionReviewCount: Int
 
     var qualifiedGPSRatio: Double? {
         guard frameCount > 0 else { return nil }
         return Double(qualifiedGPSFrameCount) / Double(frameCount)
     }
 
-    static func summarize(_ records: [CollisionShadowCoverageRecord]) -> Self {
-        Self(
-            sessionCount: records.count,
-            completedSessionCount: records.lazy.filter { $0.endedAt != nil }.count,
-            unfinishedSessionCount: records.lazy.filter { $0.endedAt == nil }.count,
-            frameCount: records.reduce(0) { $0 + $1.frameCount },
-            qualifiedGPSFrameCount: records.reduce(0) { $0 + $1.qualifiedGPSFrameCount },
-            gapCount: records.reduce(0) { $0 + $1.gapCount },
-            candidateCount: records.reduce(0) { $0 + $1.candidateCount },
-            motionErrorCount: records.reduce(0) { $0 + $1.motionErrorCount }
+    var monitoringCoverageRatio: Double? {
+        guard eligibleDrivingDuration > 0 else { return nil }
+        return min(1, monitoredDrivingDuration / eligibleDrivingDuration)
+    }
+
+    var candidatesPerThousandMonitoredKm: Double? {
+        guard isCandidateEvidenceAvailable,
+              estimatedMonitoredDistanceKm > 0 else { return nil }
+        return Double(matchedCandidateCount) * 1_000 / estimatedMonitoredDistanceKm
+    }
+
+    /// Part des candidats classes « collision reelle » parmi les seuls
+    /// candidats revus. Ce ratio ne mesure ni le rappel ni les faux negatifs.
+    var realCollisionRatioAmongReviewed: Double? {
+        guard reviewedCandidateCount > 0 else { return nil }
+        return Double(realCollisionReviewCount) / Double(reviewedCandidateCount)
+    }
+
+    static func summarize(
+        _ records: [CollisionShadowCoverageRecord],
+        finalizedTrips: [CollisionShadowFinalizedTripEvidence] = [],
+        candidates: [CollisionShadowCandidate] = [],
+        annotations: [CollisionShadowReviewAnnotation] = [],
+        candidateEvidenceAvailable: Bool = true,
+        observationEndedAt: Date = Date()
+    ) -> Self {
+        let validRecords = records.filter(\.isStructurallyValid)
+        let observationStartedAt = validRecords.map(\.tripStartedAt).min()
+        let filteredTrips = finalizedTrips.filter { trip in
+            trip.isStructurallyValid &&
+                observationStartedAt.map { trip.endDate >= $0 } ?? false &&
+                trip.startDate <= observationEndedAt
+        }
+        let eligibleTrips = Dictionary(
+            filteredTrips.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        ).map(\.value)
+        let tripByID = Dictionary(uniqueKeysWithValues: eligibleTrips.map { ($0.id, $0) })
+        let matchingRecords = validRecords.filter { record in
+            guard let trip = tripByID[record.tripID] else { return false }
+            return record.vehicleType == trip.vehicleType
+        }
+
+        var monitoredDuration: TimeInterval = 0
+        var monitoredDistanceKm = 0.0
+        var coveredTripCount = 0
+        for trip in eligibleTrips {
+            let clippedRecords = matchingRecords.compactMap {
+                record -> (interval: DateInterval, frameSupportedDuration: TimeInterval)? in
+                guard record.tripID == trip.id,
+                      record.vehicleType == trip.vehicleType else { return nil }
+                let start = max(record.shadowStartedAt, trip.startDate)
+                let end = min(min(record.lastCheckpointAt, trip.endDate), observationEndedAt)
+                guard end > start else { return nil }
+                let interval = DateInterval(start: start, end: end)
+                let frameSupportedDuration = min(
+                    interval.duration,
+                    Double(record.frameCount) * CollisionShadowCoverageAccumulator.expectedFrameInterval
+                )
+                return (interval, frameSupportedDuration)
+            }
+            let intervalUnionDuration = unionDuration(of: clippedRecords.map(\.interval))
+            let frameSupportedDuration = clippedRecords.reduce(0) {
+                $0 + $1.frameSupportedDuration
+            }
+            let seconds = min(
+                trip.drivingDuration,
+                min(intervalUnionDuration, frameSupportedDuration)
+            )
+            guard seconds > 0 else { continue }
+            coveredTripCount += 1
+            monitoredDuration += seconds
+            monitoredDistanceKm += trip.distanceKm * (seconds / trip.drivingDuration)
+        }
+
+        let algorithmVersions = Set(validRecords.map(\.algorithmVersion))
+        let eligibleCandidateIDs = Set(candidates.compactMap { candidate -> UUID? in
+            guard candidate.isStructurallyValid,
+                  algorithmVersions.contains(candidate.algorithmVersion),
+                  let tripID = candidate.tripID,
+                  let trip = tripByID[tripID],
+                  candidate.vehicleType == trip.vehicleType,
+                  candidate.impactAt >= trip.startDate,
+                  candidate.impactAt <= trip.endDate else { return nil }
+            return candidate.id
+        })
+        let eligibleAnnotations = annotations.filter {
+            eligibleCandidateIDs.contains($0.candidateID) && $0.isStructurallyValid
+        }
+
+        return Self(
+            sessionCount: validRecords.count,
+            completedSessionCount: validRecords.lazy.filter { $0.endedAt != nil }.count,
+            unfinishedSessionCount: validRecords.lazy.filter { $0.endedAt == nil }.count,
+            frameCount: validRecords.reduce(0) { $0 + $1.frameCount },
+            qualifiedGPSFrameCount: validRecords.reduce(0) { $0 + $1.qualifiedGPSFrameCount },
+            gapCount: validRecords.reduce(0) { $0 + $1.gapCount },
+            candidateCount: validRecords.reduce(0) { $0 + $1.candidateCount },
+            motionErrorCount: validRecords.reduce(0) { $0 + $1.motionErrorCount },
+            eligibleTripCount: eligibleTrips.count,
+            coveredTripCount: coveredTripCount,
+            unmatchedSessionCount: validRecords.count - matchingRecords.count,
+            eligibleDrivingDuration: eligibleTrips.reduce(0) { $0 + $1.drivingDuration },
+            monitoredDrivingDuration: monitoredDuration,
+            estimatedMonitoredDistanceKm: monitoredDistanceKm,
+            matchedCandidateCount: eligibleCandidateIDs.count,
+            isCandidateEvidenceAvailable: candidateEvidenceAvailable,
+            reviewedCandidateCount: eligibleAnnotations.count,
+            realCollisionReviewCount: eligibleAnnotations.lazy.filter {
+                $0.label == .realCollision
+            }.count
         )
+    }
+
+    private static func unionDuration(of intervals: [DateInterval]) -> TimeInterval {
+        let sorted = intervals.sorted { $0.start < $1.start }
+        guard var current = sorted.first else { return 0 }
+        var total: TimeInterval = 0
+        for interval in sorted.dropFirst() {
+            if interval.start <= current.end {
+                current = DateInterval(
+                    start: current.start,
+                    end: max(current.end, interval.end)
+                )
+            } else {
+                total += current.duration
+                current = interval
+            }
+        }
+        return total + current.duration
+    }
+}
+
+/// Vue minimale d'un trajet persiste utilisee pour agreger la couverture
+/// shadow. Elle ne contient ni trace GPS, ni position.
+struct CollisionShadowFinalizedTripEvidence: Equatable {
+    let id: UUID
+    let startDate: Date
+    let endDate: Date
+    let drivingDuration: TimeInterval
+    let distanceKm: Double
+    let vehicleType: VehicleType
+
+    var isStructurallyValid: Bool {
+        startDate.timeIntervalSinceReferenceDate.isFinite &&
+            endDate.timeIntervalSinceReferenceDate.isFinite &&
+            endDate >= startDate &&
+            drivingDuration.isFinite && drivingDuration > 0 &&
+            distanceKm.isFinite && distanceKm > 0 &&
+            vehicleType != .velo
     }
 }
 
