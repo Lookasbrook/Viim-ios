@@ -674,12 +674,14 @@ final class VehicleFuelCatalogTests: XCTestCase {
         let observedAt = Date(timeIntervalSince1970: 1_800_000_000)
         func settings(
             identifier: String? = "government_of_ontario_fuel_price_survey",
-            url: URL? = URL(string: "https://www.ontario.ca/fuel.csv"),
-            locality: String? = "Toronto"
+            url: URL? = URL(string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"),
+            locality: String? = "Toronto",
+            currency: SupportedCurrency = .cad,
+            price: Double = 1.553
         ) -> FuelSettings {
             FuelSettings(
-                currency: .cad,
-                pricePerLiter: 1.553,
+                currency: currency,
+                pricePerLiter: price,
                 source: .officialPublicData,
                 capturedAt: observedAt,
                 fuelType: .gasoline,
@@ -693,6 +695,10 @@ final class VehicleFuelCatalogTests: XCTestCase {
         XCTAssertFalse(settings(identifier: nil).canSnapshotCost(at: observedAt))
         XCTAssertFalse(settings(url: nil).canSnapshotCost(at: observedAt))
         XCTAssertFalse(settings(url: URL(string: "http://example.com/fuel.csv")).canSnapshotCost(at: observedAt))
+        XCTAssertFalse(settings(url: URL(string: "https://example.com/v1/files/fuel-prices/fueltypesall.csv")).canSnapshotCost(at: observedAt))
+        XCTAssertFalse(settings(url: URL(string: "https://www.ontario.ca/fuel.csv")).canSnapshotCost(at: observedAt))
+        XCTAssertFalse(settings(currency: .usd).canSnapshotCost(at: observedAt))
+        XCTAssertFalse(settings(price: 5.01).canSnapshotCost(at: observedAt))
         XCTAssertFalse(settings(locality: nil).canSnapshotCost(at: observedAt))
     }
 
@@ -705,7 +711,7 @@ final class VehicleFuelCatalogTests: XCTestCase {
             capturedAt: observedAt,
             fuelType: .gasoline,
             sourceIdentifier: "government_of_ontario_fuel_price_survey",
-            sourceURL: URL(string: "https://www.ontario.ca/fuel.csv"),
+            sourceURL: URL(string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"),
             locality: "Toronto"
         )
         let rendered = FuelPriceEditorPolicy.priceText(
@@ -789,6 +795,76 @@ final class VehicleFuelCatalogTests: XCTestCase {
                 currentProfile: profile,
                 currentSettings: initial,
                 selectedFuelType: .gasoline
+            )
+        )
+    }
+
+    func testFuelPriceLookupUsesRegionWhenReverseGeocoderHasNoCity() {
+        XCTAssertEqual(
+            FuelPriceLookupRequest.coarseLocality(locality: nil, regionCode: "Ontario"),
+            "Ontario"
+        )
+        XCTAssertEqual(
+            FuelPriceLookupRequest.coarseLocality(locality: "  Toronto  ", regionCode: "Ontario"),
+            "Toronto"
+        )
+        XCTAssertNil(FuelPriceLookupRequest.coarseLocality(locality: nil, regionCode: "  "))
+    }
+
+    func testFuelPriceLookupReusesOnlyMatchingFreshOfficialEvidence() throws {
+        let now = Date(timeIntervalSince1970: 1_788_409_800)
+        let profile = UserProfile(
+            firstName: "Awa",
+            phoneNumber: "+14185550123",
+            vehicleType: .voiture,
+            vehicleBrand: "Toyota",
+            vehicleModel: "Corolla",
+            vehicleYear: "2024",
+            synced: false,
+            fuelType: .gasoline
+        )
+        let official = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.55,
+            source: .officialPublicData,
+            capturedAt: now.addingTimeInterval(-6 * 24 * 60 * 60),
+            fuelType: .gasoline,
+            sourceIdentifier: "government_of_ontario_fuel_price_survey",
+            sourceURL: try XCTUnwrap(URL(string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv")),
+            locality: "Toronto"
+        )
+        let request = FuelPriceLookupRequest(
+            id: UUID(),
+            profile: profile,
+            settings: official,
+            fuelType: .gasoline
+        )
+
+        XCTAssertTrue(
+            request.canReuseCachedOfficialPrice(
+                activeRequestID: request.id,
+                currentProfile: profile,
+                currentSettings: official,
+                selectedFuelType: .gasoline,
+                at: now
+            )
+        )
+        XCTAssertFalse(
+            request.canReuseCachedOfficialPrice(
+                activeRequestID: request.id,
+                currentProfile: profile,
+                currentSettings: official,
+                selectedFuelType: .diesel,
+                at: now
+            )
+        )
+        XCTAssertFalse(
+            request.canReuseCachedOfficialPrice(
+                activeRequestID: request.id,
+                currentProfile: profile,
+                currentSettings: official,
+                selectedFuelType: .gasoline,
+                at: now.addingTimeInterval(15 * 24 * 60 * 60)
             )
         )
     }

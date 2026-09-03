@@ -490,16 +490,30 @@ struct ProfilView: View {
             guard let placemark = placemarks.first,
                   let countryCode = placemark.isoCountryCode,
                   let regionCode = placemark.administrativeArea,
-                  let locality = placemark.locality else {
+                  let locality = FuelPriceLookupRequest.coarseLocality(
+                    locality: placemark.locality,
+                    regionCode: regionCode
+                  ) else {
                 throw BackendAPIError.invalidResponse
             }
 
-            let quote = try await BackendAPIClient.shared.fetchOfficialFuelPrice(
-                countryCode: countryCode,
-                regionCode: regionCode,
-                locality: locality,
-                fuelType: request.fuelType
-            )
+            let quote: PublicFuelPriceQuote
+            if countryCode.uppercased() == "CA",
+               ["ON", "ONTARIO"].contains(regionCode.uppercased()) {
+                quote = try await OntarioPublicFuelPriceClient.shared.fetchCurrentPrice(
+                    countryCode: countryCode,
+                    regionCode: regionCode,
+                    locality: locality,
+                    fuelType: request.fuelType
+                )
+            } else {
+                quote = try await BackendAPIClient.shared.fetchOfficialFuelPrice(
+                    countryCode: countryCode,
+                    regionCode: regionCode,
+                    locality: locality,
+                    fuelType: request.fuelType
+                )
+            }
             guard !Task.isCancelled,
                   request.canCommit(
                     activeRequestID: activeFuelPriceLookupID,
@@ -534,7 +548,15 @@ struct ProfilView: View {
                 return
             }
             feedbackIsError = true
-            if case .apiStatus(_, let code) = error, code == "fuel_price_unavailable" {
+            if request.canReuseCachedOfficialPrice(
+                activeRequestID: activeFuelPriceLookupID,
+                currentProfile: onboardingStore.profile,
+                currentSettings: onboardingStore.fuelSettings,
+                selectedFuelType: selectedFuelType,
+                at: Date()
+            ) {
+                feedbackKey = "profile.fuel.official.cached"
+            } else if case .apiStatus(_, let code) = error, code == "fuel_price_unavailable" {
                 feedbackKey = "profile.fuel.official.unavailable"
             } else {
                 feedbackKey = "profile.fuel.official.failed"
@@ -661,6 +683,33 @@ struct FuelPriceLookupRequest: Equatable {
             currentProfile == profile &&
             currentSettings == settings &&
             selectedFuelType == fuelType
+    }
+
+    func canReuseCachedOfficialPrice(
+        activeRequestID: UUID?,
+        currentProfile: UserProfile?,
+        currentSettings: FuelSettings,
+        selectedFuelType: VehicleFuelType?,
+        at date: Date
+    ) -> Bool {
+        canCommit(
+            activeRequestID: activeRequestID,
+            currentProfile: currentProfile,
+            currentSettings: currentSettings,
+            selectedFuelType: selectedFuelType
+        ) &&
+            settings.source == .officialPublicData &&
+            settings.fuelType == fuelType &&
+            settings.canSnapshotCost(at: date)
+    }
+
+    static func coarseLocality(locality: String?, regionCode: String) -> String? {
+        let region = regionCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !region.isEmpty else {
+            return nil
+        }
+        let city = locality?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return city?.isEmpty == false ? city : region
     }
 }
 

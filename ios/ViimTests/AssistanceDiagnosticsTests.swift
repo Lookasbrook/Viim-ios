@@ -182,7 +182,13 @@ final class BackendAPIClientTests: XCTestCase {
             #"{"countryCode":"US","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
             #"{"countryCode":"CA","regionCode":"QC","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
             #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"untrusted","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
-            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://example.com/fuel.csv"}"#
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://example.com/fuel.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"diesel","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"USD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":5.01,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-01T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-04T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv?download=1"}"#
         ]
 
         for body in invalidBodies {
@@ -194,9 +200,164 @@ final class BackendAPIClientTests: XCTestCase {
                     countryCode: "CA",
                     regionCode: "ON",
                     locality: "Toronto",
-                    fuelType: .gasoline
+                    fuelType: .gasoline,
+                    now: Date(timeIntervalSince1970: 1_788_409_800)
                 )
                 XCTFail("Expected BackendAPIError.invalidResponse for \(body)")
+            } catch let error as BackendAPIError {
+                XCTAssertEqual(error, .invalidResponse)
+            }
+        }
+    }
+
+    func testOfficialFuelPriceRejectsUntrustedTransportEvidence() async throws {
+        let body = #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"}"#
+        let cases: [(URL?, String, String)] = [
+            (URL(string: "https://attacker.example/v1/fuel-prices/current"), "application/json", body),
+            (nil, "text/html", body),
+            (nil, "application/json", String(repeating: "x", count: 128_001))
+        ]
+
+        for (responseURL, contentType, responseBody) in cases {
+            let client = makeClient { request in
+                self.httpResponse(
+                    for: request,
+                    statusCode: 200,
+                    body: responseBody,
+                    responseURL: responseURL,
+                    contentType: contentType
+                )
+            }
+            do {
+                _ = try await client.fetchOfficialFuelPrice(
+                    countryCode: "CA",
+                    regionCode: "ON",
+                    locality: "Toronto",
+                    fuelType: .gasoline
+                )
+                XCTFail("Expected transport evidence rejection")
+            } catch let error as BackendAPIError {
+                XCTAssertEqual(error, .invalidResponse)
+            }
+        }
+    }
+
+    func testOfficialFuelPriceRejectsInvalidCoarseLocationBeforeNetworking() async throws {
+        let client = makeClient { _ in
+            XCTFail("Invalid location must not reach the network")
+            throw URLError(.badURL)
+        }
+
+        do {
+            _ = try await client.fetchOfficialFuelPrice(
+                countryCode: "CA",
+                regionCode: "ON",
+                locality: "Toronto\nlatitude=1",
+                fuelType: .gasoline
+            )
+            XCTFail("Expected BackendAPIError.invalidURL")
+        } catch let error as BackendAPIError {
+            XCTAssertEqual(error, .invalidURL)
+        }
+    }
+
+    func testOntarioPublicFuelPriceReadsOfficialCSVLocally() async throws {
+        let csv = """
+        Date,Toronto West/Ouest,Toronto East/Est,Ontario Average/Moyenne provinciale,Fuel Type,,
+        2026-08-25,140.0,142.0,145.0,Regular Unleaded Gasoline,,
+        2026-09-01,150.0,152.0,155.0,Regular Unleaded Gasoline,,
+        2026-09-01,160.0,162.0,165.0,Diesel,,
+        """
+        let session = makeSession { request in
+            XCTAssertEqual(
+                request.url?.absoluteString,
+                "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"
+            )
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/csv")
+            XCTAssertNil(URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.query)
+            return self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: csv,
+                responseURL: URL(string: "https://prod-energy-fuel-prices.s3.amazonaws.com/fueltypesall.csv"),
+                contentType: "text/csv"
+            )
+        }
+        let client = OntarioPublicFuelPriceClient(session: session)
+        let now = Date(timeIntervalSince1970: 1_788_409_800)
+
+        let quote = try await client.fetchCurrentPrice(
+            countryCode: "CA",
+            regionCode: "Ontario",
+            locality: "Toronto",
+            fuelType: .gasoline,
+            now: now
+        )
+
+        XCTAssertEqual(quote.pricePerLiter, 1.51, accuracy: 0.000_1)
+        XCTAssertEqual(quote.locality, "Toronto")
+        XCTAssertEqual(quote.currency, .cad)
+        XCTAssertEqual(quote.fuelType, .gasoline)
+        XCTAssertEqual(quote.sourceURL.absoluteString, "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv")
+    }
+
+    func testOntarioPublicFuelPriceFallsBackToProvincialAverage() async throws {
+        let csv = """
+        Date,Ontario Average/Moyenne provinciale,Fuel Type
+        2026-09-01,155.4,Regular Unleaded Gasoline
+        """
+        let client = OntarioPublicFuelPriceClient(session: makeSession { request in
+            self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: csv,
+                responseURL: URL(string: "https://prod-energy-fuel-prices.s3.amazonaws.com/fueltypesall.csv"),
+                contentType: "text/csv"
+            )
+        })
+
+        let quote = try await client.fetchCurrentPrice(
+            countryCode: "CA",
+            regionCode: "ON",
+            locality: "Kingston",
+            fuelType: .gasoline,
+            now: Date(timeIntervalSince1970: 1_788_409_800)
+        )
+
+        XCTAssertEqual(quote.pricePerLiter, 1.554, accuracy: 0.000_1)
+        XCTAssertEqual(quote.locality, "Ontario")
+    }
+
+    func testOntarioPublicFuelPriceRejectsUntrustedRedirectAndStaleDataset() async throws {
+        let staleCSV = """
+        Date,Ontario Average/Moyenne provinciale,Fuel Type
+        2026-07-01,155.4,Regular Unleaded Gasoline
+        """
+        let cases = [
+            (URL(string: "https://attacker.example/fueltypesall.csv"), "2026-09-01"),
+            (URL(string: "https://prod-energy-fuel-prices.s3.amazonaws.com/fueltypesall.csv"), "2026-07-01")
+        ]
+
+        for (responseURL, date) in cases {
+            let body = staleCSV.replacingOccurrences(of: "2026-07-01", with: date)
+            let client = OntarioPublicFuelPriceClient(session: makeSession { request in
+                self.httpResponse(
+                    for: request,
+                    statusCode: 200,
+                    body: body,
+                    responseURL: responseURL,
+                    contentType: "text/csv"
+                )
+            })
+            do {
+                _ = try await client.fetchCurrentPrice(
+                    countryCode: "CA",
+                    regionCode: "ON",
+                    locality: "Toronto",
+                    fuelType: .gasoline,
+                    now: Date(timeIntervalSince1970: 1_788_409_800)
+                )
+                XCTFail("Expected official CSV rejection")
             } catch let error as BackendAPIError {
                 XCTAssertEqual(error, .invalidResponse)
             }
@@ -339,13 +500,14 @@ final class BackendAPIClientTests: XCTestCase {
         for request: URLRequest,
         statusCode: Int,
         body: String,
-        responseURL: URL? = nil
+        responseURL: URL? = nil,
+        contentType: String = "application/json"
     ) -> (HTTPURLResponse, Data) {
         let response = HTTPURLResponse(
             url: responseURL ?? request.url!,
             statusCode: statusCode,
             httpVersion: nil,
-            headerFields: ["Content-Type": "application/json"]
+            headerFields: ["Content-Type": contentType]
         )!
         return (response, Data(body.utf8))
     }

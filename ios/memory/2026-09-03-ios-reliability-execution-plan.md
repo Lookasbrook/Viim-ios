@@ -32,7 +32,7 @@ etre presente comme plus fiable que les litres estimes qui le produisent.
 
 ## P0-A — Retablir et prouver la collecte de trajets
 
-Etat logiciel : implemente dans le build 27 ; validation terrain bloquee par
+Etat logiciel : implemente dans le build 28 ; validation terrain bloquee par
 `authorizedWhenInUse` tant que l'utilisateur n'accorde pas `Toujours`.
 
 1. Accorder `Toujours` et la position precise dans les reglages iOS.
@@ -104,6 +104,18 @@ reproductible a partir des preuves figees au trajet.
 
 ## P1-B — Prix publics adaptes a la localite
 
+Etat logiciel : tranche Ontario implementee pour le build 28. L'app telecharge
+directement le CSV hebdomadaire du gouvernement de l'Ontario, puis choisit le
+marche sur l'iPhone. Aucune coordonnee ni ville n'est transmise a Viim pour cette
+source. L'URL initiale et l'hote S3 de redirection sont listes explicitement ;
+HTTPS, chemin, type MIME, taille maximale, dates, devise, carburant et plage de
+prix sont verifies avant persistance. Sans ville issue du geocodage, la moyenne
+provinciale est utilisee et annoncee comme `Ontario`. Le dernier prix officiel
+encore frais est conserve si le reseau echoue. Le 2026-09-03, la route de secours
+`api.burktech-ia.com/v1/fuel-prices/current` repondait `404 not_found` en
+production bien que son implementation soit presente dans le depot ; elle ne
+fait donc plus partie du chemin critique Ontario.
+
 1. Selectionner la source par pays/region sans transmettre la trace du trajet :
    pays et subdivision suffisent dans la plupart des cas.
 2. Autoriser uniquement des domaines HTTPS explicites, imposer timeout, taille
@@ -115,7 +127,9 @@ reproductible a partir des preuves figees au trajet.
    comme local.
 
 Porte de sortie : tests de concurrence, donnees malformees, panne reseau, cache,
-changement de localite et changement de carburant.
+changement de localite et changement de carburant. La tranche Ontario couvre ces
+contrats en tests ; restent la verification manuelle sur appareil et l'ajout de
+sources officielles propres a chaque autre juridiction.
 
 ## P1-C — Catalogue vehicules et photos reelles
 
@@ -172,20 +186,20 @@ simulee pendant migration, aucune suppression automatique de donnees.
 2. Collecte shadow collision et protocole de calibration P0-B.
 3. Schema vehicule versionne, puis imports officiels et photos P1-C.
 4. Modele de consommation/calibration par pleins P1-A.
-5. Connecteurs de prix locaux securises P1-B.
+5. Etendre les connecteurs de prix locaux securises P1-B au-dela de l'Ontario.
 6. Core Data versionne P1-D avant toute evolution destructive du schema.
 7. Release TestFlight limitee, tableau de sante de collecte, puis ouverture
    progressive seulement si toutes les portes sont franchies.
 
 ## Etat d'execution verifie
 
-- Build 27 signe, installe et confirme `0.1.0 (27)` sur l'iPhone 16. Son lancement
+- Build 28 signe, installe et confirme `0.1.0 (28)` sur l'iPhone 16. Son lancement
   est refuse uniquement parce que l'iPhone est verrouille.
   Avant installation, Application Support a ete sauvegarde et son SQLite controle
   `ok`. Apres installation sans lancement, SQLite, WAL et SHM sont identiques octet
   pour octet, y compris apres l'installation finale du build 27 : la migration du
   store reel attend encore le deverrouillage.
-- 236/236 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
+- 243/243 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
   SQLite reelle d'un store sans les nouveaux champs de preuve carburant.
 - Permission appareil encore `authorizedWhenInUse` : la porte terrain P0-A reste
   ouverte et exige une action utilisateur dans les reglages iOS.
@@ -194,10 +208,17 @@ simulee pendant migration, aucune suppression automatique de donnees.
   selection utilisateur, invalidation et protection contre les courses reseau
   testes. Restent NRCan, la couverture moto licite, les plages multi-variantes et
   l'extension de la couverture photo a de nouveaux modeles.
+- Prix Ontario build 28 : lecture directe du CSV officiel, selection locale sans
+  transmission de ville, controles de transport et de preuve, moyenne provinciale
+  de repli et conservation du dernier prix encore valide. Le CSV reel et sa
+  redirection officielle ont ete controles ; les tests complets sont verts.
+- Apres installation du build 28, la copie non destructive du store appareil passe
+  `PRAGMA integrity_check=ok` et contient toujours 126 trajets. Le demarrage et le
+  bouton de prix sur appareil restent a verifier apres deverrouillage.
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 27 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 28 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le

@@ -2,6 +2,26 @@
 
 Objectif : aucune valeur metier ne doit etre affichee sans source de verite, formule, condition de validite et raison explicite quand la valeur manque.
 
+## Etat au 2026-09-03 — prix Ontario iOS, build 28 installe
+
+- L'endpoint prix du backend de production repond `404 not_found` malgre sa
+  presence dans le depot. Il n'est plus le chemin critique pour l'Ontario.
+- L'iPhone telecharge directement le CSV hebdomadaire officiel Ontario par HTTPS.
+  Le marche est selectionne localement : aucune coordonnee ni ville n'est envoyee
+  a Viim. Sans ville exploitable, l'app utilise explicitement la moyenne Ontario.
+- L'app refuse un hote ou chemin redirige non liste, un autre MIME, plus de 2 Mo,
+  une source vieille de plus de 14 jours, une date future, une devise autre que
+  CAD, un carburant discordant ou un prix hors plage plausible.
+- Le prix conserve sa source, son URL, sa date, sa devise, son carburant et sa
+  localite. En cas de panne, seul le dernier prix officiel encore valide peut
+  continuer a alimenter les nouveaux instantanes de cout.
+- Les tests couvrent CSV, moyenne provinciale, preuve malformee, reponse
+  trop volumineuse, MIME, redirection hostile, fraicheur et protection contre
+  l'ecrasement d'une saisie plus recente. La suite iOS passe 243/243. Le build 28
+  signe est installe sur l'iPhone 16 ; le store extrait apres installation est
+  integre et conserve 126 trajets. Le lancement et le parcours manuel du bouton
+  de prix restent bloques tant que l'iPhone est verrouille.
+
 ## Etat au 2026-09-02 — build 18 privé, lot carburant partiel
 
 Preuves disponibles pour le lot :

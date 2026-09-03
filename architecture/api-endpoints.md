@@ -10,6 +10,14 @@ Base : `https://api.burktech-ia.com/v1` ([ADR sous-domaine](../decisions/2026-07
 
 ## Prix publics du carburant
 
+Sur iOS, l'Ontario n'attend plus ce proxy : l'app telecharge directement le CSV
+HTTPS officiel puis selectionne le marche sur l'appareil. La ville et les
+coordonnees ne sont donc pas transmises a Viim. La route ci-dessous reste un
+connecteur de secours et une extension future pour les juridictions dont la
+source ne doit pas etre interpretee sur le client. Son deploiement doit etre
+verifie explicitement : le controle du 2026-09-03 retournait encore
+`404 not_found` en production.
+
 | Méthode | Endpoint | Description |
 |---|---|---|
 | GET | `/fuel-prices/current?country=CA&region=ON&locality=Toronto&fuelType=gasoline` | Prix public officiel courant par localité grossière. La première source activée est le relevé gouvernemental de l'Ontario. Aucune coordonnée GPS n'est transmise au backend. |

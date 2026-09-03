@@ -192,7 +192,14 @@ struct FuelSettings: Codable, Equatable, Hashable {
     }
 
     var canSnapshotCost: Bool {
-        source == .userProvided || source == .officialPublicData
+        switch source {
+        case .userProvided:
+            return true
+        case .officialPublicData:
+            return hasTrustedOfficialEvidence
+        case .unverifiedDefault, nil:
+            return false
+        }
     }
 
     func canSnapshotCost(at date: Date) -> Bool {
@@ -217,6 +224,31 @@ struct FuelSettings: Codable, Equatable, Hashable {
             ? Self.maximumOfficialSnapshotAge
             : Self.maximumSnapshotAge
         return age >= -Self.maximumFutureClockSkew && age <= maximumAge
+    }
+
+    private var hasTrustedOfficialEvidence: Bool {
+        guard currency == .cad,
+              let fuelType,
+              fuelType.supportsLiquidFuelEstimate,
+              pricePerLiter.isFinite,
+              (0.20...5.00).contains(pricePerLiter),
+              sourceIdentifier == "government_of_ontario_fuel_price_survey",
+              let sourceURL,
+              sourceURL.scheme?.lowercased() == "https",
+              ["ontario.ca", "www.ontario.ca"].contains(sourceURL.host?.lowercased() ?? ""),
+              sourceURL.port == nil,
+              sourceURL.user == nil,
+              sourceURL.password == nil,
+              sourceURL.path == "/v1/files/fuel-prices/fueltypesall.csv",
+              sourceURL.query == nil,
+              sourceURL.fragment == nil,
+              let locality else {
+            return false
+        }
+        let normalizedLocality = locality.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !normalizedLocality.isEmpty &&
+            normalizedLocality.count <= 80 &&
+            normalizedLocality.rangeOfCharacter(from: .controlCharacters) == nil
     }
 
     func costMinorUnits(for liters: Double?) -> Int? {

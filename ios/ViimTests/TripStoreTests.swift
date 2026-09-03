@@ -416,6 +416,7 @@ final class TripStoreTests: XCTestCase {
                 pricePerLiter: 1.55,
                 source: .officialPublicData,
                 capturedAt: trip.endedAt.addingTimeInterval(-2 * 24 * 60 * 60),
+                fuelType: .gasoline,
                 sourceIdentifier: source,
                 sourceURL: sourceURL,
                 locality: "Toronto"

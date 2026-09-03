@@ -514,6 +514,7 @@
 "profile.fuel.official.loaded" = "Prix public officiel chargé pour votre localité.";
 "profile.fuel.official.unavailable" = "Aucune source publique officielle compatible n'est disponible pour cette localité.";
 "profile.fuel.official.failed" = "Le prix officiel n'a pas pu être vérifié. Votre prix actuel est conservé.";
+"profile.fuel.official.cached" = "Actualisation impossible. Le dernier prix officiel encore valide est conservé.";
 "profile.fuel.official.locationUnavailable" = "Localisation précise indisponible. Vérifiez l'autorisation puis réessayez.";
 "profile.fuel.official.localityUnknown" = "Localité inconnue";
 "profile.fuel.official.detail" = "Source publique officielle · %@ · données du %@";
