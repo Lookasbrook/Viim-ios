@@ -2,6 +2,12 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (catalogue photo réel — build 42 privé)
+
+- **[Véhicules]** Quatre photographies réelles et non générées ont été ajoutées pour Toyota Fortuner AN160, Nissan X-Trail T33, Hyundai Tucson NX4 et Kia Sportage NQ5. Chaque fichier est embarqué, inspecté, attribué à son auteur et lié à sa licence ainsi qu'à sa révision Wikimedia Commons.
+- **[Fiabilité]** Ces photos de génération récente exigent une année compatible dans le profil. Sans année ou pour une ancienne génération, l'illustration neutre reste affichée afin de ne pas présenter un véhicule trompeur.
+- **[QA/Appareil]** 342/342 tests iOS réussis. Build 42 signé, installé et confirmé sur l'iPhone 16 ; la base avant/après installation est identique (126 trajets, intégrité `ok`). Le lancement automatisé a expiré, donc l'ouverture réelle et la migration Build41 restent à confirmer téléphone déverrouillé.
+
 ## 2026-09-03 (calibration carburant par pleins — build 41 privé)
 
 - **[Consommation]** Le profil iOS peut enregistrer des pleins complets avec kilométrage et litres. Une calibration n’est appliquée qu’après au moins deux intervalles valides (trois pleins), reste liée à l’identité exacte du véhicule et écarte les intervalles aberrants.

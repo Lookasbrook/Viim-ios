@@ -2,7 +2,7 @@
 
 Photos intégrées localement dans `ios/Viim/Resources/Assets.xcassets`. Elles sont redimensionnées à 1200 px maximum et ne déclenchent aucun appel réseau dans l'app. Une photo n'est affichée que lorsque la marque et le modèle saisis correspondent au catalogue local.
 
-Contrôle du 2026-09-03 : les 18 auteurs, licences, types MIME JPEG et empreintes
+Contrôle du 2026-09-03 : les 22 auteurs, licences, types MIME JPEG et empreintes
 SHA-1 de révision ont été relus via l'API officielle Wikimedia Commons. Le manifeste
 exécutable se trouve dans `VehiclePhotoCatalog.swift` ; une entrée sans source HTTPS,
 auteur, licence autorisée, empreinte ou méthode `photograph` est automatiquement
@@ -10,8 +10,11 @@ exclue. L'app affiche près de chaque image les liens vers le fichier source et 
 licence, ainsi que la mention de redimensionnement. Aucun traitement génératif n'a
 été appliqué.
 
-Les deux ajouts du 2026-09-03 sont des photographies inspectées visuellement :
-Honda Wave 110 Special Edition 2026 et Suzuki GN 125. Aucune photo suffisamment
+Les six ajouts du 2026-09-03 sont des photographies inspectées visuellement :
+Honda Wave 110 Special Edition 2026, Suzuki GN 125, Toyota Fortuner AN160,
+Nissan X-Trail T33, Hyundai Tucson NX4 et Kia Sportage NQ5. Les quatre photos de
+voitures récentes ne sont affichées que si l'année du profil appartient à la
+génération représentée ; sinon l'app conserve l'illustration neutre. Aucune photo suffisamment
 précise et licenciée n'a été trouvée pour TVS HLX 125 ou Bajaj Boxer BM 100 ; ces
 modèles conservent donc l'illustration neutre.
 
@@ -21,6 +24,10 @@ modèles conservent donc l'illustration neutre.
 | `VehiclePhotoToyotaHilux` | [2020 Toyota Hilux E](https://commons.wikimedia.org/wiki/File:2020_Toyota_Hilux_E_(front_left_side_view).jpg) | Ethan Llamas | CC BY-SA 4.0 |
 | `VehiclePhotoToyotaRAV4` | [Toyota RAV4 (5th Gen.) front look](https://commons.wikimedia.org/wiki/File:Toyota_RAV4_(5th_Gen.)_front_look.jpg) | Wh.0414.justin | CC BY-SA 4.0 |
 | `VehiclePhotoToyotaYaris` | [2020-2024 Toyota Yaris](https://commons.wikimedia.org/wiki/File:2020-2024_Toyota_Yaris.jpg) | TTTNIS | CC0 1.0 |
+| `VehiclePhotoToyotaFortuner` | [2018 Toyota Fortuner TRD Sportivo looking from front](https://commons.wikimedia.org/wiki/File:2018_Toyota_Fortuner_TRD_Sportivo_looking_from_front.jpg) | VulcanSphere | CC BY 4.0 |
+| `VehiclePhotoNissanXTrail` | [Nissan X-TRAIL G 2WD (6AA-T33) front](https://commons.wikimedia.org/wiki/File:Nissan_X-TRAIL_G_2WD_(6AA-T33)_front.jpg) | Tokumeigakarinoaoshima | CC0 1.0 |
+| `VehiclePhotoHyundaiTucson` | [Hyundai Tucson (NX4) 091227](https://commons.wikimedia.org/wiki/File:Hyundai_Tucson_(NX4)_091227.jpg) | Trop86 | CC0 1.0 |
+| `VehiclePhotoKiaSportage` | [2023 Kia Sportage (NQ5) in White, front left](https://commons.wikimedia.org/wiki/File:2023_Kia_Sportage_(NQ5)_in_White,_front_left.jpg) | Benespit | CC BY-SA 4.0 |
 | `VehiclePhotoRenaultDuster` | [Moscow, Renault Duster Aug 2025 01](https://commons.wikimedia.org/wiki/File:Moscow,_Renault_Duster_Aug_2025_01.jpg) | Retired electrician | CC0 1.0 |
 | `VehiclePhotoKiaPicanto` | [Kia Picanto GT Line (III) — f 01062025](https://commons.wikimedia.org/wiki/File:Kia_Picanto_GT_Line_(III)_–_f_01062025.jpg) | M 93 | CC BY-SA 3.0 DE |
 | `VehiclePhotoNissanNavara` | [Nissan Navara 4x2 VE 2025 (3)](https://commons.wikimedia.org/wiki/File:Nissan_Navara_4x2_VE_2025_(3).jpg) | Captainmorlypogi1959 | CC BY-SA 4.0 |

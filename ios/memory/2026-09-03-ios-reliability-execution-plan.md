@@ -463,3 +463,20 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
    fixtures historiques, sauvegarde et recuperation sans suppression.
 8. **Diffusion :** TestFlight restreint seulement apres P0-A ; promesse de detection
    collision seulement apres la chaine capteur-confirmation-livraison complete.
+
+## Execution build 42 — photos reelles et exactitude visuelle
+
+- Quatre photographies Wikimedia Commons inspectees et embarquees : Toyota
+  Fortuner AN160, Nissan X-Trail T33, Hyundai Tucson NX4 et Kia Sportage NQ5.
+- Auteur, licence, URL source HTTPS et SHA-1 de revision sont obligatoires dans le
+  manifeste. Les fichiers sont des JPEG de 1200 px maximum, sans generation IA.
+- Chaque image recente exige une annee de profil compatible avec la generation
+  representee. Une annee absente ou hors plage retourne l'illustration neutre.
+- Le test cible `VehiclePhotoCatalogTests` passe 9/9 et la suite complete 342/342,
+  sans echec ni test ignore. Le build 42 est signe puis installe et confirme sur
+  l'iPhone 16. La base avant/apres installation reste identique octet pour octet,
+  SHA-256 `9b26ce5bcf54778ba64268f460ecf0dedbde3d69dbd3308a5f76b48675fc01fc`,
+  126 trajets et `PRAGMA integrity_check=ok`.
+- Le lancement automatise a expire apres 8 secondes. La base ne contient toujours
+  pas l'entite `FuelFillUp` : l'app n'a donc pas encore execute la migration Build41
+  sur l'appareil. Il faut deverrouiller et ouvrir Viim avant de controler cette porte.

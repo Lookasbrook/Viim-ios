@@ -36,6 +36,40 @@ final class VehiclePhotoCatalogTests: XCTestCase {
         )
     }
 
+    func testRecentCarGenerationsResolveOnlyInsideTheirVerifiedYearRange() {
+        let cases: [(brand: String, model: String, year: String, assetName: String)] = [
+            ("Toyota", "Fortuner", "2018", "VehiclePhotoToyotaFortuner"),
+            ("Nissan", "X-Trail", "2024", "VehiclePhotoNissanXTrail"),
+            ("Hyundai", "Tucson", "2025", "VehiclePhotoHyundaiTucson"),
+            ("Kia", "Sportage", "2023", "VehiclePhotoKiaSportage")
+        ]
+
+        for item in cases {
+            XCTAssertEqual(
+                VehiclePhotoCatalog.resolve(
+                    vehicleType: .voiture,
+                    brand: item.brand,
+                    model: item.model,
+                    year: item.year
+                )?.assetName,
+                item.assetName
+            )
+            XCTAssertNil(
+                VehiclePhotoCatalog.resolve(
+                    vehicleType: .voiture,
+                    brand: item.brand,
+                    model: item.model
+                ),
+                "Une photo de generation ne doit pas etre affichee sans annee."
+            )
+        }
+
+        XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .voiture, brand: "Toyota", model: "Fortuner", year: "2015"))
+        XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .voiture, brand: "Nissan", model: "X-Trail", year: "2021"))
+        XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .voiture, brand: "Hyundai", model: "Tucson", year: "2020"))
+        XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .voiture, brand: "Kia", model: "Sportage", year: "2021"))
+    }
+
     func testMatchingHandlesBrandAndModelTypedTogether() {
         XCTAssertEqual(asset(.voiture, "", "Toyota Corolla"), "VehiclePhotoToyotaCorolla")
         XCTAssertEqual(asset(.moto, "", "Yamaha Crypton"), "VehiclePhotoYamahaCrypton")
