@@ -256,6 +256,7 @@ struct ProfilView: View {
                         .foregroundStyle(ViimColors.success)
                 }
                 LabeledContent("profile.vehicleData.variant", value: specification.variant)
+                LabeledContent("profile.vehicleData.source", value: specification.officialSourceDisplayName)
                 LabeledContent("profile.vehicleData.engine", value: specification.engineDescription)
                 LabeledContent("profile.vehicleData.transmission", value: specification.transmission)
                 LabeledContent(
@@ -340,6 +341,8 @@ struct ProfilView: View {
     private func beginVehicleVariantLookup() {
         guard let profile = onboardingStore.profile,
               profile.vehicleType == .voiture,
+              let fuelType = profile.fuelType,
+              fuelType.supportsLiquidFuelEstimate,
               let year = Int(profile.vehicleYear.trimmingCharacters(in: .whitespacesAndNewlines)) else {
             vehicleCatalogFeedbackIsError = true
             vehicleCatalogFeedbackKey = "profile.vehicleData.invalidProfile"
@@ -354,10 +357,12 @@ struct ProfilView: View {
         vehicleCatalogTask = Task {
             defer { finishVehicleCatalogRequest(request.id) }
             do {
-                let variants = try await FuelEconomyVehicleClient.shared.fetchVariants(
+                let variants = try await LocalizedVehicleCatalogClient.fetchVariants(
+                    country: profile.country,
                     year: year,
                     make: profile.vehicleBrand,
-                    model: profile.vehicleModel
+                    model: profile.vehicleModel,
+                    expectedFuelType: fuelType
                 )
                 guard !Task.isCancelled,
                       request.canCommit(
@@ -384,6 +389,8 @@ struct ProfilView: View {
 
     private func confirmVehicleVariant() {
         guard let profile = onboardingStore.profile,
+              let fuelType = profile.fuelType,
+              fuelType.supportsLiquidFuelEstimate,
               let year = Int(profile.vehicleYear.trimmingCharacters(in: .whitespacesAndNewlines)),
               let selectedVehicleVariantID,
               let variant = vehicleVariants.first(where: { $0.recordID == selectedVehicleVariantID }) else {
@@ -400,11 +407,12 @@ struct ProfilView: View {
         vehicleCatalogTask = Task {
             defer { finishVehicleCatalogRequest(request.id) }
             do {
-                let specification = try await FuelEconomyVehicleClient.shared.fetchSpecification(
+                let specification = try await LocalizedVehicleCatalogClient.fetchSpecification(
                     variant: variant,
                     expectedYear: year,
                     expectedMake: profile.vehicleBrand,
-                    expectedModel: profile.vehicleModel
+                    expectedModel: profile.vehicleModel,
+                    expectedFuelType: fuelType
                 )
                 guard !Task.isCancelled,
                       request.canCommit(

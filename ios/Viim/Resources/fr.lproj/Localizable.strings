@@ -541,6 +541,7 @@
 "profile.vehicleData.verified" = "Variante officielle vérifiée";
 "profile.vehicleData.indicative" = "Moyenne indicative du modèle";
 "profile.vehicleData.variant" = "Motorisation / variante";
+"profile.vehicleData.source" = "Source officielle";
 "profile.vehicleData.engine" = "Moteur";
 "profile.vehicleData.transmission" = "Transmission";
 "profile.vehicleData.combinedConsumption" = "Consommation combinée";
@@ -549,8 +550,8 @@
 "profile.vehicleData.lookup" = "Rechercher les variantes officielles";
 "profile.vehicleData.variantPlaceholder" = "Choisir la variante exacte";
 "profile.vehicleData.confirm" = "Confirmer cette variante";
-"profile.vehicleData.privacy" = "La recherche envoie uniquement l’année, la marque et le modèle à FuelEconomy.gov. Aucune position ni trace de trajet n’est transmise.";
-"profile.vehicleData.invalidProfile" = "L’année, la marque ou le modèle doivent d’abord être corrigés.";
+"profile.vehicleData.privacy" = "La recherche consulte la source publique officielle adaptée au pays avec uniquement l’année, la marque et le modèle. Aucune position ni trace de trajet n’est transmise.";
+"profile.vehicleData.invalidProfile" = "L’année, la marque, le modèle et le carburant doivent d’abord être renseignés.";
 "profile.vehicleData.variantsLoaded" = "Variantes officielles reçues. Choisissez celle de votre véhicule.";
 "profile.vehicleData.unavailable" = "Aucune fiche officielle fiable n’est disponible pour ce véhicule.";
 "profile.vehicleData.selectVariant" = "Choisissez d’abord la variante exacte.";

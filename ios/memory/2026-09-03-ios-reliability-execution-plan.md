@@ -452,7 +452,8 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
    Aucun SOS automatique avant seuils signes.
 4. **Catalogue officiel — prochaine tranche logicielle :** ajouter NRCan avec le
    meme schema de preuve, puis une plage basse/haute quand plusieurs variantes
-   restent possibles. NHTSA vPIC reste limite a l'identite VIN.
+   restent possibles. **NRCan est livre au build 44 pour 1995-2026 ; la plage
+   d'incertitude reste a faire.** NHTSA vPIC reste limite a l'identite VIN.
 5. **Photos — en parallele du catalogue, pas d'IA :** etendre le manifeste deja
    obligatoire a chaque nouvelle image (modele, generation, auteur, URL, licence,
    empreinte et date de verification). Une vignette neutre couvre les manques.
@@ -493,3 +494,25 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 - Le lancement automatise expire toujours apres 8 secondes. Au controle precedant
   l'installation, le dernier lancement journalise reste le build 23 en
   `authorizedWhenInUse`; aucune migration Build41 n'est encore prouvee.
+
+## Execution build 44 — catalogue officiel canadien
+
+- Le pays du profil route maintenant les recherches Canada vers les ressources
+  CSV officielles de Ressources naturelles Canada couvrant 1995 a 2026. La
+  requete ne transporte que l'annee, la marque et le modele, jamais la position.
+- L'identite est volontairement conservative : les suffixes techniques permis
+  sont bornes, les familles voisines sont exclues et le carburant doit concorder.
+  Une hybridation absente de la ligne officielle n'est pas inferee.
+- Les URL canonique et de redirection Azure, le type `text/csv` et la taille sont
+  controles. Chaque fiche est liee par SHA-256 a sa source, son identite et ses
+  valeurs ; toute alteration persistante invalide `hasTrustedEvidence`.
+- Cinq tests ajoutent la couverture du routage, de la confidentialite, du
+  parseur CSV, des homonymes, du carburant, des redirections, de l'integrite et
+  du rejet des moteurs impossibles.
+- Suite complete 347/347, zero echec ou test ignore. Build 44 signe,
+  installe et confirme sur l'iPhone 16. Base avant/apres identique au SHA-256
+  historique, 126 trajets, `integrity_check=ok`.
+- Le lancement `devicectl` expire encore apres 8 secondes. Le journal reste au
+  dernier lancement build 23, `authorizedWhenInUse`, et l'entite `FuelFillUp`
+  n'existe pas encore dans la base appareil : migration et capture arriere-plan
+  ne sont toujours pas prouvees tant que l'iPhone n'est pas ouvert manuellement.

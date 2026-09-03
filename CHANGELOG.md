@@ -2,6 +2,13 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (catalogue véhicule officiel canadien — build 44 privé)
+
+- **[Localité]** Les profils Canada interrogent désormais les fichiers publics officiels de Ressources naturelles Canada pour les années 1995 à 2026. Les autres pays conservent FuelEconomy.gov tant qu’une source locale qualifiée n’est pas disponible. Seuls l’année, la marque et le modèle sont envoyés ; aucune position ni trace de trajet ne quitte l’app pour cette recherche.
+- **[Exactitude]** Le moteur exclut les familles voisines (`Corolla Cross` pour une recherche `Corolla`), respecte le carburant déclaré et exige le choix explicite d’une variante. Les motorisations hybrides non explicitement identifiables dans le fichier sont refusées au lieu d’être devinées.
+- **[Sécurité/Auditabilité]** Hôtes, chemins, MIME et taille des réponses sont validés. Une empreinte SHA-256 lie la source canonique, l’identité du véhicule, la variante et toutes les consommations ; une fiche persistée altérée n’est plus une preuve exploitable.
+- **[QA/Appareil]** Cinq scénarios automatisés ajoutés, dont le rejet des CSV mal formés et moteurs impossibles ; suite complète 347/347, zéro échec ou test ignoré. Le build 44 est signé et installé sur l’iPhone 16 ; l’ouverture automatisée expire encore, donc migration et autorisation `Toujours` restent à valider téléphone déverrouillé.
+
 ## 2026-09-03 (catalogue moto réel — build 43 privé)
 
 - **[Motos]** Trois photographies réelles et licenciées ajoutées pour Bajaj Pulsar 150, Yamaha XTZ 125 et Suzuki Gixxer 155. Les alias incomplets `Pulsar`, `XTZ` et `Gixxer` restent volontairement sur l'illustration neutre.

@@ -481,6 +481,188 @@ final class BackendAPIClientTests: XCTestCase {
         }
     }
 
+    func testLocalizedVehicleCatalogUsesNRCanOnlyForCanada() {
+        XCTAssertEqual(
+            LocalizedVehicleCatalogClient.preferredSourceIdentifier(for: .canada),
+            NRCanVehicleClient.sourceIdentifier
+        )
+        XCTAssertEqual(
+            LocalizedVehicleCatalogClient.preferredSourceIdentifier(for: .burkinaFaso),
+            FuelEconomyVehicleClient.sourceIdentifier
+        )
+        XCTAssertEqual(
+            LocalizedVehicleCatalogClient.preferredSourceIdentifier(for: .other),
+            FuelEconomyVehicleClient.sourceIdentifier
+        )
+    }
+
+    func testNRCanVariantsUseOfficialCSVWithoutLocationAndExcludeAdjacentModels() async throws {
+        let csv = """
+        \u{feff}Model year,Make,Model,Vehicle class,Engine size (L),Cylinders,Transmission,Fuel type,City (L/100 km),Highway (L/100 km),Combined (L/100 km),Combined (mpg),CO2 emissions (g/km),CO2 rating,Smog rating
+        2026,Toyota,Corolla (1-mode),Compact,2.0,4,AV,X,7.4,5.7,6.7,42,158,6,5
+        2026,Toyota,Corolla Hybrid,Compact,1.8,4,AV,X,4.4,5.1,4.7,60,110,8,6
+        2026,Toyota,Corolla Cross,Sport utility vehicle: Small,2.0,4,AV10,X,7.6,7.2,7.4,38,172,6,5
+        2026,Honda,Corolla (1-mode),Compact,2.0,4,AV,X,7.4,5.7,6.7,42,158,6,5
+        2025,Toyota,Corolla (1-mode),Compact,2.0,4,AV,X,7.4,5.7,6.7,42,158,6,5
+        """
+        let client = NRCanVehicleClient(session: makeSession { request in
+            let url = try XCTUnwrap(request.url)
+            XCTAssertEqual(
+                url.absoluteString,
+                "https://open.canada.ca/data/dataset/98f1a129-f628-4ce4-b24d-6f16bf24dd64/resource/9df1b18d-d036-4783-a61c-99f1f75b3ac5/download/my2026-fuel-consumption-ratings.csv"
+            )
+            XCTAssertNil(url.query)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/csv")
+            return self.httpResponse(for: request, statusCode: 200, body: csv, contentType: "text/csv")
+        })
+
+        let variants = try await client.fetchVariants(
+            year: 2026,
+            make: "Toyota",
+            model: "Corolla",
+            expectedFuelType: .gasoline
+        )
+
+        XCTAssertEqual(variants.count, 1)
+        XCTAssertTrue(variants[0].description.contains("Corolla (1-mode)"))
+        XCTAssertEqual(variants[0].sourceIdentifier, NRCanVehicleClient.sourceIdentifier)
+        XCTAssertTrue(NRCanVehicleClient.isValidRecordID(variants[0].recordID))
+    }
+
+    func testNRCanCreatesAuditableSpecificationAndRejectsPersistedTampering() async throws {
+        let csv = """
+        Model year,Make,Model,Vehicle class,Engine size (L),Cylinders,Transmission,Fuel type,City (L/100 km),Highway (L/100 km),Combined (L/100 km),Combined (mpg),CO2 emissions (g/km),CO2 rating,Smog rating
+        2026,Toyota,Corolla (1-mode),Compact,2.0,4,AV,X,7.4,5.7,6.7,42,158,6,5
+        """
+        let client = NRCanVehicleClient(session: makeSession { request in
+            self.httpResponse(for: request, statusCode: 200, body: csv, contentType: "text/csv")
+        })
+        let variants = try await client.fetchVariants(
+            year: 2026,
+            make: "Toyota",
+            model: "Corolla",
+            expectedFuelType: .gasoline
+        )
+        let variant = try XCTUnwrap(variants.first)
+        let retrievedAt = Date(timeIntervalSince1970: 1_800_000_000)
+
+        let specification = try await client.fetchSpecification(
+            variant: variant,
+            expectedYear: 2026,
+            expectedMake: "Toyota",
+            expectedModel: "Corolla",
+            expectedFuelType: .gasoline,
+            retrievedAt: retrievedAt
+        )
+
+        XCTAssertEqual(specification.sourceIdentifier, NRCanVehicleClient.sourceIdentifier)
+        XCTAssertEqual(specification.variant, "Corolla (1-mode)")
+        XCTAssertEqual(specification.engineDescription, "2 L · 4 cyl")
+        XCTAssertEqual(specification.cityLitersPer100Km, 7.4)
+        XCTAssertEqual(specification.highwayLitersPer100Km, 5.7)
+        XCTAssertEqual(specification.combinedLitersPer100Km, 6.7)
+        XCTAssertEqual(specification.fuelType, .gasoline)
+        XCTAssertEqual(specification.retrievedAt, retrievedAt)
+        XCTAssertTrue(specification.hasTrustedEvidence)
+
+        let encoded = try JSONEncoder().encode(specification)
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        object["combinedLitersPer100Km"] = 7.0
+        let tampered = try JSONDecoder().decode(
+            VerifiedVehicleSpecification.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+        XCTAssertFalse(tampered.hasTrustedEvidence)
+    }
+
+    func testNRCanAcceptsExactOfficialBlobRedirectAndRejectsDifferentPath() async throws {
+        let csv = """
+        Model year,Make,Model,Vehicle class,Engine size (L),Cylinders,Transmission,Fuel type,City (L/100 km),Highway (L/100 km),Combined (L/100 km),Combined (mpg),CO2 emissions (g/km),CO2 rating,Smog rating
+        2026,Toyota,"Corolla (1-mode)",Compact,2.0,4,AV,X,7.4,5.7,6.7,42,158,6,5
+        """
+        let trustedBlob = URL(string: "https://opencanada.blob.core.windows.net/opengovprod/resources/9df1b18d-d036-4783-a61c-99f1f75b3ac5/my2026-fuel-consumption-ratings.csv?sv=official&sig=redacted")!
+        let trustedClient = NRCanVehicleClient(session: makeSession { request in
+            self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: csv,
+                responseURL: trustedBlob,
+                contentType: "text/csv"
+            )
+        })
+        let variants = try await trustedClient.fetchVariants(
+            year: 2026,
+            make: "Toyota",
+            model: "Corolla",
+            expectedFuelType: .gasoline
+        )
+        XCTAssertEqual(variants.count, 1)
+
+        let wrongPath = URL(string: "https://opencanada.blob.core.windows.net/opengovprod/resources/attacker/my2026-fuel-consumption-ratings.csv")!
+        let rejectedClient = NRCanVehicleClient(session: makeSession { request in
+            self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: csv,
+                responseURL: wrongPath,
+                contentType: "text/csv"
+            )
+        })
+        do {
+            _ = try await rejectedClient.fetchVariants(
+                year: 2026,
+                make: "Toyota",
+                model: "Corolla",
+                expectedFuelType: .gasoline
+            )
+            XCTFail("Expected an unrelated blob path to be rejected")
+        } catch let error as PublicVehicleCatalogError {
+            XCTAssertEqual(error, .untrustedResponse)
+        }
+    }
+
+    func testNRCanRejectsMalformedCSVAndImplausibleEngineEvidence() async throws {
+        let malformedCSV = """
+        Model year,Make,Model,Vehicle class,Engine size (L),Cylinders,Transmission,Fuel type,City (L/100 km),Highway (L/100 km),Combined (L/100 km),Combined (mpg),CO2 emissions (g/km),CO2 rating,Smog rating
+        2026,Toyota,"Corolla (1-mode),Compact,2.0,4,AV,X,7.4,5.7,6.7,42,158,6,5
+        """
+        let malformedClient = NRCanVehicleClient(session: makeSession { request in
+            self.httpResponse(for: request, statusCode: 200, body: malformedCSV, contentType: "text/csv")
+        })
+        do {
+            _ = try await malformedClient.fetchVariants(
+                year: 2026,
+                make: "Toyota",
+                model: "Corolla",
+                expectedFuelType: .gasoline
+            )
+            XCTFail("Expected malformed CSV to be rejected")
+        } catch let error as PublicVehicleCatalogError {
+            XCTAssertEqual(error, .invalidResponse)
+        }
+
+        let impossibleEngineCSV = """
+        Model year,Make,Model,Vehicle class,Engine size (L),Cylinders,Transmission,Fuel type,City (L/100 km),Highway (L/100 km),Combined (L/100 km),Combined (mpg),CO2 emissions (g/km),CO2 rating,Smog rating
+        2026,Toyota,Corolla (1-mode),Compact,200,400,AV,X,7.4,5.7,6.7,42,158,6,5
+        """
+        let impossibleClient = NRCanVehicleClient(session: makeSession { request in
+            self.httpResponse(for: request, statusCode: 200, body: impossibleEngineCSV, contentType: "text/csv")
+        })
+        do {
+            _ = try await impossibleClient.fetchVariants(
+                year: 2026,
+                make: "Toyota",
+                model: "Corolla",
+                expectedFuelType: .gasoline
+            )
+            XCTFail("Expected implausible engine evidence to be rejected")
+        } catch let error as PublicVehicleCatalogError {
+            XCTAssertEqual(error, .invalidResponse)
+        }
+    }
+
     private func makeClient(
         handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
     ) -> BackendAPIClient {
