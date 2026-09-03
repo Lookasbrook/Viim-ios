@@ -1,5 +1,12 @@
 # Architecture — Vue d'ensemble
 
+> **Statut du document.** Le schema initial ci-dessous melangeait cible et code
+> livre. Au build 29, `LocationService`, `TripManager`, `ScoreEngine`, la
+> persistance locale et un moniteur collision shadow existent. `SyncManager`,
+> `AlertService` collision, le buffer pre-impact et la micro-sync collision ne sont
+> pas implementes cote iOS. La future chaine automatique doit utiliser SafetyKit
+> apres approbation de l'entitlement Apple ; elle reste affichee indisponible jusque-la.
+
 ## Schéma global
 
 ```

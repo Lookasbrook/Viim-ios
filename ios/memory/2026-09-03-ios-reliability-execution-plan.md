@@ -32,7 +32,7 @@ etre presente comme plus fiable que les litres estimes qui le produisent.
 
 ## P0-A — Retablir et prouver la collecte de trajets
 
-Etat logiciel : implemente dans le build 28 ; validation terrain bloquee par
+Etat logiciel : implemente dans le build 29 ; validation terrain bloquee par
 `authorizedWhenInUse` tant que l'utilisateur n'accorde pas `Toujours`.
 
 1. Accorder `Toujours` et la position precise dans les reglages iOS.
@@ -53,25 +53,45 @@ forcee possede son propre budget de trou et ne peut pas promettre une trace cont
 
 ## P0-B — Rendre la detection de collision reellement protectrice
 
-Etat : moteur `collision-shadow-v1` local implemente ; alertes desactivees.
+Etat : moteur `collision-shadow-v2-impact-gps-uncertainty` local de recherche seulement ; alertes
+desactivees. Pour le build 29, son journal est borne a 512 Ko, valide chaque
+observation, rend les reprises idempotentes, ecrit atomiquement avec une protection
+compatible apres le premier deverrouillage et met en quarantaine toute preuve
+corrompue sans l'ecraser. Ce moteur Core Motion n'est pas une base de securite
+continue : iOS ne garantit pas ses callbacks quand le processus est suspendu ou
+termine.
 
-1. Collecter des candidats anonymises sans coordonnees pendant les trajets
-   motorises actifs : pic d'acceleration, rotation, vitesses avant/apres,
-   qualite GPS et trous capteur.
-2. Construire un jeu de validation avec freinages forts, nid-de-poule, chute du
-   telephone et simulations controlees. Ne jamais provoquer de collision reelle.
-3. Mesurer precision, rappel et faux positifs par 1 000 km ; calibrer par type
-   de vehicule et position du telephone.
-4. Ajouter une confirmation plein ecran avec compte a rebours, annulation
-   accessible et appel manuel toujours disponible.
-5. Ajouter la livraison d'alerte idempotente, chiffree et avec accuse de
-   reception ; bascule SMS/appel si le canal principal echoue.
-6. Tester ecran verrouille, app terminee, batterie faible, absence de reseau et
-   retour du reseau.
+Chemin de production retenu : SafetyKit, qui remet a une app autorisee un evenement
+de collision routiere grave deja detecte par iOS. Ce chemin exige l'entitlement
+restreint Apple `com.apple.developer.severe-vehicular-crash-event`, l'autorisation
+utilisateur et la designation de Viim comme app tierce receptrice. SafetyKit ne
+garantit ni chaque collision, ni une position, ni la couverture moto/velo.
 
-Porte de sortie : taux de faux positif accepte et documente, aucune alerte sur
-les scenarios negatifs, annulation fiable, livraison de bout en bout prouvee.
-Avant cette porte, l'interface doit rester « detection automatique indisponible ».
+1. Demander l'entitlement SafetyKit a Apple et ne pas ajouter la capability au
+   profil de signature avant approbation.
+2. Installer le delegate SafetyKit des le lancement ; gerer appareil non pris en
+   charge, refus, designation d'une autre app, evenement duplique et position `nil`.
+3. Persister immediatement un inbox minimal, idempotent par date/identifiant, puis
+   traiter l'evenement hors ligne avec reprise. La livraison Apple d'urgence garde
+   toujours la priorite.
+4. Afficher une confirmation plein ecran avec compte a rebours, bouton « Je vais
+   bien », demande d'aide et appel manuel. Ne jamais appeler automatiquement un
+   numero d'urgence public ; limiter l'escalade aux contacts consentis ou a un
+   prestataire formellement integre.
+5. Rendre l'alerte backend idempotente, chiffree, avec accuse fournisseur reel,
+   retries bornes, retour reseau et kill switch serveur. Un `200` backend sans
+   preuve de reception fournisseur ne vaut pas livraison.
+6. Tester dans le simulateur SafetyKit : lancement apres terminaison, ecran
+   verrouille, doublon inter-lancements, position absente, reseau absent, fenetre
+   d'appel expiree et autorisation deplacee par une autre app.
+7. Continuer le moteur shadow uniquement pour mesurer les limites locales :
+   freinages forts, nid-de-poule et chute du telephone, sans coordonnees ni alerte.
+   Ne jamais provoquer de collision reelle.
+
+Porte de sortie : entitlement approuve, tests SafetyKit complets, annulation fiable,
+livraison de bout en bout prouvee et taux d'echec publie. Avant cette porte,
+l'interface reste « detection automatique indisponible » et l'appel manuel reste
+accessible.
 
 ## P1-A — Estimation avancee de consommation
 
@@ -182,8 +202,9 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Ordre d'execution recommande
 
-1. Validation terrain P0-A sur le build 27.
-2. Collecte shadow collision et protocole de calibration P0-B.
+1. Validation terrain P0-A sur le build 29.
+2. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
+   comme instrumentation secondaire.
 3. Schema vehicule versionne, puis imports officiels et photos P1-C.
 4. Modele de consommation/calibration par pleins P1-A.
 5. Etendre les connecteurs de prix locaux securises P1-B au-dela de l'Ontario.
@@ -193,13 +214,13 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Etat d'execution verifie
 
-- Build 28 signe, installe et confirme `0.1.0 (28)` sur l'iPhone 16. Son lancement
+- Build 29 signe, installe et confirme `0.1.0 (29)` sur l'iPhone 16. Son lancement
   est refuse uniquement parce que l'iPhone est verrouille.
   Avant installation, Application Support a ete sauvegarde et son SQLite controle
   `ok`. Apres installation sans lancement, SQLite, WAL et SHM sont identiques octet
   pour octet, y compris apres l'installation finale du build 27 : la migration du
   store reel attend encore le deverrouillage.
-- 243/243 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
+- 251/251 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
   SQLite reelle d'un store sans les nouveaux champs de preuve carburant.
 - Permission appareil encore `authorizedWhenInUse` : la porte terrain P0-A reste
   ouverte et exige une action utilisateur dans les reglages iOS.
@@ -212,13 +233,29 @@ simulee pendant migration, aucune suppression automatique de donnees.
   transmission de ville, controles de transport et de preuve, moyenne provinciale
   de repli et conservation du dernier prix encore valide. Le CSV reel et sa
   redirection officielle ont ete controles ; les tests complets sont verts.
-- Apres installation du build 28, la copie non destructive du store appareil passe
-  `PRAGMA integrity_check=ok` et contient toujours 126 trajets. Le demarrage et le
-  bouton de prix sur appareil restent a verifier apres deverrouillage.
+- Apres installation du build 29, les copies non destructives du store appareil
+  avant/apres sont identiques au SHA-256, passent `PRAGMA integrity_check=ok` et
+  contiennent toujours 126 trajets. Le demarrage et le bouton de prix sur appareil
+  restent a verifier apres deverrouillage.
+- Collision build 29 : perte de vitesse qualifiee par l'incertitude GPS, profil
+  charge au lancement headless, arret fail-closed quand Core Location ne collecte
+  plus, journal atomique/protege/borne avec quarantaine et retry en memoire. La
+  suite iOS passe 251/251 ; aucune alerte automatique n'est activee.
+
+## References primaires — architecture collision
+
+- Apple SafetyKit et entitlement collision grave :
+  https://developer.apple.com/documentation/safetykit
+- Apple, delegate livre au lancement et deduplication des evenements :
+  https://developer.apple.com/documentation/safetykit/sacrashdetectiondelegate
+- Apple DTS, Core Motion ne fournit pas un mode d'execution continue en arriere-plan :
+  https://developer.apple.com/forums/thread/841001
+- Apple, niveaux de protection de fichiers :
+  https://developer.apple.com/documentation/foundation/fileprotectiontype
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 28 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 29 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le

@@ -43,7 +43,19 @@ Les seuils numériques exacts sont fixés pendant la calibration terrain (phase 
 - **Aucun score affiché** pendant cette phase — l'UI montre "Calibration en cours (trajet X/5)".
 - Données envoyées au backend avec `calibration: true` — exclues des moyennes communautaires.
 
-## 5. Détection de collision — pipeline complet
+## 5. Détection de collision — cible historique non implémentée
+
+Le diagramme ci-dessous decrit l'ancienne cible produit, pas le code iOS livre.
+Au build 29, Viim ne declenche aucune alerte automatique : un moteur Core Motion
+local collecte seulement des candidats anonymises pendant un trajet actif. Il ne
+peut pas etre qualifie de detection continue, car les callbacks Core Motion ne sont
+pas garantis quand l'app est suspendue ou terminee.
+
+La cible de production est desormais SafetyKit : evenement de collision grave
+detecte par iOS, entitlement Apple restreint, autorisation et designation de Viim,
+inbox idempotent, confirmation utilisateur, puis alerte aux contacts consentis.
+La position SafetyKit est optionnelle et aucune couverture universelle, moto ou
+velo ne doit etre promise.
 
 ```
 Pic accéléromètre > seuil ──► Vitesse GPS chute vers ~0 ──► Notification locale
@@ -63,7 +75,8 @@ Pic accéléromètre > seuil ──► Vitesse GPS chute vers ~0 ──► Notif
                                                           puis contact 3) + SMS fallback
 ```
 
-Le buffer circulaire de 30 secondes de données capteurs pré-impact est conservé en mémoire pendant tout trajet.
+Le buffer circulaire de 30 secondes dessine ici n'est pas implemente. Le journal
+shadow actuel ne conserve ni coordonnees ni trace capteur haute frequence.
 
 ## 6. Score de conduite (0-100)
 

@@ -87,7 +87,13 @@ Tables `users`, `trips`, `trip_events`, `daily_summaries` reprenant les champs c
 
 **Jamais stocké en base** : fiche médicale, contacts d'urgence (transmis uniquement dans le payload d'alerte collision, relayés à WhatsApp, non persistés).
 
-## Payload collision (micro-sync, URLSession background)
+## Payload collision cible (non implemente cote iOS)
+
+Ce schema est une proposition historique. Au build 29, l'app iOS ne produit ni
+micro-sync collision, ni payload medical automatique, ni alerte automatique. Toute
+future implementation doit partir d'un evenement SafetyKit autorise, accepter une
+position absente, minimiser les donnees et obtenir un consentement explicite avant
+transmission aux contacts.
 
 ```json
 {

@@ -2,6 +2,36 @@
 
 Objectif : aucune valeur metier ne doit etre affichee sans source de verite, formule, condition de validite et raison explicite quand la valeur manque.
 
+## Etat au 2026-09-03 — collision shadow iOS, build 29
+
+- La detection automatique reste explicitement indisponible et aucune alerte
+  collision n'est envoyee. Le moteur Core Motion n'est qu'un collecteur local de
+  candidats pendant une collecte GPS active ; il ne constitue pas une garantie
+  de protection quand l'app est suspendue ou terminee.
+- `collision-shadow-v2-impact-gps-uncertainty` exige que la perte de vitesse reste
+  au-dessus du seuil apres prise en compte des incertitudes GPS avant et apres
+  l'impact. Les deux precisions sont conservees avec la preuve.
+- Le moniteur echoue ferme si le profil vehicule n'est pas charge, si le vehicule
+  est un velo, si Core Motion manque ou si Core Location ne collecte plus. Le type
+  de vehicule est configure au lancement headless sans attendre une vue SwiftUI.
+- Le journal local est borne a 512 Ko et 100 candidats, valide les nombres/dates,
+  refuse les UUID conflictuels, rend un retry identique idempotent et lit au plus
+  `limite + 1` octets. Un fichier corrompu est deplace sans perte en quarantaine,
+  puis la collecte reprend dans un journal neuf.
+- Les ecritures sont atomiques et accessibles apres le premier deverrouillage.
+  Une erreur transitoire conserve jusqu'a 10 candidats en memoire et retente
+  toutes les 5 secondes ; une terminaison avant retry peut encore les perdre.
+- La suite iOS passe 251/251. Ces tests prouvent le contrat logiciel, pas la
+  couverture capteur sur route ni la capacite a detecter une vraie collision.
+- Le build 29 signe est installe sur l'iPhone 16. La base extraite avant/apres
+  installation est identique (SHA-256), passe `PRAGMA integrity_check=ok` et
+  contient toujours 126 trajets. Le lancement reste bloque par le verrouillage
+  de l'iPhone, pas par le build.
+- Chemin de production retenu : SafetyKit, apres approbation de l'entitlement
+  Apple restreint, avec inbox idempotent, confirmation utilisateur et livraison
+  externe prouvee. SafetyKit ne doit pas etre presente comme couvrant toutes les
+  collisions, les motos ou les velos.
+
 ## Etat au 2026-09-03 — prix Ontario iOS, build 28 installe
 
 - L'endpoint prix du backend de production repond `404 not_found` malgre sa
@@ -60,6 +90,7 @@ Bareme : /10. « Terrain » signifie une preuve obtenue pendant un roulage reel 
 | Numeros d'urgence | 9/10 pour BF/CA | Catalogue explicite Burkina Faso (18/17) et Canada (911), avec source. Pour tout autre pays, l'app refuse de deviner et affiche « Numero non verifie ». |
 | Conseils Prevention | 7/10 | Region acceptee seulement avec une position recente et suffisamment precise. Les contenus statiques sont presentes comme conseils, jamais comme meteo ou etat routier en temps reel. |
 | Position Assistance | 8/10 | Position fraiche demandee, erreurs explicites et partage uniquement manuel. |
+| Detection collision | Indisponible honnêtement | Shadow local sans alerte ; aucune couverture continue ni livraison protectrice prouvee. La cible SafetyKit depend encore d'un entitlement Apple. |
 | Test WhatsApp | 4/10 | Le backend exige une preuve fournisseur et persiste le statut, mais aucun message reel de production n'a ete prouve. Un succes partiel n'est plus affiche comme un succes total. |
 | Saisie clavier | 8/10 logiciel | Fermeture interactive au defilement, bouton clavier « Termine » et fermeture explicite apres sauvegarde. Il manque encore un test UI automatise de bout en bout. |
 | Synchronisation | N/A honnete | Aucun moteur de synchronisation : aucun faux statut de sync n'est affiche. |
@@ -122,3 +153,5 @@ Les anciens trajets sans preuve suffisante ne deviennent jamais fiables par defa
 5. Remplacement du seuil vitesse fixe par des limitations routieres map-matchees et sourcees.
 6. Catalogue vehicule par annee/motorisation ou calibration par pleins reels.
 7. Validation WhatsApp en production avec consentement, reception effective et `providerMessageId`.
+8. Entitlement SafetyKit approuve, tests de lancement termine/verrouille, doublons,
+   position absente, annulation et livraison aux contacts de bout en bout.

@@ -7,6 +7,7 @@ final class CollisionDetectionEngineTests: XCTestCase {
             CollisionShadowMonitor.shouldMonitor(
                 tripActive: true,
                 vehicleType: .voiture,
+                locationCollectionActive: true,
                 deviceMotionAvailable: true
             )
         )
@@ -14,6 +15,7 @@ final class CollisionDetectionEngineTests: XCTestCase {
             CollisionShadowMonitor.shouldMonitor(
                 tripActive: true,
                 vehicleType: .moto,
+                locationCollectionActive: true,
                 deviceMotionAvailable: true
             )
         )
@@ -21,6 +23,7 @@ final class CollisionDetectionEngineTests: XCTestCase {
             CollisionShadowMonitor.shouldMonitor(
                 tripActive: true,
                 vehicleType: .velo,
+                locationCollectionActive: true,
                 deviceMotionAvailable: true
             )
         )
@@ -28,6 +31,7 @@ final class CollisionDetectionEngineTests: XCTestCase {
             CollisionShadowMonitor.shouldMonitor(
                 tripActive: false,
                 vehicleType: .voiture,
+                locationCollectionActive: true,
                 deviceMotionAvailable: true
             )
         )
@@ -35,7 +39,24 @@ final class CollisionDetectionEngineTests: XCTestCase {
             CollisionShadowMonitor.shouldMonitor(
                 tripActive: true,
                 vehicleType: .voiture,
+                locationCollectionActive: true,
                 deviceMotionAvailable: false
+            )
+        )
+        XCTAssertFalse(
+            CollisionShadowMonitor.shouldMonitor(
+                tripActive: true,
+                vehicleType: .voiture,
+                locationCollectionActive: false,
+                deviceMotionAvailable: true
+            )
+        )
+        XCTAssertFalse(
+            CollisionShadowMonitor.shouldMonitor(
+                tripActive: true,
+                vehicleType: nil,
+                locationCollectionActive: true,
+                deviceMotionAvailable: true
             )
         )
     }
@@ -124,7 +145,39 @@ final class CollisionDetectionEngineTests: XCTestCase {
         XCTAssertEqual(candidate.preImpactSpeedKmh, 54, accuracy: 0.000_001)
         XCTAssertEqual(candidate.postImpactSpeedKmh, 8, accuracy: 0.000_001)
         XCTAssertEqual(candidate.speedLossKmh, 46, accuracy: 0.000_001)
+        XCTAssertEqual(candidate.preImpactSpeedAccuracyKmh, 3)
+        XCTAssertEqual(candidate.postImpactSpeedAccuracyKmh, 4)
         XCTAssertFalse(engine.hasPendingImpact)
+    }
+
+    func testApparentSpeedLossInsideCombinedGPSUncertaintyIsRejected() {
+        var engine = CollisionDetectionEngine()
+        let impactAt = Date(timeIntervalSinceReferenceDate: 3_500)
+
+        XCTAssertNil(
+            engine.ingest(
+                frame(
+                    at: impactAt,
+                    accelerationG: 4.2,
+                    speedKmh: 60,
+                    speedAccuracyKmh: 9,
+                    speedTimestamp: impactAt
+                )
+            )
+        )
+
+        XCTAssertNil(
+            engine.ingest(
+                frame(
+                    at: impactAt.addingTimeInterval(2),
+                    accelerationG: 0.2,
+                    speedKmh: 48,
+                    speedAccuracyKmh: 9,
+                    speedTimestamp: impactAt.addingTimeInterval(2)
+                )
+            )
+        )
+        XCTAssertTrue(engine.hasPendingImpact)
     }
 
     func testStaleOrInaccurateGPSSpeedCannotArmCandidate() {
@@ -227,6 +280,171 @@ final class CollisionDetectionEngineTests: XCTestCase {
         XCTAssertEqual(events.first?.impactAt, Date(timeIntervalSinceReferenceDate: 1))
         XCTAssertFalse(json.localizedCaseInsensitiveContains("latitude"))
         XCTAssertFalse(json.localizedCaseInsensitiveContains("longitude"))
+    }
+
+    func testShadowJournalQuarantinesMalformedEvidenceAndKeepsRecording() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-shadow.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let malformedEvidence = Data("{truncated".utf8)
+        try malformedEvidence.write(to: fileURL)
+
+        let journal = CollisionShadowJournal(fileURL: fileURL)
+        let candidate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 10))
+        try journal.append(candidate)
+
+        XCTAssertEqual(try journal.load(), [candidate])
+        let quarantineURLs = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ).filter { $0.lastPathComponent.contains(".corrupt-") }
+        XCTAssertEqual(quarantineURLs.count, 1)
+        XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(quarantineURLs.first)), malformedEvidence)
+    }
+
+    func testShadowJournalQuarantinesOversizedEvidenceAndKeepsRecording() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-shadow.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let oversizedEvidence = Data(repeating: 0x41, count: 513)
+        try oversizedEvidence.write(to: fileURL)
+
+        let journal = CollisionShadowJournal(
+            fileURL: fileURL,
+            maximumFileBytes: 512
+        )
+        let candidate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 20))
+        try journal.append(candidate)
+
+        let quarantineURLs = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ).filter { $0.lastPathComponent.contains(".corrupt-") }
+        XCTAssertEqual(quarantineURLs.count, 1)
+        XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(quarantineURLs.first)), oversizedEvidence)
+        XCTAssertEqual(try journal.load(), [candidate])
+    }
+
+    func testShadowJournalRejectsImpossibleCandidateWithoutTouchingExistingEvidence() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-shadow.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = CollisionShadowJournal(fileURL: fileURL)
+        let validCandidate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 30))
+        try journal.append(validCandidate)
+        let originalData = try Data(contentsOf: fileURL)
+
+        let invalidCandidate = CollisionShadowCandidate(
+            id: UUID(),
+            algorithmVersion: CollisionDetectionEngine.algorithmVersion,
+            impactAt: Date(timeIntervalSinceReferenceDate: 40),
+            confirmedAt: Date(timeIntervalSinceReferenceDate: 41),
+            peakUserAccelerationG: 4,
+            peakRotationRate: 1,
+            preImpactSpeedKmh: 50,
+            postImpactSpeedKmh: 5,
+            speedLossKmh: 1
+        )
+
+        XCTAssertThrowsError(try journal.append(invalidCandidate)) { error in
+            XCTAssertEqual(error as? CollisionShadowJournal.IntegrityError, .invalidEvidence)
+        }
+        XCTAssertEqual(try Data(contentsOf: fileURL), originalData)
+        XCTAssertEqual(try journal.load(), [validCandidate])
+    }
+
+    func testShadowJournalQuarantinesDuplicateIdentifiers() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-shadow.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let duplicate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 50))
+        try JSONEncoder().encode([duplicate, duplicate]).write(to: fileURL)
+
+        let journal = CollisionShadowJournal(fileURL: fileURL)
+        let nextCandidate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 60))
+        try journal.append(nextCandidate)
+
+        XCTAssertEqual(try journal.load(), [nextCandidate])
+        let quarantineCount = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ).filter { $0.lastPathComponent.contains(".corrupt-") }.count
+        XCTAssertEqual(quarantineCount, 1)
+    }
+
+    func testShadowJournalAppendIsIdempotentForSameCandidate() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-shadow.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = CollisionShadowJournal(fileURL: fileURL)
+        let candidate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 70))
+
+        try journal.append(candidate)
+        try journal.append(candidate)
+
+        XCTAssertEqual(try journal.load(), [candidate])
+    }
+
+    func testShadowJournalRejectsConflictingPayloadForSameIdentifier() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-shadow.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = CollisionShadowJournal(fileURL: fileURL)
+        let candidate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 75))
+        try journal.append(candidate)
+        let originalData = try Data(contentsOf: fileURL)
+        let conflicting = CollisionShadowCandidate(
+            id: candidate.id,
+            algorithmVersion: candidate.algorithmVersion,
+            impactAt: candidate.impactAt,
+            confirmedAt: candidate.confirmedAt,
+            peakUserAccelerationG: 5,
+            peakRotationRate: candidate.peakRotationRate,
+            preImpactSpeedKmh: candidate.preImpactSpeedKmh,
+            postImpactSpeedKmh: candidate.postImpactSpeedKmh,
+            speedLossKmh: candidate.speedLossKmh
+        )
+
+        XCTAssertThrowsError(try journal.append(conflicting)) { error in
+            XCTAssertEqual(
+                error as? CollisionShadowJournal.IntegrityError,
+                .conflictingIdentifier
+            )
+        }
+        XCTAssertEqual(try Data(contentsOf: fileURL), originalData)
+        XCTAssertEqual(try journal.load(), [candidate])
+    }
+
+    func testShadowJournalWritesAtomicallyWithBackgroundReadableProtection() {
+        XCTAssertTrue(CollisionShadowJournal.protectedWriteOptions.contains(.atomic))
+        XCTAssertTrue(
+            CollisionShadowJournal.protectedWriteOptions.contains(
+                .completeFileProtectionUntilFirstUserAuthentication
+            )
+        )
+    }
+
+    private func shadowCandidate(at impactAt: Date) -> CollisionShadowCandidate {
+        CollisionShadowCandidate(
+            id: UUID(),
+            algorithmVersion: CollisionDetectionEngine.algorithmVersion,
+            impactAt: impactAt,
+            confirmedAt: impactAt.addingTimeInterval(1),
+            peakUserAccelerationG: 4,
+            peakRotationRate: 1,
+            preImpactSpeedKmh: 50,
+            postImpactSpeedKmh: 5,
+            speedLossKmh: 45
+        )
     }
 
     private func frame(

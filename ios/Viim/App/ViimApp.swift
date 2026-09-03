@@ -47,6 +47,11 @@ struct ViimApp: App {
         )
         let motionActivityService = MotionActivityService()
         let collisionShadowMonitor = CollisionShadowMonitor()
+        if let profile = onboardingStore.profile {
+            // Un lancement de fond peut ne jamais creer de vue. Le type de
+            // vehicule doit donc etre connu avant toute activation capteur.
+            collisionShadowMonitor.configure(vehicleType: profile.vehicleType)
+        }
         let tripDetectionCoordinator = TripDetectionCoordinator(
             locationService: locationService,
             motionActivityService: motionActivityService,
@@ -195,6 +200,13 @@ final class TripDetectionCoordinator: ObservableObject {
                 collisionShadowMonitor?.setTripActive(isActive)
             }
             .store(in: &cancellables)
+
+        locationService.$isMonitoring
+            .removeDuplicates()
+            .sink { [weak collisionShadowMonitor] isActive in
+                collisionShadowMonitor?.setLocationCollectionActive(isActive)
+            }
+            .store(in: &cancellables)
     }
 
     func configure(profile: UserProfile, fuelSettings: FuelSettings) {
@@ -203,6 +215,7 @@ final class TripDetectionCoordinator: ObservableObject {
         locationService.configure(vehicleType: profile.vehicleType)
         collisionShadowMonitor.configure(vehicleType: profile.vehicleType)
         collisionShadowMonitor.updateLocation(locationService.latestLocation)
+        collisionShadowMonitor.setLocationCollectionActive(locationService.isMonitoring)
         collisionShadowMonitor.setTripActive(locationService.activeTrip != nil)
         locationService.prepareForForegroundUse()
         motionActivityService.startAutoDetection(vehicleType: profile.vehicleType)
