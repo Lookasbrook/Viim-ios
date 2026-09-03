@@ -2,6 +2,180 @@ import CoreLocation
 import CoreMotion
 import Foundation
 
+enum CollisionActivationBlocker: String, CaseIterable, Hashable {
+    case serverKillSwitchDisabled
+    case safetyKitEntitlementMissing
+    case notificationPermissionMissing
+    case emergencyConsentMissing
+    case providerDeliveryUnverified
+}
+
+/// Toutes les portes restent fermees tant que la chaine Apple -> confirmation
+/// utilisateur -> serveur -> fournisseur n'a pas ete prouvee de bout en bout.
+struct CollisionActivationPrerequisites: Equatable {
+    let serverKillSwitchEnabled: Bool
+    let hasSafetyKitEntitlement: Bool
+    let hasNotificationPermission: Bool
+    let hasEmergencyConsent: Bool
+    let isProviderDeliveryVerified: Bool
+
+    static let safeDefault = Self(
+        serverKillSwitchEnabled: false,
+        hasSafetyKitEntitlement: false,
+        hasNotificationPermission: false,
+        hasEmergencyConsent: false,
+        isProviderDeliveryVerified: false
+    )
+
+    var blockers: [CollisionActivationBlocker] {
+        var result: [CollisionActivationBlocker] = []
+        if !serverKillSwitchEnabled { result.append(.serverKillSwitchDisabled) }
+        if !hasSafetyKitEntitlement { result.append(.safetyKitEntitlementMissing) }
+        if !hasNotificationPermission { result.append(.notificationPermissionMissing) }
+        if !hasEmergencyConsent { result.append(.emergencyConsentMissing) }
+        if !isProviderDeliveryVerified { result.append(.providerDeliveryUnverified) }
+        return result
+    }
+
+    var canActivate: Bool { blockers.isEmpty }
+}
+
+/// Contrat reseau futur. La position est optionnelle : son absence ne doit
+/// jamais empecher de creer ou d'annuler une alerte.
+struct CollisionEscalationEnvelope: Codable, Equatable, Identifiable {
+    static let schemaVersion = 1
+
+    let eventID: UUID
+    let detectedAt: Date
+    let confirmationDeadline: Date
+    let latitude: Double?
+    let longitude: Double?
+    let consentVersion: String
+    let schemaVersion: Int
+
+    var id: UUID { eventID }
+    var idempotencyKey: String { "viim-collision-\(eventID.uuidString.lowercased())" }
+
+    init(
+        eventID: UUID,
+        detectedAt: Date,
+        confirmationDeadline: Date,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        consentVersion: String,
+        schemaVersion: Int = Self.schemaVersion
+    ) {
+        self.eventID = eventID
+        self.detectedAt = detectedAt
+        self.confirmationDeadline = confirmationDeadline
+        self.latitude = latitude
+        self.longitude = longitude
+        self.consentVersion = consentVersion
+        self.schemaVersion = schemaVersion
+    }
+
+    var isStructurallyValid: Bool {
+        let coordinatesAreBothAbsent = latitude == nil && longitude == nil
+        let coordinatesAreBothValid = latitude.map { (-90...90).contains($0) } == true
+            && longitude.map { (-180...180).contains($0) } == true
+        return schemaVersion == Self.schemaVersion
+            && confirmationDeadline > detectedAt
+            && confirmationDeadline.timeIntervalSince(detectedAt) <= 5 * 60
+            && !consentVersion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (coordinatesAreBothAbsent || coordinatesAreBothValid)
+    }
+}
+
+enum CollisionEscalationPhase: String, Codable, Equatable {
+    case awaitingConfirmation
+    case cancelled
+    case readyForDelivery
+    case providerAccepted
+    case delivered
+    case failedRetryable
+}
+
+enum CollisionEscalationTransitionError: Error, Equatable {
+    case invalidEnvelope
+    case confirmationWindowOpen
+    case cancellationWindowClosed
+    case invalidTransition
+    case invalidProviderReceipt
+}
+
+struct CollisionEscalationRecord: Codable, Equatable, Identifiable {
+    let envelope: CollisionEscalationEnvelope
+    private(set) var phase: CollisionEscalationPhase
+    private(set) var updatedAt: Date
+    private(set) var providerMessageID: String?
+
+    var id: UUID { envelope.id }
+
+    init(envelope: CollisionEscalationEnvelope) throws {
+        guard envelope.isStructurallyValid else {
+            throw CollisionEscalationTransitionError.invalidEnvelope
+        }
+        self.envelope = envelope
+        phase = .awaitingConfirmation
+        updatedAt = envelope.detectedAt
+        providerMessageID = nil
+    }
+
+    mutating func cancel(at date: Date) throws {
+        guard phase == .awaitingConfirmation else {
+            throw CollisionEscalationTransitionError.invalidTransition
+        }
+        guard date <= envelope.confirmationDeadline else {
+            throw CollisionEscalationTransitionError.cancellationWindowClosed
+        }
+        phase = .cancelled
+        updatedAt = date
+    }
+
+    mutating func releaseForDelivery(at date: Date) throws {
+        if phase == .readyForDelivery { return }
+        guard phase == .awaitingConfirmation else {
+            throw CollisionEscalationTransitionError.invalidTransition
+        }
+        guard date >= envelope.confirmationDeadline else {
+            throw CollisionEscalationTransitionError.confirmationWindowOpen
+        }
+        phase = .readyForDelivery
+        updatedAt = date
+    }
+
+    mutating func markProviderAccepted(messageID: String, at date: Date) throws {
+        let cleanID = messageID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanID.isEmpty else {
+            throw CollisionEscalationTransitionError.invalidProviderReceipt
+        }
+        if phase == .providerAccepted, providerMessageID == cleanID { return }
+        guard phase == .readyForDelivery || phase == .failedRetryable else {
+            throw CollisionEscalationTransitionError.invalidTransition
+        }
+        phase = .providerAccepted
+        providerMessageID = cleanID
+        updatedAt = date
+    }
+
+    mutating func markDelivered(at date: Date) throws {
+        if phase == .delivered { return }
+        guard phase == .providerAccepted, providerMessageID != nil else {
+            throw CollisionEscalationTransitionError.invalidTransition
+        }
+        phase = .delivered
+        updatedAt = date
+    }
+
+    mutating func markRetryableFailure(at date: Date) throws {
+        guard phase == .readyForDelivery || phase == .providerAccepted else {
+            throw CollisionEscalationTransitionError.invalidTransition
+        }
+        phase = .failedRetryable
+        updatedAt = date
+    }
+}
+
 /// Echantillon minimal du moteur de calibration collision. Les coordonnees ne
 /// font volontairement pas partie du modele : aucun trace haute frequence ni
 /// emplacement n'est persiste par ce composant.

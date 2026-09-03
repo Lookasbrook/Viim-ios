@@ -2,6 +2,89 @@ import XCTest
 @testable import Viim
 
 final class CollisionDetectionEngineTests: XCTestCase {
+    func testAutomaticCollisionActivationIsFailClosed() {
+        XCTAssertFalse(CollisionActivationPrerequisites.safeDefault.canActivate)
+        XCTAssertEqual(
+            Set(CollisionActivationPrerequisites.safeDefault.blockers),
+            Set(CollisionActivationBlocker.allCases)
+        )
+
+        let otherwiseReady = CollisionActivationPrerequisites(
+            serverKillSwitchEnabled: false,
+            hasSafetyKitEntitlement: true,
+            hasNotificationPermission: true,
+            hasEmergencyConsent: true,
+            isProviderDeliveryVerified: true
+        )
+        XCTAssertFalse(otherwiseReady.canActivate)
+        XCTAssertEqual(otherwiseReady.blockers, [.serverKillSwitchDisabled])
+
+        let controlledTestReady = CollisionActivationPrerequisites(
+            serverKillSwitchEnabled: true,
+            hasSafetyKitEntitlement: true,
+            hasNotificationPermission: true,
+            hasEmergencyConsent: true,
+            isProviderDeliveryVerified: true
+        )
+        XCTAssertTrue(controlledTestReady.canActivate)
+        XCTAssertTrue(controlledTestReady.blockers.isEmpty)
+    }
+
+    func testCollisionEnvelopeHasStableIdempotencyKeyAndOptionalLocation() throws {
+        let eventID = UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")!
+        let detectedAt = Date(timeIntervalSince1970: 2_000_000_000)
+        let envelope = CollisionEscalationEnvelope(
+            eventID: eventID,
+            detectedAt: detectedAt,
+            confirmationDeadline: detectedAt.addingTimeInterval(60),
+            consentVersion: "emergency-consent-v1"
+        )
+
+        XCTAssertTrue(envelope.isStructurallyValid)
+        XCTAssertEqual(envelope.idempotencyKey, "viim-collision-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+        XCTAssertEqual(try JSONDecoder().decode(CollisionEscalationEnvelope.self, from: JSONEncoder().encode(envelope)), envelope)
+    }
+
+    func testCollisionEscalationCannotDeliverBeforeConfirmationDeadline() throws {
+        let detectedAt = Date(timeIntervalSince1970: 2_000_000_000)
+        let envelope = CollisionEscalationEnvelope(
+            eventID: UUID(),
+            detectedAt: detectedAt,
+            confirmationDeadline: detectedAt.addingTimeInterval(60),
+            latitude: 45,
+            longitude: -73,
+            consentVersion: "emergency-consent-v1"
+        )
+        var record = try CollisionEscalationRecord(envelope: envelope)
+
+        XCTAssertThrowsError(try record.releaseForDelivery(at: detectedAt.addingTimeInterval(59))) {
+            XCTAssertEqual($0 as? CollisionEscalationTransitionError, .confirmationWindowOpen)
+        }
+        try record.releaseForDelivery(at: envelope.confirmationDeadline)
+        XCTAssertEqual(record.phase, .readyForDelivery)
+        try record.markProviderAccepted(messageID: "provider-123", at: envelope.confirmationDeadline)
+        try record.markDelivered(at: envelope.confirmationDeadline)
+        XCTAssertEqual(record.phase, .delivered)
+        XCTAssertEqual(record.providerMessageID, "provider-123")
+    }
+
+    func testCancelledCollisionCanNeverBeReleasedForDelivery() throws {
+        let detectedAt = Date(timeIntervalSince1970: 2_000_000_000)
+        let envelope = CollisionEscalationEnvelope(
+            eventID: UUID(),
+            detectedAt: detectedAt,
+            confirmationDeadline: detectedAt.addingTimeInterval(60),
+            consentVersion: "emergency-consent-v1"
+        )
+        var record = try CollisionEscalationRecord(envelope: envelope)
+
+        try record.cancel(at: detectedAt.addingTimeInterval(30))
+        XCTAssertEqual(record.phase, .cancelled)
+        XCTAssertThrowsError(try record.releaseForDelivery(at: envelope.confirmationDeadline)) {
+            XCTAssertEqual($0 as? CollisionEscalationTransitionError, .invalidTransition)
+        }
+    }
+
     func testShadowMonitorRunsOnlyForActiveMotorizedTripsWithHardware() {
         XCTAssertTrue(
             CollisionShadowMonitor.shouldMonitor(

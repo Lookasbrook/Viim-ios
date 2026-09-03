@@ -32,7 +32,7 @@ struct AccueilView: View {
                         isPassiveWakeupMonitoring: locationService.isPassiveWakeupMonitoring,
                         tripPhase: locationService.tripPhase,
                         collectionHealth: protectionReadinessService.snapshot.collectionHealth,
-                        speedKmh: locationService.currentSpeedKmh,
+                        speedKmh: locationService.isCurrentSpeedFresh ? locationService.currentSpeedKmh : nil,
                         onEnableBackgroundDetection: {
                             locationService.requestBackgroundAuthorization()
                         },
@@ -53,7 +53,7 @@ struct AccueilView: View {
                         ActiveTripStatusCard(
                             activeTrip: locationService.activeTrip,
                             tripPhase: locationService.tripPhase,
-                            speedKmh: locationService.currentSpeedKmh
+                            speedKmh: locationService.isCurrentSpeedFresh ? locationService.currentSpeedKmh : nil
                         )
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
@@ -721,7 +721,7 @@ private struct AutoDetectionStatusCard: View {
     let isPassiveWakeupMonitoring: Bool
     let tripPhase: TripDetectionPhase
     let collectionHealth: CollectionHealthSnapshot
-    let speedKmh: Double
+    let speedKmh: Double?
     let onEnableBackgroundDetection: () -> Void
     let onOpenSettings: () -> Void
 
@@ -764,7 +764,7 @@ private struct AutoDetectionStatusCard: View {
 
                     Spacer(minLength: 8)
 
-                    Text(DrivingValueFormatter.speedText(kmh: speedKmh))
+                    Text(speedText)
                         .font(.caption.weight(.bold))
                         .foregroundStyle(tint)
                 }
@@ -813,6 +813,11 @@ private struct AutoDetectionStatusCard: View {
         return HomeStatusPresenter.collectionHealth(collectionHealth.state).tint
     }
 
+    private var speedText: String {
+        speedKmh.map(DrivingValueFormatter.speedText(kmh:))
+            ?? String(localized: "format.score.empty")
+    }
+
     private var detailKey: LocalizedStringKey {
         guard collectionReadiness.isReadyForBackground else {
             return collectionReadiness.detailKey
@@ -837,7 +842,7 @@ private struct AutoDetectionStatusCard: View {
 private struct ActiveTripStatusCard: View {
     let activeTrip: ActiveDetectedTrip?
     let tripPhase: TripDetectionPhase
-    let speedKmh: Double
+    let speedKmh: Double?
 
     var body: some View {
         ViimCard {
@@ -863,7 +868,8 @@ private struct ActiveTripStatusCard: View {
                         color: ViimColors.navy
                     )
                     SummaryMetricTile(
-                        value: DrivingValueFormatter.speedText(kmh: speedKmh),
+                        value: speedKmh.map(DrivingValueFormatter.speedText(kmh:))
+                            ?? String(localized: "format.score.empty"),
                         labelKey: "home.metric.speed.label",
                         color: ViimColors.success
                     )

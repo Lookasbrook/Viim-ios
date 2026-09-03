@@ -259,6 +259,7 @@ final class LocationService: NSObject, ObservableObject {
         static let passiveWakeupDistanceThresholdMeters: CLLocationDistance = 250
         static let passiveWakeupMaximumAge: TimeInterval = 300
         static let idleMonitoringTimeout: TimeInterval = 180
+        static let publishedSpeedMaximumAge: TimeInterval = 15
         static let hardInactivityGap: TimeInterval = 30 * 60
         // La sortie de zone reveille une app terminee des ~150-200 m, la ou le
         // changement significatif peut attendre plusieurs kilometres : c'est ce
@@ -288,6 +289,8 @@ final class LocationService: NSObject, ObservableObject {
     private var lastHealthReadinessEvent: CollectionHealthEventKind?
     private var monitoringStartedAt: Date?
     private var idleStopWorkItem: DispatchWorkItem?
+    private var speedStaleWorkItem: DispatchWorkItem?
+    private var lastPublishedSpeedAt: Date?
     // CLBackgroundActivitySession (iOS 17+), stocke en Any pour la cible iOS 16.
     // La session doit etre ouverte au premier plan puis conservee pendant les
     // reveils passifs. Apple autorise seulement la reprise d'une session deja
@@ -314,6 +317,7 @@ final class LocationService: NSObject, ObservableObject {
     @Published private(set) var isPassiveWakeupMonitoring = false
     @Published private(set) var tripPhase: TripDetectionPhase = .idle
     @Published private(set) var currentSpeedKmh = 0.0
+    @Published private(set) var isCurrentSpeedFresh = false
     @Published private(set) var latestLocation: CLLocation?
     @Published private(set) var activeTrip: ActiveDetectedTrip?
     @Published private(set) var lastCompletedTrip: CompletedDetectedTrip?
@@ -501,6 +505,7 @@ final class LocationService: NSObject, ObservableObject {
         idleStopWorkItem?.cancel()
         idleStopWorkItem = nil
         manager.stopUpdatingLocation()
+        clearPublishedSpeed()
         isMonitoring = false
         monitoringStartedAt = nil
         ViimDiagnostics.log("location.stop phase=\(tripPhase)")
@@ -1000,7 +1005,7 @@ final class LocationService: NSObject, ObservableObject {
         }
 
         latestLocation = location
-        currentSpeedKmh = speedKmh
+        publishCurrentSpeed(speedKmh, at: sample.receivedAt)
         updateTripDetection(with: sample, location: location)
         lastAcceptedLocation = location
     }
@@ -1016,6 +1021,45 @@ final class LocationService: NSObject, ObservableObject {
             now: Date(),
             maximumAge: Constants.maximumLocationAge
         )
+    }
+
+    static func isPublishedSpeedFresh(
+        lastUpdateAt: Date?,
+        now: Date,
+        maximumAge: TimeInterval = Constants.publishedSpeedMaximumAge
+    ) -> Bool {
+        guard let lastUpdateAt else { return false }
+        let age = now.timeIntervalSince(lastUpdateAt)
+        return age >= 0 && age < maximumAge
+    }
+
+    private func publishCurrentSpeed(_ speedKmh: Double, at receivedAt: Date) {
+        speedStaleWorkItem?.cancel()
+        lastPublishedSpeedAt = receivedAt
+        currentSpeedKmh = speedKmh
+        isCurrentSpeedFresh = true
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.lastPublishedSpeedAt == receivedAt,
+                  !Self.isPublishedSpeedFresh(lastUpdateAt: receivedAt, now: Date()) else {
+                return
+            }
+            self.clearPublishedSpeed()
+        }
+        speedStaleWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Constants.publishedSpeedMaximumAge,
+            execute: workItem
+        )
+    }
+
+    private func clearPublishedSpeed() {
+        speedStaleWorkItem?.cancel()
+        speedStaleWorkItem = nil
+        lastPublishedSpeedAt = nil
+        currentSpeedKmh = 0
+        isCurrentSpeedFresh = false
     }
 
     static func isLocationTimestampFresh(
@@ -1518,6 +1562,7 @@ extension LocationService: CLLocationManagerDelegate {
             idleStopWorkItem?.cancel()
             idleStopWorkItem = nil
             self.manager.stopUpdatingLocation()
+            clearPublishedSpeed()
             isMonitoring = false
             monitoringStartedAt = nil
 
