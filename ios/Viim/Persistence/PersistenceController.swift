@@ -34,12 +34,60 @@ struct VerifiedPersistenceBackup: Equatable {
     let rowCountsByEntity: [String: Int]
 }
 
-struct PersistenceController {
-    static let shared = PersistenceController()
+struct PersistenceRecoveryState: Equatable {
+    let storeURL: URL?
+    let errorDomain: String
+    let errorCode: Int
 
+    var diagnosticSummary: String {
+        "domain=\(errorDomain) code=\(errorCode) store=\(storeURL?.lastPathComponent ?? "unknown")"
+    }
+}
+
+enum PersistenceBootstrapResult {
+    case ready(PersistenceController)
+    case recoveryRequired(PersistenceRecoveryState)
+}
+
+struct PersistenceController {
     let container: NSPersistentContainer
 
     init(inMemory: Bool = false, storeURL: URL? = nil) {
+        do {
+            self = try PersistenceController(
+                loadingInMemory: inMemory,
+                storeURL: storeURL
+            )
+        } catch {
+            let nsError = error as NSError
+            preconditionFailure(
+                "CoreData store failed to load (\(nsError.domain):\(nsError.code))"
+            )
+        }
+    }
+
+    static func bootstrap(storeURL: URL? = nil) -> PersistenceBootstrapResult {
+        do {
+            return .ready(
+                try PersistenceController(
+                    loadingInMemory: false,
+                    storeURL: storeURL
+                )
+            )
+        } catch {
+            let nsError = error as NSError
+            let resolvedStoreURL = storeURL ?? defaultSQLiteStoreURL()
+            let state = PersistenceRecoveryState(
+                storeURL: resolvedStoreURL,
+                errorDomain: nsError.domain,
+                errorCode: nsError.code
+            )
+            ViimDiagnostics.log("persistence.load.failed \(state.diagnosticSummary)")
+            return .recoveryRequired(state)
+        }
+    }
+
+    private init(loadingInMemory inMemory: Bool, storeURL: URL?) throws {
         container = NSPersistentContainer(
             name: "Viim",
             managedObjectModel: Self.makeManagedObjectModel(version: .current)
@@ -57,12 +105,21 @@ struct PersistenceController {
             Self.configure(description)
         }
 
+        var loadError: Error?
         container.loadPersistentStores { _, error in
-            precondition(error == nil, "CoreData store failed to load")
+            loadError = error
+        }
+        if let loadError {
+            throw loadError
         }
 
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+    }
+
+    private static func defaultSQLiteStoreURL() -> URL? {
+        NSPersistentContainer.defaultDirectoryURL()
+            .appendingPathComponent("Viim.sqlite")
     }
 
     /// Cree une sauvegarde SQLite coherente, y compris lorsque le store actif

@@ -4,6 +4,41 @@ import XCTest
 @testable import Viim
 
 final class TripStoreTests: XCTestCase {
+    func testBootstrapUsesRecoveryModeWithoutChangingCorruptedStore() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Viim-corrupt-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+        let originalBytes = Data("not-a-sqlite-store".utf8)
+        try originalBytes.write(to: storeURL, options: .atomic)
+
+        let result = PersistenceController.bootstrap(storeURL: storeURL)
+
+        guard case .recoveryRequired(let state) = result else {
+            return XCTFail("Un store corrompu ne doit jamais etre remplace silencieusement")
+        }
+        XCTAssertEqual(state.storeURL, storeURL)
+        XCTAssertFalse(state.errorDomain.isEmpty)
+        XCTAssertNotEqual(state.errorCode, 0)
+        XCTAssertEqual(try Data(contentsOf: storeURL), originalBytes)
+    }
+
+    func testBootstrapOpensAValidStore() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Viim-valid-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+
+        let result = PersistenceController.bootstrap(storeURL: storeURL)
+
+        guard case .ready(let controller) = result else {
+            return XCTFail("Un store valide doit etre disponible")
+        }
+        XCTAssertEqual(controller.container.persistentStoreCoordinator.persistentStores.count, 1)
+    }
+
     func testCurrentPersistentSchemaContractIsPinned() {
         let model = PersistenceController.makeManagedObjectModel()
 

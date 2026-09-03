@@ -4,6 +4,7 @@ import SwiftUI
 @main
 struct ViimApp: App {
     private let persistenceController: PersistenceController
+    private let persistenceRecoveryState: PersistenceRecoveryState?
 
     @StateObject private var onboardingStore: OnboardingStore
     @StateObject private var locationService: LocationService
@@ -17,7 +18,20 @@ struct ViimApp: App {
 
     init() {
         ViimDiagnostics.logBuildIdentity()
-        let persistenceController = PersistenceController.shared
+        let persistenceBootstrap = PersistenceController.bootstrap()
+        let persistenceController: PersistenceController
+        let persistenceRecoveryState: PersistenceRecoveryState?
+        switch persistenceBootstrap {
+        case .ready(let controller):
+            persistenceController = controller
+            persistenceRecoveryState = nil
+        case .recoveryRequired(let state):
+            // Store volatile reserve exclusivement a la construction de
+            // l'ecran de recuperation. Le store original n'est ni remplace ni
+            // supprime, et aucun service de collecte n'est demarre ci-dessous.
+            persistenceController = PersistenceController(inMemory: true)
+            persistenceRecoveryState = state
+        }
         let context = persistenceController.container.viewContext
         let activeTripJournal = ActiveTripJournal(context: context)
         let collectionHealthJournal = CollectionHealthJournal()
@@ -34,13 +48,15 @@ struct ViimApp: App {
         // Recuperer les brouillons avant d'instancier CLLocationManager. La
         // pose de son delegate peut livrer immediatement un reveil passif et
         // creer un nouveau candidat pendant le lancement.
-        if let profile = onboardingStore.profile {
+        if persistenceRecoveryState == nil, let profile = onboardingStore.profile {
             tripRecorder.configure(
                 profile: profile,
                 fuelSettings: onboardingStore.fuelSettings
             )
         }
-        tripRecorder.recoverActiveTrips()
+        if persistenceRecoveryState == nil {
+            tripRecorder.recoverActiveTrips()
+        }
 
         CarburantFeatureFlags.clearPersistedDebugOverrides()
         let carburantFeatureFlags = CarburantFeatureFlags.resolved()
@@ -81,7 +97,7 @@ struct ViimApp: App {
             candidateJournal: collisionShadowJournal,
             coverageJournal: collisionShadowCoverageJournal
         )
-        if let profile = onboardingStore.profile {
+        if persistenceRecoveryState == nil, let profile = onboardingStore.profile {
             // Un lancement de fond peut ne jamais creer de vue. Le type de
             // vehicule doit donc etre connu avant toute activation capteur.
             collisionShadowMonitor.configure(vehicleType: profile.vehicleType)
@@ -97,13 +113,16 @@ struct ViimApp: App {
         // localisation), aucune vue n'existe encore. La recuperation des
         // trajets journalises et l'observation des trajets termines doivent
         // donc etre branchees ici, pas dans une vue.
-        if let profile = onboardingStore.profile {
+        if persistenceRecoveryState == nil, let profile = onboardingStore.profile {
             locationService.configure(vehicleType: profile.vehicleType)
         }
-        tripRecorder.observe(locationService: locationService)
-        locationService.restoreAutomaticTrackingSession()
+        if persistenceRecoveryState == nil {
+            tripRecorder.observe(locationService: locationService)
+            locationService.restoreAutomaticTrackingSession()
+        }
 
         self.persistenceController = persistenceController
+        self.persistenceRecoveryState = persistenceRecoveryState
         _onboardingStore = StateObject(wrappedValue: onboardingStore)
         _locationService = StateObject(wrappedValue: locationService)
         _motionActivityService = StateObject(wrappedValue: motionActivityService)
@@ -121,7 +140,7 @@ struct ViimApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppLaunchView()
+            AppLaunchView(persistenceRecoveryState: persistenceRecoveryState)
                 .environmentObject(onboardingStore)
                 .environmentObject(locationService)
                 .environmentObject(motionActivityService)
@@ -140,6 +159,7 @@ struct ViimApp: App {
 }
 
 private struct AppLaunchView: View {
+    let persistenceRecoveryState: PersistenceRecoveryState?
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
@@ -151,7 +171,9 @@ private struct AppLaunchView: View {
 
     var body: some View {
         Group {
-            if onboardingStore.isCompleted {
+            if let persistenceRecoveryState {
+                PersistenceRecoveryView(state: persistenceRecoveryState)
+            } else if onboardingStore.isCompleted {
                 RootTabView()
                     .task(id: recordingConfigurationID) {
                         guard let profile = onboardingStore.profile else {
@@ -168,7 +190,9 @@ private struct AppLaunchView: View {
             }
         }
         .onChange(of: scenePhase) { phase in
-            guard phase == .active, onboardingStore.isCompleted else {
+            guard persistenceRecoveryState == nil,
+                  phase == .active,
+                  onboardingStore.isCompleted else {
                 return
             }
             locationService.prepareForForegroundUse()
@@ -176,7 +200,7 @@ private struct AppLaunchView: View {
             protectionReadinessService.refreshCollectionHealth()
         }
         .onChange(of: onboardingStore.isCompleted) { isCompleted in
-            guard isCompleted else { return }
+            guard persistenceRecoveryState == nil, isCompleted else { return }
             protectionReadinessService.refreshEmergencyContacts()
             protectionReadinessService.refreshCollectionHealth()
             locationService.prepareForForegroundUse()
@@ -205,6 +229,34 @@ private struct AppLaunchView: View {
         ].joined(separator: "|")
     }
 
+}
+
+private struct PersistenceRecoveryView: View {
+    let state: PersistenceRecoveryState
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "externaldrive.fill.badge.exclamationmark")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(ViimColors.danger)
+            Text("persistence.recovery.title")
+                .font(.title2.bold())
+                .multilineTextAlignment(.center)
+            Text("persistence.recovery.detail")
+                .font(.body)
+                .foregroundStyle(ViimColors.muted)
+                .multilineTextAlignment(.center)
+            Text(state.diagnosticSummary)
+                .font(.caption.monospaced())
+                .foregroundStyle(ViimColors.muted)
+                .textSelection(.enabled)
+            Text("persistence.recovery.action")
+                .font(.callout.weight(.semibold))
+                .multilineTextAlignment(.center)
+        }
+        .padding(28)
+        .accessibilityElement(children: .combine)
+    }
 }
 
 @MainActor

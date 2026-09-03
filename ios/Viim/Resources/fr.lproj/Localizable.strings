@@ -155,6 +155,9 @@
 "home.capture.rejected.detail" = "Les données GPS étaient insuffisantes ou le trajet était trop court.";
 "home.capture.retry.title" = "Sauvegarde en attente";
 "home.capture.retry.detail" = "Le brouillon est conservé et sera retenté automatiquement.";
+"persistence.recovery.title" = "Vos données sont protégées";
+"persistence.recovery.detail" = "Viim n’a pas pu ouvrir les trajets enregistrés. La collecte est suspendue et aucune base vide n’a été créée.";
+"persistence.recovery.action" = "Fermez puis rouvrez l’app. Si le problème persiste, transmettez ce diagnostic à l’assistance.";
 "trip.detail.title" = "Données du trajet";
 "trip.detail.navigation" = "Navigation";
 "trip.detail.gpsData" = "Données GPS";
