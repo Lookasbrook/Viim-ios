@@ -267,6 +267,29 @@ enum DrivingValueFormatter {
             return NSLocalizedString("format.money.unavailable", comment: "")
         }
 
+        return moneyText(minorUnits: minorUnits, currency: currency, locale: locale)
+    }
+
+    static func moneyRangeText(
+        lowerMinorUnits: Int?,
+        upperMinorUnits: Int?,
+        currency: SupportedCurrency,
+        locale: Locale = .current
+    ) -> String? {
+        guard let lowerMinorUnits,
+              let upperMinorUnits,
+              lowerMinorUnits >= 0,
+              upperMinorUnits >= lowerMinorUnits else {
+            return nil
+        }
+        return "\(moneyText(minorUnits: lowerMinorUnits, currency: currency, locale: locale))–\(moneyText(minorUnits: upperMinorUnits, currency: currency, locale: locale))"
+    }
+
+    private static func moneyText(
+        minorUnits: Int,
+        currency: SupportedCurrency,
+        locale: Locale
+    ) -> String {
         let majorUnits = Double(minorUnits) / currency.minorUnitScale
         let formatter = NumberFormatter()
         formatter.locale = locale

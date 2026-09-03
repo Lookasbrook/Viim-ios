@@ -83,17 +83,25 @@ Statut : `DONE_WITH_CONCERNS`
   Wikimedia : auteur, source, licence, lien de licence, empreinte de revision,
   modification et methode photographique. Les credits sont visibles dans l'app et
   les alias de trims voisins ont ete retires.
+- Le modele carburant `v10` conserve desormais une plage basse/centrale/haute,
+  la resolution catalogue, les couvertures conduite/altitude, les multiplicateurs
+  appliques et la meme plage convertie en cout. Le denivele est enfin branche au
+  calcul, sans reduction supposee en descente ni fausse mesure de charge/meteo.
 
 ## Verification
 
 - Tests de regression d'abord observes en echec sur les correspondances vehicule,
   l'absence de duree et les variantes moto, puis corriges.
-- Suite finale : 231 tests passes, 0 echec, 0 ignore, iOS Simulator 26.5.
+- Suite finale : 236 tests passes, 0 echec, 0 ignore, iOS Simulator 26.5.
+- Migration de schema verifiee avec un vrai store SQLite ancien contenant un trajet :
+  la ligne est preservee et les nouveaux champs optionnels restent `nil`.
 - `git diff --check` sans erreur.
-- Build 25 signe pour `com.yamstack.viim` et installe sur iPhone 16 / iOS 26.6.1 ;
-  les metadonnees de l'appareil confirment `0.1.0 (25)`. Son lancement automatique
-  est refuse uniquement parce que l'appareil est verrouille ; le build 23 avait ete
-  lance et diagnostique sur ce meme appareil.
+- Build 27 signe pour `com.yamstack.viim`, installe sur iPhone 16 / iOS 26.6.1 et
+  confirme par les metadonnees appareil comme `0.1.0 (27)`. Son lancement est refuse
+  uniquement parce que l'appareil est verrouille.
+- Sauvegarde pre-installation verifiee (`PRAGMA integrity_check = ok`). Tant que le
+  build 27 n'a pas ete lance, SQLite, WAL et SHM restent identiques octet pour octet
+  a cette sauvegarde. La migration reelle de l'appareil n'est donc pas encore prouvee.
 - Diagnostic appareil : build 23 lance, flags experimentaux desactives, GPS precis,
   actualisation background disponible, mais autorisation encore
   `authorizedWhenInUse`; la collecte verrouillee n'est donc pas encore validee.

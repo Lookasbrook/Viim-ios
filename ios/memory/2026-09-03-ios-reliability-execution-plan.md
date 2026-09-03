@@ -32,7 +32,7 @@ etre presente comme plus fiable que les litres estimes qui le produisent.
 
 ## P0-A — Retablir et prouver la collecte de trajets
 
-Etat logiciel : implemente dans le build 25 ; validation terrain bloquee par
+Etat logiciel : implemente dans le build 27 ; validation terrain bloquee par
 `authorizedWhenInUse` tant que l'utilisateur n'accorde pas `Toujours`.
 
 1. Accorder `Toujours` et la position precise dans les reglages iOS.
@@ -75,6 +75,13 @@ Avant cette porte, l'interface doit rester « detection automatique indisponible
 
 ## P1-A — Estimation avancee de consommation
 
+Etat logiciel : tranche `vehicle-fuel-catalog-v10-evidence-range-elevation`
+implementee dans le build 27. Chaque nouveau trajet conserve une plage prudente
+basse/centrale/haute pour les litres et le cout, la resolution de la reference,
+les multiplicateurs conduite et montee, leur couverture et la version du calcul.
+Le denivele GPS n'accorde aucune economie supposee en descente. La plage reste
+`non calibree` tant que des pleins reels ne permettent pas de mesurer son erreur.
+
 1. Versionner un profil vehicule structure : annee, marque, modele, finition,
    moteur, transmission, carburant et provenance.
 2. Importer les references officielles via HTTPS depuis Ressources naturelles
@@ -112,7 +119,7 @@ changement de localite et changement de carburant.
 
 ## P1-C — Catalogue vehicules et photos reelles
 
-Etat logiciel : premiere tranche implementee dans le build 25. Pour les voitures,
+Etat logiciel : premiere tranche implementee dans le build 27. Pour les voitures,
 le profil peut maintenant conserver une variante FuelEconomy.gov exacte, versionnee
 et sourcee. La recherche HTTPS n'envoie que l'annee, la marque et le modele ; elle
 refuse un domaine, une redirection, un type MIME, une taille ou une identite non
@@ -161,7 +168,7 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Ordre d'execution recommande
 
-1. Validation terrain P0-A sur le build 25.
+1. Validation terrain P0-A sur le build 27.
 2. Collecte shadow collision et protocole de calibration P0-B.
 3. Schema vehicule versionne, puis imports officiels et photos P1-C.
 4. Modele de consommation/calibration par pleins P1-A.
@@ -172,11 +179,14 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Etat d'execution verifie
 
-- Build 25 signe et installe sur l'iPhone 16 ; les metadonnees appareil confirment
-  `0.1.0 (25)`. Son lancement automatique est refuse uniquement parce que l'appareil
-  est verrouille ; le build 23 avait deja ete lance et diagnostique sur cet appareil.
-- 231/231 tests iOS reussis apres l'ajout des gardes de provenance, de licence,
-  de variante et d'annee des photos ; 0 echec et 0 test ignore.
+- Build 27 signe, installe et confirme `0.1.0 (27)` sur l'iPhone 16. Son lancement
+  est refuse uniquement parce que l'iPhone est verrouille.
+  Avant installation, Application Support a ete sauvegarde et son SQLite controle
+  `ok`. Apres installation sans lancement, SQLite, WAL et SHM sont identiques octet
+  pour octet, y compris apres l'installation finale du build 27 : la migration du
+  store reel attend encore le deverrouillage.
+- 236/236 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
+  SQLite reelle d'un store sans les nouveaux champs de preuve carburant.
 - Permission appareil encore `authorizedWhenInUse` : la porte terrain P0-A reste
   ouverte et exige une action utilisateur dans les reglages iOS.
 - Collision shadow sans alerte et sans reseau : base de calibration seulement.
@@ -187,7 +197,7 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 25 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 27 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le

@@ -18,8 +18,18 @@ struct VehicleFuelProfile: Equatable {
 
 struct FuelConsumptionEstimate: Equatable {
     let liters: Double
+    let lowerBoundLiters: Double
+    let upperBoundLiters: Double
     let baselineLiters: Double
     let dynamicsMultiplier: Double
+    let elevationMultiplier: Double
+    let dynamicsCoverageRatio: Double?
+    let elevationCoverageRatio: Double?
+    let usedDynamics: Bool
+    let usedElevation: Bool
+    let uncertaintyRatio: Double
+    let referenceResolution: VehicleFuelReferenceResolution
+    let formulaVersion: String
     let confidence: MetricConfidence
 }
 
@@ -36,7 +46,7 @@ struct VehicleCatalogSuggestion: Equatable, Identifiable {
 }
 
 enum VehicleFuelCatalog {
-    static let formulaVersion = "vehicle-fuel-catalog-v9-exact-model-gps-dynamics"
+    static let formulaVersion = "vehicle-fuel-catalog-v10-evidence-range-elevation"
     static let sourceIdentifier = "ViimCatalog.indicative.v8"
     static let minimumDynamicsCoverageRatio = 0.80
 
@@ -280,7 +290,8 @@ enum VehicleFuelCatalog {
         distanceKm: Double,
         fuelProfile: VehicleFuelProfile?,
         dynamics: DrivingDynamics? = nil,
-        tripDurationSec: TimeInterval? = nil
+        tripDurationSec: TimeInterval? = nil,
+        elevationProfile: ElevationProfile? = nil
     ) -> FuelConsumptionEstimate? {
         guard let fuelProfile,
               distanceKm.isFinite,
@@ -289,6 +300,7 @@ enum VehicleFuelCatalog {
         }
 
         let baseLiters = distanceKm * fuelProfile.litersPer100Km / 100
+        var dynamicsCoverageRatio: Double?
         let matchingDynamics = dynamics.flatMap { candidate -> DrivingDynamics? in
             guard candidate.isUsableForFuelEstimate else {
                 return nil
@@ -303,18 +315,79 @@ enum VehicleFuelCatalog {
             }
             guard let tripDurationSec,
                   tripDurationSec.isFinite,
-                  tripDurationSec > 0,
-                  candidate.analyzedDurationSec / tripDurationSec >= minimumDynamicsCoverageRatio else {
+                  tripDurationSec > 0 else {
+                return nil
+            }
+            let coverage = min(1, max(0, candidate.analyzedDurationSec / tripDurationSec))
+            dynamicsCoverageRatio = coverage
+            guard coverage >= minimumDynamicsCoverageRatio else {
                 return nil
             }
             return candidate
         }
-        let multiplier = matchingDynamics?.fuelConsumptionMultiplier ?? 1
+        let dynamicsMultiplier = matchingDynamics?.fuelConsumptionMultiplier ?? 1
+
+        let matchingElevation = elevationProfile.flatMap { candidate -> ElevationProfile? in
+            guard distanceKm > 0,
+                  candidate.gainMeters.isFinite,
+                  candidate.gainMeters >= 0,
+                  candidate.lossMeters.isFinite,
+                  candidate.lossMeters >= 0,
+                  candidate.analyzedDistanceMeters.isFinite,
+                  candidate.analyzedDistanceMeters > 0,
+                  candidate.coverageRatio.isFinite,
+                  (ElevationProfileAnalyzer.minimumCoverageRatio...1).contains(candidate.coverageRatio),
+                  candidate.analyzedDistanceMeters <= distanceKm * 1_000 * 1.25 else {
+                return nil
+            }
+            return candidate
+        }
+        let elevationCoverageRatio = matchingElevation?.coverageRatio
+        let elevationMultiplier: Double
+        if let matchingElevation, distanceKm > 0 {
+            // Proxy volontairement faible : sans masse, rapport engage ou etat
+            // moteur, l'altitude GPS ne permet pas un calcul energetique exact.
+            // Les descentes ne creent jamais de "gain" suppose.
+            let gainMetersPerKm = matchingElevation.gainMeters / distanceKm
+            elevationMultiplier = 1 + min(0.15, gainMetersPerKm / 100 * 0.08)
+        } else {
+            elevationMultiplier = 1
+        }
+
+        let liters = baseLiters * dynamicsMultiplier * elevationMultiplier
+        let usedDynamics = matchingDynamics != nil
+        let usedElevation = matchingElevation != nil
+        let uncertaintyRatio: Double
+        if fuelProfile.referenceResolution == .bicycleZero || liters == 0 {
+            uncertaintyRatio = 0
+        } else {
+            let referenceUncertainty: Double = switch fuelProfile.referenceResolution {
+            case .bicycleZero: 0
+            case .officialVariant: 0.15
+            case .indicativeModel: 0.30
+            }
+            // Cette plage est une politique prudente, pas un intervalle de
+            // confiance statistique. Elle restera "non calibree" jusqu'aux
+            // comparaisons avec des pleins reels par vehicule.
+            let dynamicsUncertainty = usedDynamics ? 0.10 : 0.20
+            let elevationUncertainty = usedElevation ? 0.05 : 0.10
+            uncertaintyRatio = min(0.60, referenceUncertainty + dynamicsUncertainty + elevationUncertainty)
+        }
 
         return FuelConsumptionEstimate(
-            liters: baseLiters * multiplier,
+            liters: liters,
+            lowerBoundLiters: max(0, liters * (1 - uncertaintyRatio)),
+            upperBoundLiters: liters * (1 + uncertaintyRatio),
             baselineLiters: baseLiters,
-            dynamicsMultiplier: multiplier,
+            dynamicsMultiplier: dynamicsMultiplier,
+            elevationMultiplier: elevationMultiplier,
+            dynamicsCoverageRatio: dynamicsCoverageRatio,
+            elevationCoverageRatio: elevationCoverageRatio,
+            usedDynamics: usedDynamics,
+            usedElevation: usedElevation,
+            uncertaintyRatio: uncertaintyRatio,
+            referenceResolution: fuelProfile.referenceResolution,
+            formulaVersion: formulaVersion,
             confidence: fuelProfile.confidence
         )
     }

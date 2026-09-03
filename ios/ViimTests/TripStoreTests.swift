@@ -4,6 +4,61 @@ import XCTest
 @testable import Viim
 
 final class TripStoreTests: XCTestCase {
+    func testFuelEvidenceFieldsLightweightMigrateALegacySQLiteStore() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ViimFuelMigration-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+
+        let legacyModel = PersistenceController.makeManagedObjectModel()
+        let newFuelEvidenceFields: Set<String> = [
+            "fuelLitersLowerBound",
+            "fuelLitersUpperBound",
+            "fuelDynamicsCoverageRatio",
+            "fuelElevationMultiplier",
+            "fuelElevationCoverageRatio",
+            "fuelUncertaintyRatio",
+            "fuelReferenceResolution",
+            "fuelCostLowerBoundMinorUnits",
+            "fuelCostUpperBoundMinorUnits"
+        ]
+        let legacyTripEntity = try XCTUnwrap(legacyModel.entitiesByName["Trip"])
+        legacyTripEntity.properties = legacyTripEntity.properties.filter {
+            !newFuelEvidenceFields.contains($0.name)
+        }
+
+        let legacyContainer = NSPersistentContainer(name: "Viim", managedObjectModel: legacyModel)
+        let legacyDescription = NSPersistentStoreDescription(url: storeURL)
+        legacyDescription.type = NSSQLiteStoreType
+        legacyDescription.shouldAddStoreAsynchronously = false
+        legacyContainer.persistentStoreDescriptions = [legacyDescription]
+        var legacyLoadError: Error?
+        legacyContainer.loadPersistentStores { _, error in legacyLoadError = error }
+        XCTAssertNil(legacyLoadError)
+
+        let object = NSManagedObject(entity: legacyTripEntity, insertInto: legacyContainer.viewContext)
+        for attribute in legacyTripEntity.attributesByName.values
+            where !attribute.isOptional && attribute.defaultValue == nil {
+            object.setValue(legacyValue(for: attribute), forKey: attribute.name)
+        }
+        object.setValue(UUID(), forKey: "id")
+        object.setValue(Date(timeIntervalSince1970: 1_783_000_000), forKey: "startDate")
+        object.setValue(Date(timeIntervalSince1970: 1_783_000_600), forKey: "endDate")
+        object.setValue(VehicleType.voiture.rawValue, forKey: "vehicleType")
+        try legacyContainer.viewContext.save()
+        let legacyStore = try XCTUnwrap(legacyContainer.persistentStoreCoordinator.persistentStores.first)
+        try legacyContainer.persistentStoreCoordinator.remove(legacyStore)
+
+        let migrated = PersistenceController(storeURL: storeURL)
+        let request = NSFetchRequest<NSManagedObject>(entityName: "Trip")
+        let migratedTrips = try migrated.container.viewContext.fetch(request)
+
+        XCTAssertEqual(migratedTrips.count, 1)
+        XCTAssertNil(migratedTrips[0].value(forKey: "fuelLitersLowerBound"))
+        XCTAssertNil(migratedTrips[0].value(forKey: "fuelReferenceResolution"))
+    }
+
     func testCompletedTripIsStoredOfflineAndIncludedInSummary() throws {
         let store = makeStore()
         let trip = completedTrip(index: 0)
@@ -199,11 +254,29 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(recentTrip.fuelLiters ?? -1, expectedFuelConsumption.liters, accuracy: 0.000_001)
         XCTAssertEqual(recentTrip.fuelBaselineLiters ?? -1, expectedFuelConsumption.baselineLiters, accuracy: 0.000_001)
         XCTAssertEqual(recentTrip.fuelDynamicsMultiplier ?? -1, expectedFuelConsumption.dynamicsMultiplier, accuracy: 0.000_001)
+        XCTAssertEqual(recentTrip.fuelLitersLowerBound ?? -1, expectedFuelConsumption.lowerBoundLiters, accuracy: 0.000_001)
+        XCTAssertEqual(recentTrip.fuelLitersUpperBound ?? -1, expectedFuelConsumption.upperBoundLiters, accuracy: 0.000_001)
+        XCTAssertNil(recentTrip.fuelDynamicsCoverageRatio)
+        XCTAssertNil(expectedFuelConsumption.dynamicsCoverageRatio)
+        XCTAssertEqual(recentTrip.fuelElevationMultiplier ?? -1, expectedFuelConsumption.elevationMultiplier, accuracy: 0.000_001)
+        XCTAssertNil(recentTrip.fuelElevationCoverageRatio)
+        XCTAssertNil(expectedFuelConsumption.elevationCoverageRatio)
+        XCTAssertEqual(recentTrip.fuelReferenceResolution, .indicativeModel)
         XCTAssertEqual(summary.fuelLiters ?? -1, expectedFuelConsumption.liters, accuracy: 0.000_001)
+        XCTAssertEqual(summary.fuelLitersLowerBound ?? -1, expectedFuelConsumption.lowerBoundLiters, accuracy: 0.000_001)
+        XCTAssertEqual(summary.fuelLitersUpperBound ?? -1, expectedFuelConsumption.upperBoundLiters, accuracy: 0.000_001)
         XCTAssertNil(recentTrip.fuelFCFA)
         XCTAssertNil(summary.fuelFCFA)
         XCTAssertEqual(fuelMetric.value, fuelSettings.costMinorUnits(for: expectedFuelConsumption.liters))
         XCTAssertEqual(recentTrip.fuelCostMinorUnits, fuelMetric.value)
+        XCTAssertEqual(
+            recentTrip.fuelCostLowerBoundMinorUnits,
+            fuelSettings.costMinorUnits(for: expectedFuelConsumption.lowerBoundLiters)
+        )
+        XCTAssertEqual(
+            recentTrip.fuelCostUpperBoundMinorUnits,
+            fuelSettings.costMinorUnits(for: expectedFuelConsumption.upperBoundLiters)
+        )
         XCTAssertEqual(recentTrip.fuelCurrency, .cad)
         XCTAssertEqual(recentTrip.fuelPricePerLiter, 1.70)
         XCTAssertEqual(recentTrip.fuelPriceSource, .userProvided)
@@ -211,6 +284,8 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(recentTrip.fuelProfileLitersPer100Km, 6.8)
         XCTAssertEqual(recentTrip.fuelProfileSource, VehicleFuelCatalog.sourceIdentifier)
         XCTAssertEqual(summary.fuelCostMinorUnits, fuelMetric.value)
+        XCTAssertEqual(summary.fuelCostLowerBoundMinorUnits, recentTrip.fuelCostLowerBoundMinorUnits)
+        XCTAssertEqual(summary.fuelCostUpperBoundMinorUnits, recentTrip.fuelCostUpperBoundMinorUnits)
         XCTAssertEqual(summary.fuelCurrency, .cad)
         XCTAssertEqual(fuelMetric.confidence, .partial)
         XCTAssertEqual(fuelMetric.reasonCode, .fuelEstimated)
@@ -221,6 +296,44 @@ final class TripStoreTests: XCTestCase {
             recentTrip.fuelCostMinorUnits
         )
         XCTAssertEqual(TripMetricsCalculator.fuelCostMetric(for: recentTrip).value, recentTrip.fuelCostMinorUnits)
+    }
+
+    func testValidElevationEvidenceIsAppliedAndPersisted() throws {
+        let store = makeStore()
+        let trip = completedTrip(index: 0)
+        let fuelProfile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
+        )
+        let routeSamples = samples(start: trip.startedAt).enumerated().map { index, sample in
+            LocationSample(
+                timestamp: sample.timestamp,
+                latitude: sample.latitude,
+                longitude: sample.longitude,
+                speedKmh: sample.speedKmh,
+                horizontalAccuracy: sample.horizontalAccuracy,
+                speedAccuracy: sample.speedAccuracy,
+                altitudeMeters: 300 + Double(index * 20),
+                verticalAccuracy: 5,
+                receivedAt: sample.receivedAt
+            )
+        }
+
+        try store.insertCompletedTrip(
+            trip,
+            samples: routeSamples,
+            vehicleType: .voiture,
+            isCalibration: false,
+            fuelProfile: fuelProfile
+        )
+
+        let saved = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertGreaterThan(saved.fuelElevationMultiplier ?? 0, 1)
+        XCTAssertGreaterThanOrEqual(
+            try XCTUnwrap(saved.fuelElevationCoverageRatio),
+            ElevationProfileAnalyzer.minimumCoverageRatio
+        )
+        XCTAssertLessThan(try XCTUnwrap(saved.fuelLitersLowerBound), try XCTUnwrap(saved.fuelLiters))
+        XCTAssertGreaterThan(try XCTUnwrap(saved.fuelLitersUpperBound), try XCTUnwrap(saved.fuelLiters))
     }
 
     func testPriceForAnotherFuelTypeCannotCreateCostSnapshot() throws {
@@ -812,6 +925,27 @@ final class TripStoreTests: XCTestCase {
     private func makeStore() -> TripStore {
         let persistenceController = PersistenceController(inMemory: true)
         return TripStore(context: persistenceController.container.viewContext)
+    }
+
+    private func legacyValue(for attribute: NSAttributeDescription) -> Any {
+        switch attribute.attributeType {
+        case .UUIDAttributeType:
+            return UUID()
+        case .dateAttributeType:
+            return Date(timeIntervalSince1970: 1_783_000_000)
+        case .stringAttributeType:
+            return "legacy"
+        case .booleanAttributeType:
+            return false
+        case .integer16AttributeType, .integer32AttributeType, .integer64AttributeType:
+            return 0
+        case .floatAttributeType, .doubleAttributeType, .decimalAttributeType:
+            return 0
+        case .binaryDataAttributeType:
+            return Data()
+        default:
+            return "legacy"
+        }
     }
 
     private func completedTrip(index: Int) -> CompletedDetectedTrip {

@@ -179,12 +179,23 @@
 "trip.fuelEvidence.consumptionFormat" = "%.1f L/100 km";
 "trip.fuelEvidence.dynamics" = "Effet conduite GPS";
 "trip.fuelEvidence.dynamicsFormat" = "× %.2f";
+"trip.fuelEvidence.elevation" = "Effet montée GPS";
+"trip.fuelEvidence.applied" = "appliqué";
+"trip.fuelEvidence.notApplied" = "non appliqué";
 "trip.fuelEvidence.modeledFuel" = "Carburant estimé";
 "trip.fuelEvidence.modeledFuelFormat" = "%.2f L";
+"trip.fuelEvidence.modeledFuelRangeFormat" = "%.2f–%.2f L (centre %.2f L)";
+"trip.fuelEvidence.modeledCost" = "Coût estimé";
+"trip.fuelEvidence.modeledCostRangeFormat" = "%@–%@ (centre %@)";
+"trip.fuelEvidence.referenceResolution" = "Résolution de la référence";
+"trip.fuelEvidence.reference.bicycle" = "Zéro physique — vélo";
+"trip.fuelEvidence.reference.official" = "Variante officielle exacte";
+"trip.fuelEvidence.reference.indicative" = "Moyenne indicative du modèle";
+"trip.fuelEvidence.reference.legacy" = "Historique non qualifié";
 "trip.fuelEvidence.price" = "Prix figé";
 "trip.fuelEvidence.priceMissing" = "Non renseigné au moment du trajet";
 "trip.fuelEvidence.formula" = "Version de calcul";
-"trip.fuelEvidence.disclaimer" = "Estimation indicative : distance GPS validée × référence générique du modèle × effet de conduite GPS lorsque sa couverture atteint 80 %. L'année, la motorisation, la charge, la météo et la télémétrie moteur ne sont pas mesurées.";
+"trip.fuelEvidence.disclaimer" = "Plage prudente non calibrée : distance GPS validée × référence véhicule × effets de conduite et de montée seulement lorsque leurs données sont suffisantes. La charge, la météo et la télémétrie moteur ne sont pas mesurées.";
 
 "motion.status.unavailable" = "Mouvement indisponible";
 "motion.status.waiting" = "Détection en veille";
@@ -204,6 +215,7 @@
 "format.route.points" = "%d points GPS";
 "format.coordinates" = "%.5f, %.5f";
 "format.elevation" = "+%.0f m / −%.0f m";
+"driving.eco.litersRangeFormat" = "%.1f–%.1f L (centre %.1f)";
 "format.score.empty" = "--";
 "metric.reason.complete.short" = "--";
 "metric.reason.complete.detail" = "Donnée indisponible.";

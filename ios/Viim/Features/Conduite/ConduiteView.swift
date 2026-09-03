@@ -422,19 +422,49 @@ private struct EcoSummaryRow: View {
             return String(localized: "driving.eco.savings")
         }
 
-        let litersText = String.localizedStringWithFormat(
-            String(localized: "driving.eco.litersFormat"),
-            liters
-        )
+        let litersText: String
+        if let lower = summary.fuelLitersLowerBound,
+           let upper = summary.fuelLitersUpperBound {
+            litersText = String.localizedStringWithFormat(
+                String(localized: "driving.eco.litersRangeFormat"),
+                lower,
+                upper,
+                liters
+            )
+        } else {
+            litersText = String.localizedStringWithFormat(
+                String(localized: "driving.eco.litersFormat"),
+                liters
+            )
+        }
 
         let costMetric = TripMetricsCalculator.summaryFuelCostMetric(summary)
         if costMetric.value != nil,
            let currency = summary.fuelCurrency {
-            let costText = DrivingValueFormatter.moneyText(costMetric, currency: currency)
+            let costText: String
+            if let lower = summary.fuelCostLowerBoundMinorUnits,
+               let upper = summary.fuelCostUpperBoundMinorUnits {
+                let lowerText = rangeMoneyText(lower, currency: currency)
+                let upperText = rangeMoneyText(upper, currency: currency)
+                costText = "\(lowerText)–\(upperText)"
+            } else {
+                costText = DrivingValueFormatter.moneyText(costMetric, currency: currency)
+            }
             return "\(litersText) · \(costText)"
         }
 
         return litersText
+    }
+
+    private func rangeMoneyText(_ minorUnits: Int, currency: SupportedCurrency) -> String {
+        DrivingValueFormatter.moneyText(
+            .reliable(
+                minorUnits,
+                source: "TripStore.summary.fuelCostRangeSnapshots",
+                formulaVersion: VehicleFuelCatalog.formulaVersion
+            ),
+            currency: currency
+        )
     }
 }
 

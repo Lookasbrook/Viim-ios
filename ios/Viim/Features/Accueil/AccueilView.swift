@@ -789,10 +789,7 @@ private struct DailySummaryCard: View {
                         labelKey: "home.metric.duration.label"
                     )
                     SummaryMetricTile(
-                        value: DrivingValueFormatter.moneyText(
-                            costMetric,
-                            currency: summary.fuelCurrency ?? fuelSettings.currency
-                        ),
+                        value: costText,
                         labelKey: "home.metric.cost.label",
                         color: ViimColors.green
                     )
@@ -807,6 +804,15 @@ private struct DailySummaryCard: View {
 
     private var scoreMetric: ReliableMetric<Int> {
         TripMetricsCalculator.summaryScoreMetric(summary)
+    }
+
+    private var costText: String {
+        let currency = summary.fuelCurrency ?? fuelSettings.currency
+        return DrivingValueFormatter.moneyRangeText(
+            lowerMinorUnits: summary.fuelCostLowerBoundMinorUnits,
+            upperMinorUnits: summary.fuelCostUpperBoundMinorUnits,
+            currency: currency
+        ) ?? DrivingValueFormatter.moneyText(costMetric, currency: currency)
     }
 
     private var scoreColor: Color {
@@ -967,10 +973,7 @@ private struct RecentTripCard: View {
 
                     HStack(spacing: 8) {
                         Label(
-                            DrivingValueFormatter.moneyText(
-                                fuelMetric,
-                                currency: trip.fuelCurrency ?? .xof
-                            ),
+                            fuelCostText,
                             systemImage: "fuelpump.fill"
                         )
                         Spacer(minLength: 6)
@@ -989,6 +992,15 @@ private struct RecentTripCard: View {
 
     private var fuelMetric: ReliableMetric<Int> {
         TripMetricsCalculator.fuelCostMetric(for: trip)
+    }
+
+    private var fuelCostText: String {
+        let currency = trip.fuelCurrency ?? .xof
+        return DrivingValueFormatter.moneyRangeText(
+            lowerMinorUnits: trip.fuelCostLowerBoundMinorUnits,
+            upperMinorUnits: trip.fuelCostUpperBoundMinorUnits,
+            currency: currency
+        ) ?? DrivingValueFormatter.moneyText(fuelMetric, currency: currency)
     }
 }
 
@@ -1122,10 +1134,7 @@ private struct TripDetailView: View {
                             color: ViimColors.success
                         )
                         SummaryMetricTile(
-                            value: DrivingValueFormatter.moneyText(
-                                fuelMetric,
-                                currency: trip.fuelCurrency ?? .xof
-                            ),
+                            value: fuelCostText,
                             labelKey: "home.metric.cost.label",
                             color: ViimColors.green
                         )
@@ -1149,6 +1158,15 @@ private struct TripDetailView: View {
 
     private var maxSpeedMetric: ReliableMetric<Double> {
         TripMetricsCalculator.maxSpeedMetric(for: trip)
+    }
+
+    private var fuelCostText: String {
+        let currency = trip.fuelCurrency ?? .xof
+        return DrivingValueFormatter.moneyRangeText(
+            lowerMinorUnits: trip.fuelCostLowerBoundMinorUnits,
+            upperMinorUnits: trip.fuelCostUpperBoundMinorUnits,
+            currency: currency
+        ) ?? DrivingValueFormatter.moneyText(fuelMetric, currency: currency)
     }
 
     private var scoreMetric: ReliableMetric<Int> {
@@ -1267,8 +1285,20 @@ private struct TripFuelEvidenceCard: View {
                     value: dynamicsText
                 )
                 TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.elevation",
+                    value: elevationText
+                )
+                TripDetailInfoRow(
                     titleKey: "trip.fuelEvidence.modeledFuel",
                     value: modeledFuelText
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.modeledCost",
+                    value: modeledCostText
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.referenceResolution",
+                    value: referenceResolutionText
                 )
                 TripDetailInfoRow(
                     titleKey: "trip.fuelEvidence.price",
@@ -1307,9 +1337,35 @@ private struct TripFuelEvidenceCard: View {
         guard let multiplier = trip.fuelDynamicsMultiplier else {
             return String(localized: "format.score.empty")
         }
-        return String.localizedStringWithFormat(
+        let effect = String.localizedStringWithFormat(
             String(localized: "trip.fuelEvidence.dynamicsFormat"),
             multiplier
+        )
+        guard let coverage = trip.fuelDynamicsCoverageRatio else {
+            return effect + " · " + String(localized: "trip.fuelEvidence.notApplied")
+        }
+        let coverageText = coverage.formatted(
+            .percent.precision(.fractionLength(0)).locale(.current)
+        )
+        let state = coverage >= VehicleFuelCatalog.minimumDynamicsCoverageRatio
+            ? String(localized: "trip.fuelEvidence.applied")
+            : String(localized: "trip.fuelEvidence.notApplied")
+        return "\(effect) · \(coverageText) · \(state)"
+    }
+
+    private var elevationText: String {
+        guard let multiplier = trip.fuelElevationMultiplier else {
+            return String(localized: "format.score.empty")
+        }
+        let effect = String.localizedStringWithFormat(
+            String(localized: "trip.fuelEvidence.dynamicsFormat"),
+            multiplier
+        )
+        guard let coverage = trip.fuelElevationCoverageRatio else {
+            return effect + " · " + String(localized: "trip.fuelEvidence.notApplied")
+        }
+        return effect + " · " + coverage.formatted(
+            .percent.precision(.fractionLength(0)).locale(.current)
         )
     }
 
@@ -1317,9 +1373,57 @@ private struct TripFuelEvidenceCard: View {
         guard let liters = trip.fuelLiters else {
             return String(localized: "format.score.empty")
         }
+        if let lower = trip.fuelLitersLowerBound,
+           let upper = trip.fuelLitersUpperBound {
+            return String.localizedStringWithFormat(
+                String(localized: "trip.fuelEvidence.modeledFuelRangeFormat"),
+                lower,
+                upper,
+                liters
+            )
+        }
         return String.localizedStringWithFormat(
             String(localized: "trip.fuelEvidence.modeledFuelFormat"),
             liters
+        )
+    }
+
+    private var modeledCostText: String {
+        guard let currency = trip.fuelCurrency,
+              let lower = trip.fuelCostLowerBoundMinorUnits,
+              let upper = trip.fuelCostUpperBoundMinorUnits,
+              let central = trip.fuelCostMinorUnits else {
+            return String(localized: "trip.fuelEvidence.priceMissing")
+        }
+        return String.localizedStringWithFormat(
+            String(localized: "trip.fuelEvidence.modeledCostRangeFormat"),
+            moneyText(lower, currency: currency),
+            moneyText(upper, currency: currency),
+            moneyText(central, currency: currency)
+        )
+    }
+
+    private var referenceResolutionText: String {
+        switch trip.fuelReferenceResolution {
+        case .bicycleZero:
+            return String(localized: "trip.fuelEvidence.reference.bicycle")
+        case .officialVariant:
+            return String(localized: "trip.fuelEvidence.reference.official")
+        case .indicativeModel:
+            return String(localized: "trip.fuelEvidence.reference.indicative")
+        case nil:
+            return String(localized: "trip.fuelEvidence.reference.legacy")
+        }
+    }
+
+    private func moneyText(_ minorUnits: Int, currency: SupportedCurrency) -> String {
+        DrivingValueFormatter.moneyText(
+            .reliable(
+                minorUnits,
+                source: "TripStore.fuelCostRangeSnapshot",
+                formulaVersion: trip.fuelFormulaVersion
+            ),
+            currency: currency
         )
     }
 

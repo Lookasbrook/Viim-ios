@@ -5,7 +5,7 @@ struct PersistenceController {
 
     let container: NSPersistentContainer
 
-    init(inMemory: Bool = false) {
+    init(inMemory: Bool = false, storeURL: URL? = nil) {
         container = NSPersistentContainer(
             name: "Viim",
             managedObjectModel: Self.makeManagedObjectModel()
@@ -14,6 +14,11 @@ struct PersistenceController {
         if inMemory {
             let description = NSPersistentStoreDescription()
             description.type = NSInMemoryStoreType
+            container.persistentStoreDescriptions = [description]
+        } else if let storeURL {
+            let description = NSPersistentStoreDescription(url: storeURL)
+            description.type = NSSQLiteStoreType
+            description.shouldAddStoreAsynchronously = false
             container.persistentStoreDescriptions = [description]
         }
 
@@ -30,7 +35,7 @@ struct PersistenceController {
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
 
-    private static func makeManagedObjectModel() -> NSManagedObjectModel {
+    static func makeManagedObjectModel() -> NSManagedObjectModel {
         let model = NSManagedObjectModel()
 
         let trip = NSEntityDescription()
@@ -50,10 +55,19 @@ struct PersistenceController {
             attribute("scoreVigilance", .integer64AttributeType, isOptional: true),
             attribute("scoreEco", .integer64AttributeType, isOptional: true),
             attribute("fuelLiters", .doubleAttributeType, isOptional: true),
+            attribute("fuelLitersLowerBound", .doubleAttributeType, isOptional: true),
+            attribute("fuelLitersUpperBound", .doubleAttributeType, isOptional: true),
             attribute("fuelBaselineLiters", .doubleAttributeType, isOptional: true),
             attribute("fuelDynamicsMultiplier", .doubleAttributeType, isOptional: true),
+            attribute("fuelDynamicsCoverageRatio", .doubleAttributeType, isOptional: true),
+            attribute("fuelElevationMultiplier", .doubleAttributeType, isOptional: true),
+            attribute("fuelElevationCoverageRatio", .doubleAttributeType, isOptional: true),
+            attribute("fuelUncertaintyRatio", .doubleAttributeType, isOptional: true),
+            attribute("fuelReferenceResolution", .stringAttributeType, isOptional: true),
             attribute("fuelFCFA", .integer64AttributeType, isOptional: true),
             attribute("fuelCostMinorUnits", .integer64AttributeType, isOptional: true),
+            attribute("fuelCostLowerBoundMinorUnits", .integer64AttributeType, isOptional: true),
+            attribute("fuelCostUpperBoundMinorUnits", .integer64AttributeType, isOptional: true),
             attribute("fuelCurrencyCode", .stringAttributeType, isOptional: true),
             attribute("fuelPricePerLiter", .doubleAttributeType, isOptional: true),
             attribute("fuelPriceCapturedAt", .dateAttributeType, isOptional: true),

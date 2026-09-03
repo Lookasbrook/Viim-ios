@@ -83,6 +83,114 @@ final class VehicleFuelCatalogTests: XCTestCase {
         XCTAssertEqual(baseline.dynamicsMultiplier, 1, accuracy: 0.000_001)
     }
 
+    func testEstimatePublishesAConservativeRangeAndSensorCoverage() throws {
+        let profile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(
+                vehicleType: .voiture,
+                brand: "Toyota",
+                model: "Corolla"
+            )
+        )
+        let dynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 24,
+            idleRatio: 0.20,
+            hardAccelerationCount: 3,
+            hardBrakingCount: 2,
+            accelerationRms: 0.9,
+            analyzedDurationSec: 540,
+            distanceKm: 12
+        )
+        let elevation = ElevationProfile(
+            gainMeters: 180,
+            lossMeters: 40,
+            analyzedDistanceMeters: 10_800,
+            coverageRatio: 0.90
+        )
+
+        let estimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12,
+                fuelProfile: profile,
+                dynamics: dynamics,
+                tripDurationSec: 600,
+                elevationProfile: elevation
+            )
+        )
+
+        XCTAssertLessThan(estimate.lowerBoundLiters, estimate.liters)
+        XCTAssertGreaterThan(estimate.upperBoundLiters, estimate.liters)
+        XCTAssertEqual(estimate.referenceResolution, .indicativeModel)
+        XCTAssertEqual(try XCTUnwrap(estimate.dynamicsCoverageRatio), 0.90, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(estimate.elevationCoverageRatio), 0.90, accuracy: 0.000_001)
+        XCTAssertTrue(estimate.usedDynamics)
+        XCTAssertTrue(estimate.usedElevation)
+        XCTAssertGreaterThan(estimate.elevationMultiplier, 1)
+        XCTAssertEqual(estimate.formulaVersion, VehicleFuelCatalog.formulaVersion)
+    }
+
+    func testInsufficientDynamicsCoverageIsDisclosedEvenWhenBaselineIsUsed() throws {
+        let profile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
+        )
+        let dynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 18,
+            idleRatio: 0.35,
+            hardAccelerationCount: 6,
+            hardBrakingCount: 5,
+            accelerationRms: 1.4,
+            analyzedDurationSec: 79,
+            distanceKm: 12
+        )
+
+        let estimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12,
+                fuelProfile: profile,
+                dynamics: dynamics,
+                tripDurationSec: 100
+            )
+        )
+
+        XCTAssertFalse(estimate.usedDynamics)
+        XCTAssertEqual(estimate.dynamicsMultiplier, 1, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(estimate.dynamicsCoverageRatio), 0.79, accuracy: 0.000_001)
+        XCTAssertGreaterThan(estimate.uncertaintyRatio, 0.4)
+    }
+
+    func testOfficialVariantRangeIsNarrowerThanIndicativeModelRange() throws {
+        let official = VehicleFuelProfile(
+            vehicleType: .voiture,
+            fuelType: .gasoline,
+            canonicalName: "Toyota Corolla 2024",
+            litersPer100Km: 6.7,
+            confidence: .partial,
+            sourceIdentifier: "fueleconomy.gov.vehicle#47343",
+            referenceResolution: .officialVariant
+        )
+        let indicative = VehicleFuelProfile(
+            vehicleType: .voiture,
+            fuelType: nil,
+            canonicalName: "Toyota Corolla",
+            litersPer100Km: 6.7,
+            confidence: .partial,
+            sourceIdentifier: VehicleFuelCatalog.sourceIdentifier,
+            referenceResolution: .indicativeModel
+        )
+
+        let officialEstimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(distanceKm: 100, fuelProfile: official)
+        )
+        let indicativeEstimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(distanceKm: 100, fuelProfile: indicative)
+        )
+
+        XCTAssertLessThan(officialEstimate.uncertaintyRatio, indicativeEstimate.uncertaintyRatio)
+        XCTAssertLessThan(
+            officialEstimate.upperBoundLiters - officialEstimate.lowerBoundLiters,
+            indicativeEstimate.upperBoundLiters - indicativeEstimate.lowerBoundLiters
+        )
+    }
+
     func testInvalidOrMismatchedDynamicsFallsBackToCatalogBaseline() throws {
         let profile = try XCTUnwrap(
             VehicleFuelCatalog.profile(
@@ -482,6 +590,10 @@ final class VehicleFuelCatalogTests: XCTestCase {
 
         XCTAssertEqual(profile?.confidence, .reliable)
         XCTAssertEqual(estimate?.liters, 0)
+        XCTAssertEqual(estimate?.lowerBoundLiters, 0)
+        XCTAssertEqual(estimate?.upperBoundLiters, 0)
+        XCTAssertEqual(estimate?.uncertaintyRatio, 0)
+        XCTAssertEqual(estimate?.referenceResolution, .bicycleZero)
         XCTAssertEqual(estimate?.confidence, .reliable)
     }
 
