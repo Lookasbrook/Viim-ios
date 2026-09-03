@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import XCTest
 @testable import Viim
@@ -63,7 +64,7 @@ final class BackendAPIClientTests: XCTestCase {
         }
 
         do {
-            try await client.sendAlertTest(contact: EmergencyContact(name: "Contact", phoneNumber: "+22670000000"), driverName: "Guy")
+            try await client.sendAlertTest(contact: EmergencyContact(name: "Contact", phoneNumber: "+22670000000"), driverName: "Guy", contactsConsent: true)
             XCTFail("Expected BackendAPIError.apiStatus")
         } catch let error as BackendAPIError {
             XCTAssertEqual(error, .apiStatus(statusCode: 422, code: "invalid_contact"))
@@ -80,7 +81,7 @@ final class BackendAPIClientTests: XCTestCase {
         }
 
         do {
-            try await client.sendAlertTest(contact: EmergencyContact(name: "Contact", phoneNumber: "+22670000000"), driverName: "Guy")
+            try await client.sendAlertTest(contact: EmergencyContact(name: "Contact", phoneNumber: "+22670000000"), driverName: "Guy", contactsConsent: true)
             XCTFail("Expected BackendAPIError.apiStatus")
         } catch let error as BackendAPIError {
             XCTAssertEqual(error, .apiStatus(statusCode: 503, code: "newagent_unavailable"))
@@ -93,11 +94,75 @@ final class BackendAPIClientTests: XCTestCase {
         }
 
         do {
-            try await client.sendAlertTest(contact: EmergencyContact(name: "Contact", phoneNumber: "+22670000000"), driverName: "Guy")
+            try await client.sendAlertTest(contact: EmergencyContact(name: "Contact", phoneNumber: "+22670000000"), driverName: "Guy", contactsConsent: true)
             XCTFail("Expected BackendAPIError.network")
         } catch let error as BackendAPIError {
             XCTAssertEqual(error, .network(.notConnectedToInternet))
         }
+    }
+
+    func testCollisionAlertSendsAllContactsAndConsentTrue() async throws {
+        var captured: Data?
+        let client = makeClient { request in
+            captured = request.bodyData
+            XCTAssertEqual(request.url?.absoluteString, "https://api.burktech-ia.com/v1/alerts/collision")
+            return self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: #"{"status":"sent","incidentId":"abc","sentCount":1}"#
+            )
+        }
+
+        let contacts = [
+            EmergencyContact(name: "Awa", phoneNumber: "+22670000001", consentAcknowledgedAt: Date()),
+            EmergencyContact(name: "Boris", phoneNumber: "+22670000002", consentAcknowledgedAt: Date())
+        ]
+        try await client.sendCollisionAlert(
+            contacts: contacts,
+            driverName: "Guy",
+            location: CLLocation(latitude: 12.3718, longitude: -1.5196),
+            medicalProfile: nil
+        )
+
+        let json = try XCTUnwrap(
+            captured.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        )
+        XCTAssertEqual(json["contactsConsent"] as? Bool, true)
+        XCTAssertNotNil(json["occurredAt"])
+        XCTAssertNil(json["medicalProfile"])
+        let sentContacts = try XCTUnwrap(json["contacts"] as? [[String: Any]])
+        XCTAssertEqual(sentContacts.count, 2)
+        XCTAssertEqual(sentContacts.first?["phoneNumber"] as? String, "+22670000001")
+        let location = try XCTUnwrap(json["location"] as? [String: Any])
+        XCTAssertEqual(location["latitude"] as? Double, 12.3718)
+    }
+
+    func testCollisionAlertConsentFalseWhenAContactHasNoConsent() async throws {
+        var captured: Data?
+        let client = makeClient { request in
+            captured = request.bodyData
+            return self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: #"{"status":"sent","incidentId":"abc","sentCount":1}"#
+            )
+        }
+
+        let contacts = [
+            EmergencyContact(name: "Awa", phoneNumber: "+22670000001", consentAcknowledgedAt: Date()),
+            EmergencyContact(name: "Boris", phoneNumber: "+22670000002", consentAcknowledgedAt: nil)
+        ]
+        try await client.sendCollisionAlert(
+            contacts: contacts,
+            driverName: nil,
+            location: CLLocation(latitude: 12.3718, longitude: -1.5196),
+            medicalProfile: nil
+        )
+
+        let json = try XCTUnwrap(
+            captured.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        )
+        XCTAssertEqual(json["contactsConsent"] as? Bool, false)
     }
 
     private func makeClient(
@@ -152,4 +217,32 @@ private final class URLProtocolStub: URLProtocol {
     }
 
     override func stopLoading() {}
+}
+
+private extension URLRequest {
+    /// URLSession livre le corps des requetes stubbees via `httpBodyStream`,
+    /// pas `httpBody` : cette lecture rend le JSON envoye inspectable en test.
+    var bodyData: Data? {
+        if let httpBody {
+            return httpBody
+        }
+        guard let stream = httpBodyStream else {
+            return nil
+        }
+        stream.open()
+        defer { stream.close() }
+
+        var data = Data()
+        let bufferSize = 1_024
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+        defer { buffer.deallocate() }
+        while stream.hasBytesAvailable {
+            let read = stream.read(buffer, maxLength: bufferSize)
+            if read <= 0 {
+                break
+            }
+            data.append(buffer, count: read)
+        }
+        return data
+    }
 }

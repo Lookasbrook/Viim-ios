@@ -193,6 +193,12 @@ struct OnboardingView: View {
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
 
+                    Toggle(isOn: $draft.emergencyContactConsent) {
+                        Text("onboarding.safety.consent.toggle")
+                            .font(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
                     Text("onboarding.safety.keychain")
                         .font(.footnote)
                         .foregroundStyle(ViimColors.muted)
@@ -310,6 +316,7 @@ private struct OnboardingDraft {
     var odometerKm = ""
     var emergencyContactName = ""
     var emergencyContactPhone = ""
+    var emergencyContactConsent = false
 
     init(locale: Locale = .current) {
         let preferredCountry = SupportedCountry.preferred(for: locale)
@@ -374,10 +381,15 @@ private struct OnboardingDraft {
     var emergencyContact: EmergencyContact? {
         let name = emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty,
+              emergencyContactConsent,
               let phone = BurkinaPhoneNumber.normalize(emergencyContactPhone) else {
             return nil
         }
-        return EmergencyContact(name: name, phoneNumber: phone)
+        return EmergencyContact(
+            name: name,
+            phoneNumber: phone,
+            consentAcknowledgedAt: Date()
+        )
     }
 
     var hasValidVehicleInformation: Bool {
@@ -458,10 +470,12 @@ private enum OnboardingStep: Int, CaseIterable {
             if !hasName && !hasPhone {
                 return true
             }
-            guard hasName && hasPhone else {
+            guard hasName && hasPhone,
+                  BurkinaPhoneNumber.normalize(draft.emergencyContactPhone) != nil else {
                 return false
             }
-            return BurkinaPhoneNumber.normalize(draft.emergencyContactPhone) != nil
+            // Regle WhatsApp : pas d'enregistrement sans accord explicite du proche.
+            return draft.emergencyContactConsent
         }
     }
 }

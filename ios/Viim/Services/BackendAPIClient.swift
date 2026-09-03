@@ -19,10 +19,15 @@ final class BackendAPIClient {
         self.session = session
     }
 
-    func sendAlertTest(contact: EmergencyContact, driverName: String?) async throws {
+    func sendAlertTest(
+        contact: EmergencyContact,
+        driverName: String?,
+        contactsConsent: Bool
+    ) async throws {
         let payload = AlertTestPayload(
             driverName: driverName,
-            contact: AlertContactPayload(contact)
+            contact: AlertContactPayload(contact),
+            contactsConsent: contactsConsent
         )
         try await post(payload, path: "alerts/test")
     }
@@ -30,14 +35,37 @@ final class BackendAPIClient {
     func shareLocation(
         contact: EmergencyContact,
         driverName: String?,
-        location: CLLocation
+        location: CLLocation,
+        contactsConsent: Bool
     ) async throws {
         let payload = LocationSharePayload(
             driverName: driverName,
             contact: AlertContactPayload(contact),
-            location: AlertLocationPayload(location)
+            location: AlertLocationPayload(location),
+            contactsConsent: contactsConsent
         )
         try await post(payload, path: "alerts/location-share")
+    }
+
+    /// Alerte accident : declenche l'envoi WhatsApp au premier proche joignable,
+    /// puis la cascade serveur (proche suivant apres 5 min sans lecture).
+    /// `contactsConsent` est vrai seulement si TOUS les contacts vises ont
+    /// l'attestation d'opt-in (`consentAcknowledgedAt`).
+    func sendCollisionAlert(
+        contacts: [EmergencyContact],
+        driverName: String?,
+        location: CLLocation,
+        medicalProfile: MedicalProfile?
+    ) async throws {
+        let payload = CollisionPayload(
+            driverName: driverName,
+            contacts: contacts.map(AlertContactPayload.init),
+            location: AlertLocationPayload(location),
+            occurredAt: ISO8601DateFormatter().string(from: Date()),
+            contactsConsent: !contacts.isEmpty && contacts.allSatisfy(\.hasProchesConsent),
+            medicalProfile: medicalProfile.flatMap(CollisionMedicalPayload.init)
+        )
+        try await post(payload, path: "alerts/collision")
     }
 
     private func post<Payload: Encodable>(_ payload: Payload, path: String) async throws {
@@ -102,10 +130,44 @@ private struct AlertLocationPayload: Encodable {
 private struct AlertTestPayload: Encodable {
     let driverName: String?
     let contact: AlertContactPayload
+    let contactsConsent: Bool
 }
 
 private struct LocationSharePayload: Encodable {
     let driverName: String?
     let contact: AlertContactPayload
     let location: AlertLocationPayload
+    let contactsConsent: Bool
+}
+
+private struct CollisionPayload: Encodable {
+    let driverName: String?
+    let contacts: [AlertContactPayload]
+    let location: AlertLocationPayload
+    let occurredAt: String
+    let contactsConsent: Bool
+    let medicalProfile: CollisionMedicalPayload?
+}
+
+private struct CollisionMedicalPayload: Encodable {
+    let bloodType: String?
+    let allergies: String?
+    let conditions: String?
+    let medications: String?
+    let cnib: String?
+
+    init?(_ profile: MedicalProfile) {
+        guard profile.hasContent else {
+            return nil
+        }
+        func trimmed(_ value: String) -> String? {
+            let cleaned = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return cleaned.isEmpty ? nil : cleaned
+        }
+        bloodType = trimmed(profile.bloodType)
+        allergies = trimmed(profile.allergies)
+        conditions = trimmed(profile.conditions)
+        medications = trimmed(profile.medications)
+        cnib = trimmed(profile.cnib)
+    }
 }

@@ -227,18 +227,45 @@ la ligne `alerts`.**
 - Tests `alerts.test.js` : soft launch journalisé, attestation enregistrée, refus en mode strict,
   passage avec attestation. Suite backend 64/64.
 
-**Reste à faire (app iOS).**
+**Fait (app iOS, 2026-09-01).**
 
-1. Sur l'écran contacts d'urgence (`ios/Viim/Features/Assistance/AssistanceView.swift`), une case à
-   cocher **obligatoire avant d'enregistrer un contact** :
-   > « Je confirme que cette personne accepte d'être prévenue par Viim sur WhatsApp, avec ma
-   > position, si l'application détecte un accident. »
-   Rappel court aussi à l'onboarding (`OnboardingView.swift`) si un contact y est saisi.
-2. Envoyer `contactsConsent: true` dans les appels `/alerts/*` une fois la case cochée.
-3. Quand les builds iOS l'envoient tous, passer `REQUIRE_CONTACTS_CONSENT=true` côté Coolify.
+1. `EmergencyContact` porte `consentAcknowledgedAt: Date?` (compat Keychain : clé absente → `nil`).
+2. `EmergencyContactsView` (`AssistanceView.swift`) : `Toggle` **obligatoire avant d'enregistrer un
+   contact** (« Je confirme que cette personne accepte d'être prévenue par Viim sur WhatsApp, avec
+   ma position, si l'application détecte un accident. »). Rappel équivalent à l'onboarding
+   (`OnboardingView.swift`, `safetyStep`) : pas d'enregistrement du contact sans la case cochée.
+   Les contacts d'avant cette version affichent un avertissement « accord non confirmé ».
+3. `BackendAPIClient` envoie `contactsConsent` sur `/alerts/{test,location-share,collision}` :
+   `true` seulement si **tous** les contacts visés ont `consentAcknowledgedAt`.
+
+**Reste à faire (opérateur).**
+
+4. Quand les builds iOS déployés l'envoient tous, passer `REQUIRE_CONTACTS_CONSENT=true` côté Coolify.
 
 **Alternative** (plus lourde) : message WhatsApp de confirmation au proche au premier ajout, avec
 bouton « J'accepte ». Reporté sauf exigence Meta explicite.
+
+### 4.6 — Déclencheur accident côté app iOS
+
+Le backend `/v1/alerts/collision` + cascade §4.4 existent, mais rien dans l'app ne les appelait.
+
+**Fait (2026-09-01) — déclencheur manuel.**
+
+- `BackendAPIClient.sendCollisionAlert(contacts:driverName:location:medicalProfile:)` → `POST
+  /v1/alerts/collision` (jusqu'à 4 contacts, position, `occurredAt`, `contactsConsent`, fiche
+  médicale si renseignée — non persistée côté serveur).
+- `AssistanceView` : bouton **« J'ai eu un accident »**. Récupère une position GPS fraîche
+  (`< 2 min`), ouvre `CollisionCountdownSheet` (compte à rebours 10 s annulable, envoi auto à
+  zéro), puis appelle l'endpoint. Retour : proche prévenu / erreur réseau.
+- Tests : `BackendAPIClientTests` (payload collision, `contactsConsent` vrai/faux selon les
+  contacts). Build iOS + suite verts.
+
+**Reste à faire — détection automatique.**
+
+- `TripManager.collisionDetectionEnabled` est encore un booléen mort (accueil : « en
+  préparation »). À implémenter : service `CollisionDetector` (CoreMotion accéléromètre, seuil g +
+  fenêtre, armé seulement pendant un trajet actif) → notification locale + confirmation 15 s
+  annulable → même appel `sendCollisionAlert`. Derrière le flag, calibrage anti-faux-positifs.
 
 ## 5. Non-objectifs
 

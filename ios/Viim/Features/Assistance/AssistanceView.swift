@@ -10,6 +10,8 @@ struct AssistanceView: View {
     @State private var hasInvalidEmergencyContact = false
     @State private var medicalProfile: MedicalProfile?
     @State private var isSendingTest = false
+    @State private var isShowingCollisionCountdown = false
+    @State private var isSendingCollision = false
     @State private var alertMessage: AssistanceAlertMessage?
 
     var body: some View {
@@ -17,6 +19,40 @@ struct AssistanceView: View {
             ScrollView {
                 VStack(spacing: 12) {
                     AssistanceHero()
+
+                    ViimCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("assistance.collision.title", systemImage: "exclamationmark.triangle.fill")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(ViimColors.text)
+                            Text("assistance.collision.detail")
+                                .font(.caption)
+                                .foregroundStyle(ViimColors.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button(role: .destructive) {
+                                beginCollisionCountdown()
+                            } label: {
+                                Label("assistance.collision.action", systemImage: "sos")
+                                    .font(.caption.weight(.bold))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 44)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(ViimColors.red)
+                            .disabled(emergencyContacts.isEmpty || isSendingCollision)
+
+                            if emergencyContacts.isEmpty {
+                                Text("assistance.collision.needContact")
+                                    .font(.caption2)
+                                    .foregroundStyle(ViimColors.muted)
+                            } else if freshLocation == nil {
+                                Label("assistance.collision.locating", systemImage: "location.magnifyingglass")
+                                    .font(.caption2)
+                                    .foregroundStyle(ViimColors.muted)
+                            }
+                        }
+                    }
 
                     ViimCard {
                         VStack(alignment: .leading, spacing: 10) {
@@ -129,12 +165,83 @@ struct AssistanceView: View {
             .navigationTitle("assistance.title")
             .task {
                 reloadSecureData()
+                locationService.prepareForForegroundUse()
+                locationService.requestCurrentLocation()
+            }
+            .sheet(isPresented: $isShowingCollisionCountdown) {
+                CollisionCountdownSheet(
+                    seconds: 10,
+                    onCancel: { isShowingCollisionCountdown = false },
+                    onConfirm: {
+                        isShowingCollisionCountdown = false
+                        sendCollisionAlert()
+                    }
+                )
+                .presentationDetents([.medium])
             }
             .alert(item: $alertMessage) { message in
                 Alert(
                     title: Text(message.titleKey),
                     message: Text(message.detailKey),
                     dismissButton: .default(Text("common.ok"))
+                )
+            }
+        }
+    }
+
+    /// Derniere position GPS jugee exploitable pour une alerte (moins de 2 min).
+    private var freshLocation: CLLocation? {
+        guard let location = locationService.latestLocation,
+              abs(Date().timeIntervalSince(location.timestamp)) <= 120 else {
+            return nil
+        }
+        return location
+    }
+
+    private func beginCollisionCountdown() {
+        guard !emergencyContacts.isEmpty else {
+            alertMessage = AssistanceAlertMessage(
+                titleKey: "assistance.error.title",
+                detailKey: hasInvalidEmergencyContact ? "assistance.contacts.correctRequired" : "assistance.collision.needContact"
+            )
+            return
+        }
+        locationService.prepareForForegroundUse()
+        locationService.requestCurrentLocation()
+        isShowingCollisionCountdown = true
+    }
+
+    private func sendCollisionAlert() {
+        guard !emergencyContacts.isEmpty else { return }
+        guard let location = freshLocation ?? locationService.latestLocation else {
+            alertMessage = AssistanceAlertMessage(
+                titleKey: "assistance.error.title",
+                detailKey: "assistance.collision.noLocation"
+            )
+            return
+        }
+
+        isSendingCollision = true
+        let contacts = emergencyContacts
+        let driverName = onboardingStore.profile?.firstName
+        let medical = medicalProfile
+        Task { @MainActor in
+            defer { isSendingCollision = false }
+            do {
+                try await BackendAPIClient.shared.sendCollisionAlert(
+                    contacts: contacts,
+                    driverName: driverName,
+                    location: location,
+                    medicalProfile: medical
+                )
+                alertMessage = AssistanceAlertMessage(
+                    titleKey: "assistance.collision.sent.title",
+                    detailKey: "assistance.collision.sent.detail"
+                )
+            } catch {
+                alertMessage = AssistanceAlertMessage(
+                    titleKey: "assistance.error.title",
+                    detailKey: AssistanceAPIErrorPresenter.detailKey(for: error, fallbackKey: "assistance.collision.error")
                 )
             }
         }
@@ -194,7 +301,8 @@ struct AssistanceView: View {
                 do {
                     try await BackendAPIClient.shared.sendAlertTest(
                         contact: contact,
-                        driverName: driverName
+                        driverName: driverName,
+                        contactsConsent: contact.hasProchesConsent
                     )
                     sentCount += 1
                 } catch {
@@ -467,7 +575,8 @@ private struct AssistanceLocationView: View {
                     try await BackendAPIClient.shared.shareLocation(
                         contact: contact,
                         driverName: driverName,
-                        location: location
+                        location: location,
+                        contactsConsent: contact.hasProchesConsent
                     )
                     sentCount += 1
                 } catch {
@@ -500,6 +609,7 @@ private struct EmergencyContactsView: View {
     @State private var contacts: [EmergencyContact] = []
     @State private var name = ""
     @State private var phoneNumber = ""
+    @State private var consentAcknowledged = false
     @State private var alertMessage: AssistanceAlertMessage?
 
     var body: some View {
@@ -513,6 +623,11 @@ private struct EmergencyContactsView: View {
                             Text(contact.phoneNumber)
                                 .font(.caption)
                                 .foregroundStyle(ViimColors.muted)
+                            if !contact.hasProchesConsent {
+                                Label("assistance.contacts.consent.missing", systemImage: "exclamationmark.triangle.fill")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(ViimColors.warning)
+                            }
                         }
                     }
                     .onDelete(perform: deleteContacts)
@@ -531,6 +646,12 @@ private struct EmergencyContactsView: View {
                         .keyboardType(.phonePad)
                         .textContentType(.telephoneNumber)
 
+                    Toggle(isOn: $consentAcknowledged) {
+                        Text("assistance.contacts.consent.toggle")
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
                     Button("assistance.contacts.add") {
                         addContact()
                     }
@@ -538,7 +659,7 @@ private struct EmergencyContactsView: View {
                 } header: {
                     Text("assistance.contacts.addHeader")
                 } footer: {
-                    Text("assistance.contacts.footer")
+                    Text("assistance.contacts.consent.footer")
                 }
             } else {
                 Section {
@@ -564,7 +685,8 @@ private struct EmergencyContactsView: View {
 
     private var isValidContact: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            BurkinaPhoneNumber.normalize(phoneNumber) != nil
+            BurkinaPhoneNumber.normalize(phoneNumber) != nil &&
+            consentAcknowledged
     }
 
     private func loadContacts() {
@@ -581,7 +703,8 @@ private struct EmergencyContactsView: View {
         updatedContacts.append(
             EmergencyContact(
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                phoneNumber: normalizedPhoneNumber
+                phoneNumber: normalizedPhoneNumber,
+                consentAcknowledgedAt: consentAcknowledged ? Date() : nil
             )
         )
 
@@ -590,6 +713,7 @@ private struct EmergencyContactsView: View {
             contacts = updatedContacts
             name = ""
             phoneNumber = ""
+            consentAcknowledged = false
             onChange()
             alertMessage = AssistanceAlertMessage(titleKey: "assistance.contacts.saved.title", detailKey: "assistance.contacts.saved.detail")
         } catch {
@@ -711,6 +835,72 @@ private struct AssistanceAlertMessage: Identifiable {
     let id = UUID()
     let titleKey: LocalizedStringKey
     let detailKey: LocalizedStringKey
+}
+
+/// Fenetre de confirmation avant l'alerte accident : compte a rebours annulable,
+/// envoi automatique a zero. Evite les fausses alertes tout en restant rapide
+/// si le conducteur est blesse et ne touche pas l'ecran.
+private struct CollisionCountdownSheet: View {
+    let seconds: Int
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    @State private var remaining: Int
+
+    init(seconds: Int, onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void) {
+        self.seconds = seconds
+        self.onCancel = onCancel
+        self.onConfirm = onConfirm
+        _remaining = State(initialValue: seconds)
+    }
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 46, weight: .bold))
+                .foregroundStyle(ViimColors.red)
+
+            Text("assistance.collision.countdown.title")
+                .font(.title3.weight(.heavy))
+                .multilineTextAlignment(.center)
+
+            Text("assistance.collision.countdown.detail \(remaining)")
+                .font(.subheadline)
+                .foregroundStyle(ViimColors.muted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button(role: .destructive) {
+                onConfirm()
+            } label: {
+                Text("assistance.collision.countdown.sendNow")
+                    .font(.body.weight(.bold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ViimColors.red)
+
+            Button {
+                onCancel()
+            } label: {
+                Text("assistance.collision.countdown.cancel")
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(24)
+        .interactiveDismissDisabled(true)
+        .task {
+            while remaining > 0 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { return }
+                remaining -= 1
+            }
+            onConfirm()
+        }
+    }
 }
 
 private enum AssistanceLocationRequestState {

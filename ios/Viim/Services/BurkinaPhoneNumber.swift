@@ -60,6 +60,10 @@ enum BurkinaPhoneNumber {
             return nil
         }
 
-        return EmergencyContact(name: name, phoneNumber: phoneNumber)
+        return EmergencyContact(
+            name: name,
+            phoneNumber: phoneNumber,
+            consentAcknowledgedAt: contact.consentAcknowledgedAt
+        )
     }
 }

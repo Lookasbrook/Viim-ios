@@ -204,6 +204,22 @@ struct UserProfile: Codable, Equatable {
 struct EmergencyContact: Codable, Equatable {
     let name: String
     let phoneNumber: String
+    /// Date a laquelle le conducteur a atteste que ce proche accepte d'etre
+    /// prevenu par Viim sur WhatsApp avec sa position en cas d'accident.
+    /// `nil` = pas encore atteste (contacts enregistres avant cette version,
+    /// ou attestation refusee). L'attestation transite ensuite dans le champ
+    /// `contactsConsent` de chaque alerte (cf. architecture/meta-mcp-et-whatsapp.md 4.5).
+    var consentAcknowledgedAt: Date?
+
+    init(name: String, phoneNumber: String, consentAcknowledgedAt: Date? = nil) {
+        self.name = name
+        self.phoneNumber = phoneNumber
+        self.consentAcknowledgedAt = consentAcknowledgedAt
+    }
+
+    var hasProchesConsent: Bool {
+        consentAcknowledgedAt != nil
+    }
 }
 
 final class OnboardingStore: ObservableObject {
