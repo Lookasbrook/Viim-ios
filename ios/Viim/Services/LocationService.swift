@@ -241,6 +241,7 @@ final class LocationService: NSObject, ObservableObject {
         // suspension. Deux minutes supprimait silencieusement ces points alors
         // que la fenetre de capture durable est de quinze minutes.
         static let maximumLocationAge: TimeInterval = 15 * 60
+        static let maximumFutureLocationSkew: TimeInterval = 5
         static let startSpeedThresholdKmh = 10.0
         static let minimumFastStartDuration: TimeInterval = 5
         static let minimumFastStartReliableSpeedSamples = 2
@@ -284,6 +285,7 @@ final class LocationService: NSObject, ObservableObject {
     private var lastReceivedLocation: CLLocation?
     private var lastMovementEvidenceAt: Date?
     private var lastDiagnosticsHeartbeatAt: Date?
+    private var lastHealthReadinessEvent: CollectionHealthEventKind?
     private var monitoringStartedAt: Date?
     private var idleStopWorkItem: DispatchWorkItem?
     // CLBackgroundActivitySession (iOS 17+), stocke en Any pour la cible iOS 16.
@@ -305,6 +307,7 @@ final class LocationService: NSObject, ObservableObject {
     // CLBackgroundActivitySession, elle n'affiche pas la pastille bleue.
     private var alwaysServiceSession: Any?
     private let activeTripJournal: ActiveTripJournal?
+    private let collectionHealthJournal: (any CollectionHealthJournaling)?
 
     @Published private(set) var authorizationState: LocationAuthorizationState = .notDetermined
     @Published private(set) var isMonitoring = false
@@ -327,6 +330,7 @@ final class LocationService: NSObject, ObservableObject {
 
     init(
         activeTripJournal: ActiveTripJournal? = nil,
+        collectionHealthJournal: (any CollectionHealthJournaling)? = nil,
         manager: LocationManaging = CLLocationManager(),
         carburantFeatureFlags: CarburantFeatureFlags = .resolved(),
         backgroundRefreshStatusProvider: @escaping () -> BackgroundRefreshAvailability = {
@@ -346,6 +350,7 @@ final class LocationService: NSObject, ObservableObject {
         }
     ) {
         self.activeTripJournal = activeTripJournal
+        self.collectionHealthJournal = collectionHealthJournal
         self.manager = manager
         self.carburantFeatureFlags = carburantFeatureFlags
         self.backgroundRefreshStatusProvider = backgroundRefreshStatusProvider
@@ -441,6 +446,13 @@ final class LocationService: NSObject, ObservableObject {
             passiveWakeupRequested: isPassiveWakeupMonitoring
         )
         collectionReadiness = next
+        let healthEvent: CollectionHealthEventKind = next == .ready
+            ? .trackingReady
+            : .trackingNotReady
+        if healthEvent != lastHealthReadinessEvent {
+            recordCollectionHealth(healthEvent)
+            lastHealthReadinessEvent = healthEvent
+        }
         ViimDiagnostics.log(
             "location.readiness context=\(context) auth=\(authorizationState) "
             + "state=\(next.rawValue) "
@@ -745,7 +757,11 @@ final class LocationService: NSObject, ObservableObject {
         now: Date
     ) -> Bool {
         guard current.horizontalAccuracy >= 0,
-              abs(now.timeIntervalSince(current.timestamp)) <= Constants.passiveWakeupMaximumAge else {
+              isLocationTimestampFresh(
+                current.timestamp,
+                now: now,
+                maximumAge: Constants.passiveWakeupMaximumAge
+              ) else {
             return false
         }
 
@@ -938,7 +954,11 @@ final class LocationService: NSObject, ObservableObject {
     ) -> Bool {
         for location in locations {
             guard location.horizontalAccuracy >= 0,
-                  abs(now.timeIntervalSince(location.timestamp)) <= Constants.passiveWakeupMaximumAge else {
+                  isLocationTimestampFresh(
+                    location.timestamp,
+                    now: now,
+                    maximumAge: Constants.passiveWakeupMaximumAge
+                  ) else {
                 continue
             }
 
@@ -991,7 +1011,20 @@ final class LocationService: NSObject, ObservableObject {
             return false
         }
 
-        return abs(Date().timeIntervalSince(location.timestamp)) <= Constants.maximumLocationAge
+        return Self.isLocationTimestampFresh(
+            location.timestamp,
+            now: Date(),
+            maximumAge: Constants.maximumLocationAge
+        )
+    }
+
+    static func isLocationTimestampFresh(
+        _ timestamp: Date,
+        now: Date,
+        maximumAge: TimeInterval
+    ) -> Bool {
+        let age = now.timeIntervalSince(timestamp)
+        return age >= -Constants.maximumFutureLocationSkew && age <= maximumAge
     }
 
     static func hasReliableReportedSpeed(_ location: CLLocation) -> Bool {
@@ -1155,6 +1188,7 @@ final class LocationService: NSObject, ObservableObject {
         resetStartCandidate(deleteJournal: false)
         belowStopSpeedSince = nil
         tripPhase = .active
+        recordCollectionHealth(.tripStarted)
         ViimDiagnostics.log("trip.begin samples=\(trip.sampleCount) distanceMeters=\(Int(trip.distanceMeters))")
     }
 
@@ -1252,10 +1286,12 @@ final class LocationService: NSObject, ObservableObject {
                     source: "location",
                     sampleCount: abandonedSampleCount
                 )
+                recordCollectionHealthOutcome(.rejected)
             } else {
                 try activeTripJournal?.deleteTrip(id: abandonedCandidateID)
             }
         } catch {
+            recordCollectionHealthFailure(.activeTripJournalWrite)
             ViimDiagnostics.log("trip.journal.candidate.cleanup.failed id=\(abandonedCandidateID.uuidString)")
         }
     }
@@ -1272,6 +1308,7 @@ final class LocationService: NSObject, ObservableObject {
         do {
             try activeTripJournal?.startTrip(activeTrip, vehicleType: vehicleType, samples: samples)
         } catch {
+            recordCollectionHealthFailure(.activeTripJournalWrite)
             ViimDiagnostics.log("trip.journal.start.failed")
         }
     }
@@ -1288,6 +1325,7 @@ final class LocationService: NSObject, ObservableObject {
                 distanceMeters: distanceMeters(in: candidateSamples)
             )
         } catch {
+            recordCollectionHealthFailure(.activeTripJournalWrite)
             ViimDiagnostics.log("trip.journal.candidate.failed id=\(candidateTripID.uuidString)")
         }
     }
@@ -1296,7 +1334,47 @@ final class LocationService: NSObject, ObservableObject {
         do {
             try activeTripJournal?.appendSample(sample, to: activeTrip, vehicleType: vehicleType)
         } catch {
+            recordCollectionHealthFailure(.activeTripJournalWrite)
             ViimDiagnostics.log("trip.journal.append.failed")
+        }
+    }
+
+    private func recordCollectionHealth(
+        _ kind: CollectionHealthEventKind,
+        at date: Date = Date()
+    ) {
+        do {
+            try collectionHealthJournal?.append(
+                CollectionHealthEvent(occurredAt: date, kind: kind),
+                now: date
+            )
+        } catch {
+            ViimDiagnostics.log("collection.health.append.failed kind=\(kind.rawValue)")
+        }
+    }
+
+    private func recordCollectionHealthFailure(
+        _ failure: CollectionHealthPersistenceFailure,
+        at date: Date = Date()
+    ) {
+        do {
+            try collectionHealthJournal?.append(
+                .persistenceFailure(failure, at: date),
+                now: date
+            )
+        } catch {
+            ViimDiagnostics.log("collection.health.append.failed kind=persistenceFailure")
+        }
+    }
+
+    private func recordCollectionHealthOutcome(
+        _ outcome: CollectionHealthTripOutcome,
+        at date: Date = Date()
+    ) {
+        do {
+            try collectionHealthJournal?.append(.outcome(outcome, at: date), now: date)
+        } catch {
+            ViimDiagnostics.log("collection.health.append.failed kind=tripOutcome")
         }
     }
 
@@ -1357,6 +1435,21 @@ extension LocationService: CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let receivedAt = Date()
+        let wasPassiveWakeup = !isMonitoring &&
+            authorizationState == .authorizedAlways &&
+            UIApplication.shared.applicationState != .active
+        let isAutomaticCollection = isMonitoring || wasPassiveWakeup
+        if isAutomaticCollection {
+            recordCollectionHealth(.locationBatchReceived, at: receivedAt)
+        }
+        if wasPassiveWakeup {
+            recordCollectionHealth(.passiveWakeupReceived, at: receivedAt)
+        }
+        if isAutomaticCollection, locations.contains(where: isUsable) {
+            recordCollectionHealth(.acceptedSample, at: receivedAt)
+        }
+
         // Enregistre la preuve de mouvement sur TOUS les points recus, y
         // compris ceux trop imprecis pour la route : c'est ce qui empeche le
         // failsafe et l'arret stationnaire de couper le GPS en plein trajet
@@ -1382,6 +1475,9 @@ extension LocationService: CLLocationManagerDelegate {
         }
 
         ViimDiagnostics.log("location.departureRegion.exit")
+        if UIApplication.shared.applicationState != .active {
+            recordCollectionHealth(.passiveWakeupReceived)
+        }
         guard authorizationState == .authorizedAlways, !isMonitoring else {
             return
         }

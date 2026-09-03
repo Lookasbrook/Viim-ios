@@ -62,7 +62,7 @@
 "status.enabled" = "Activé";
 "status.disabled" = "Désactivé";
 "status.online" = "Connecté";
-"status.offlineReady" = "Prêt hors ligne";
+"status.offlineReady" = "Hors ligne";
 "common.ok" = "OK";
 "common.cancel" = "Annuler";
 "common.done" = "Terminé";
@@ -121,6 +121,15 @@
 "home.metric.savings.empty" = "0 F";
 "home.metric.savings.label" = "Économisés";
 "home.status.tripDetection" = "Détection de trajet";
+"home.status.collectionHealth" = "Santé de la collecte";
+"collection.health.unavailable" = "Preuves de collecte indisponibles";
+"collection.health.persistenceRisk" = "Enregistrement local à vérifier";
+"collection.health.probableLoss" = "Mouvement détecté, aucune donnée GPS reçue";
+"collection.health.fresh" = "Données GPS reçues récemment";
+"collection.health.recent" = "Collecte observée durant les 7 derniers jours";
+"collection.health.clockUntrusted" = "Fraîcheur non vérifiable après redémarrage ou changement d’horloge";
+"collection.health.noRecentEvidence" = "Aucune preuve de collecte récente";
+"collection.health.awaitingEvidence" = "En attente d’une première preuve de collecte";
 "home.status.collisionDetection" = "Détection de collision";
 "home.status.collisionDetection.pending" = "Pas encore actif";
 "home.status.collisionDetection.unavailable" = "Non disponible — alertes manuelles uniquement";
@@ -306,6 +315,8 @@
 "assistance.title" = "Assistance";
 "assistance.hero.detail" = "Vos actions rapides en cas d'incident.";
 "assistance.manualAlerts.title" = "Alertes manuelles";
+"assistance.collectionHealth.title" = "Santé de la collecte";
+"assistance.collectionHealth.summary" = "7 j : %lld preuves GPS · %lld trajets enregistrés · %lld rejetés · %lld récupérés";
 "assistance.manualAlerts.detail" = "Le bouton ci-dessous envoie uniquement un message de test à vos contacts configurés. Il ne confirme pas qu'une détection automatique est active.";
 "assistance.collisionCalibration.title" = "Calibration collision — recherche";
 "assistance.collisionCalibration.noAlerts" = "Alertes automatiques indisponibles";

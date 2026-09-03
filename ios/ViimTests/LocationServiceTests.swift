@@ -3,6 +3,77 @@ import XCTest
 @testable import Viim
 
 final class LocationServiceTests: XCTestCase {
+    func testForegroundOneShotLocationDoesNotBecomeAutomaticCollectionEvidence() throws {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
+        let healthJournal = CollectionHealthJournalSpy()
+        let service = LocationService(
+            collectionHealthJournal: healthJournal,
+            manager: manager,
+            backgroundRefreshStatusProvider: { .available }
+        )
+        let location = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 45, longitude: -73),
+            altitude: 0,
+            horizontalAccuracy: 5,
+            verticalAccuracy: 5,
+            timestamp: Date()
+        )
+
+        service.requestCurrentLocation()
+        service.locationManager(CLLocationManager(), didUpdateLocations: [location])
+
+        XCTAssertFalse(healthJournal.events.contains { $0.kind == .locationBatchReceived })
+        XCTAssertFalse(healthJournal.events.contains { $0.kind == .acceptedSample })
+    }
+
+    func testAutomaticMonitoringRecordsAcceptedCollectionEvidence() throws {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
+        let healthJournal = CollectionHealthJournalSpy()
+        let service = LocationService(
+            collectionHealthJournal: healthJournal,
+            manager: manager,
+            backgroundRefreshStatusProvider: { .available }
+        )
+        let location = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 45, longitude: -73),
+            altitude: 0,
+            horizontalAccuracy: 5,
+            verticalAccuracy: 5,
+            timestamp: Date()
+        )
+
+        service.startMonitoring()
+        service.locationManager(CLLocationManager(), didUpdateLocations: [location])
+
+        XCTAssertTrue(healthJournal.events.contains { $0.kind == .locationBatchReceived })
+        XCTAssertTrue(healthJournal.events.contains { $0.kind == .acceptedSample })
+    }
+
+    func testLocationTimestampRejectsFutureSamplesBeyondClockTolerance() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+
+        XCTAssertTrue(
+            LocationService.isLocationTimestampFresh(
+                now.addingTimeInterval(5),
+                now: now,
+                maximumAge: 300
+            )
+        )
+        XCTAssertFalse(
+            LocationService.isLocationTimestampFresh(
+                now.addingTimeInterval(6),
+                now: now,
+                maximumAge: 300
+            )
+        )
+        XCTAssertFalse(
+            LocationService.isLocationTimestampFresh(
+                now.addingTimeInterval(-301),
+                now: now,
+                maximumAge: 300
+            )
+        )
+    }
     func testReadinessRequiresEveryBackgroundPrerequisite() {
         XCTAssertEqual(
             LocationCollectionReadiness.evaluate(
@@ -1168,6 +1239,18 @@ final class LocationServiceTests: XCTestCase {
             speedAccuracy: 1,
             receivedAt: receivedAt
         )
+    }
+}
+
+private final class CollectionHealthJournalSpy: CollectionHealthJournaling {
+    private(set) var events: [CollectionHealthEvent] = []
+
+    func load(now: Date) throws -> [CollectionHealthEvent] {
+        events
+    }
+
+    func append(_ event: CollectionHealthEvent, now: Date) throws {
+        events.append(event)
     }
 }
 

@@ -109,6 +109,30 @@ struct AssistanceView: View {
                     AssistanceHero()
 
                     ViimCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Label("assistance.collectionHealth.title", systemImage: "waveform.path.ecg")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(ViimColors.text)
+                                Spacer()
+                                ViimChip(
+                                    titleKey: collectionHealthStatus.localizedDetailKey,
+                                    style: collectionHealthChipStyle
+                                )
+                            }
+                            Text(collectionHealthStatus.localizedDetailKey)
+                                .font(.caption)
+                                .foregroundStyle(ViimColors.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(
+                                "assistance.collectionHealth.summary \(collectionHealthSummary.acceptedSampleHeartbeatCount) \(collectionHealthSummary.persistedTripCount) \(collectionHealthSummary.rejectedTripCount) \(collectionHealthSummary.recoveredTripCount)"
+                            )
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(ViimColors.muted)
+                        }
+                    }
+
+                    ViimCard {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Label("assistance.manualAlerts.title", systemImage: "paperplane.fill")
@@ -301,6 +325,25 @@ struct AssistanceView: View {
         }
     }
 
+    private var collectionHealthStatus: HomeStatusPresentation {
+        HomeStatusPresenter.collectionHealth(
+            protectionReadinessService.snapshot.collectionHealth.state
+        )
+    }
+
+    private var collectionHealthSummary: CollectionHealthWindowSummary {
+        protectionReadinessService.snapshot.collectionHealth.summary
+    }
+
+    private var collectionHealthChipStyle: ViimChip.Style {
+        switch collectionHealthStatus.tone {
+        case .success: return .success
+        case .warning: return .warning
+        case .danger: return .danger
+        case .blue: return .neutral
+        }
+    }
+
     private var emergencyContactDetailKey: LocalizedStringKey {
         switch protectionReadinessService.snapshot.manualAlerts {
         case .unavailable:
@@ -385,6 +428,9 @@ struct AssistanceView: View {
     }
 
     private var canUseManualAlerts: Bool {
+        guard protectionReadinessService.snapshot.network == .online else {
+            return false
+        }
         if case .configuredUnverified = protectionReadinessService.snapshot.manualAlerts {
             return !emergencyContacts.isEmpty
         }
@@ -392,6 +438,9 @@ struct AssistanceView: View {
     }
 
     private var manualAlertsBlockingDetailKey: LocalizedStringKey {
+        if protectionReadinessService.snapshot.network == .offline {
+            return "assistance.error.offline"
+        }
         switch protectionReadinessService.snapshot.manualAlerts {
         case .unavailable:
             return "assistance.contacts.unavailable"

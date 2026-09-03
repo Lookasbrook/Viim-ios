@@ -57,6 +57,7 @@ enum ProtectionNetworkState: String, Equatable {
 /// tant que l'app ne dispose pas d'un accuse de reception fournisseur.
 struct ProtectionReadinessSnapshot: Equatable {
     let tripCollection: TripCollectionProtectionState
+    let collectionHealth: CollectionHealthSnapshot
     let automaticCollision: AutomaticCollisionProtectionState
     let manualAlerts: ManualAlertProtectionState
     let network: ProtectionNetworkState
@@ -66,7 +67,8 @@ struct ProtectionReadinessSnapshot: Equatable {
         isLocationMonitoring: Bool,
         isPassiveWakeupMonitoring: Bool,
         emergencyContacts: [EmergencyContact]?,
-        isOnline: Bool
+        isOnline: Bool,
+        collectionHealth: CollectionHealthSnapshot = .unavailable
     ) -> Self {
         let tripCollection: TripCollectionProtectionState
         if !locationReadiness.isReadyForBackground {
@@ -84,6 +86,7 @@ struct ProtectionReadinessSnapshot: Equatable {
         guard let emergencyContacts else {
             return Self(
                 tripCollection: tripCollection,
+                collectionHealth: collectionHealth,
                 automaticCollision: .unavailable,
                 manualAlerts: .unavailable,
                 network: isOnline ? .online : .offline
@@ -110,6 +113,7 @@ struct ProtectionReadinessSnapshot: Equatable {
 
         return Self(
             tripCollection: tripCollection,
+            collectionHealth: collectionHealth,
             automaticCollision: .unavailable,
             manualAlerts: manualAlerts,
             network: isOnline ? .online : .offline
@@ -118,6 +122,7 @@ struct ProtectionReadinessSnapshot: Equatable {
 
     var diagnosticSummary: String {
         "trip=\(tripCollection.diagnosticValue) "
+            + "collectionHealth=\(collectionHealth.state.diagnosticValue) "
             + "collision=\(automaticCollision.rawValue) "
             + "manualAlerts=\(manualAlerts.diagnosticValue) "
             + "network=\(network.rawValue)"
@@ -129,33 +134,46 @@ final class ProtectionReadinessService: ObservableObject {
     @Published private(set) var snapshot: ProtectionReadinessSnapshot
 
     private let emergencyContactsProvider: () -> [EmergencyContact]?
+    private let collectionHealthJournal: any CollectionHealthJournaling
+    private let staleActiveDraftProvider: () -> Bool
     private var emergencyContacts: [EmergencyContact]?
     private var locationReadiness: LocationCollectionReadiness
     private var isLocationMonitoring: Bool
     private var isPassiveWakeupMonitoring: Bool
     private var isOnline: Bool
+    private var collectionHealth: CollectionHealthSnapshot
     private var cancellables = Set<AnyCancellable>()
 
     init(
         locationService: LocationService,
         networkStatusService: NetworkStatusService,
+        collectionHealthJournal: any CollectionHealthJournaling = CollectionHealthJournal(),
+        staleActiveDraftProvider: @escaping () -> Bool = { false },
         emergencyContactsProvider: @escaping () -> [EmergencyContact]? = {
             try? SecureEmergencyContactStore.shared.loadAll()
         }
     ) {
         self.emergencyContactsProvider = emergencyContactsProvider
+        self.collectionHealthJournal = collectionHealthJournal
+        self.staleActiveDraftProvider = staleActiveDraftProvider
         let contacts = emergencyContactsProvider()
         emergencyContacts = contacts
         locationReadiness = locationService.collectionReadiness
         isLocationMonitoring = locationService.isMonitoring
         isPassiveWakeupMonitoring = locationService.isPassiveWakeupMonitoring
         isOnline = networkStatusService.isOnline
+        collectionHealth = Self.loadCollectionHealth(
+            from: collectionHealthJournal,
+            readiness: locationReadiness,
+            hasStaleActiveDraft: staleActiveDraftProvider()
+        )
         snapshot = ProtectionReadinessSnapshot.evaluate(
             locationReadiness: locationReadiness,
             isLocationMonitoring: isLocationMonitoring,
             isPassiveWakeupMonitoring: isPassiveWakeupMonitoring,
             emergencyContacts: contacts,
-            isOnline: isOnline
+            isOnline: isOnline,
+            collectionHealth: collectionHealth
         )
 
         Publishers.CombineLatest4(
@@ -172,6 +190,11 @@ final class ProtectionReadinessService: ObservableObject {
             self.isLocationMonitoring = isMonitoring
             self.isPassiveWakeupMonitoring = isPassiveWakeupMonitoring
             self.isOnline = isOnline
+            self.collectionHealth = Self.loadCollectionHealth(
+                from: self.collectionHealthJournal,
+                readiness: readiness,
+                hasStaleActiveDraft: self.staleActiveDraftProvider()
+            )
             self.publishIfChanged(
                 locationReadiness: readiness,
                 isLocationMonitoring: isMonitoring,
@@ -180,6 +203,20 @@ final class ProtectionReadinessService: ObservableObject {
             )
         }
         .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .viimCollectionHealthDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshCollectionHealth()
+            }
+            .store(in: &cancellables)
+
+        Timer.publish(every: 60, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.refreshCollectionHealth()
+            }
+            .store(in: &cancellables)
 
         ViimDiagnostics.log("protection.readiness \(snapshot.diagnosticSummary)")
     }
@@ -190,6 +227,15 @@ final class ProtectionReadinessService: ObservableObject {
             return
         }
         updateEmergencyContacts(contacts)
+    }
+
+    func refreshCollectionHealth() {
+        collectionHealth = Self.loadCollectionHealth(
+            from: collectionHealthJournal,
+            readiness: locationReadiness,
+            hasStaleActiveDraft: staleActiveDraftProvider()
+        )
+        republishCurrentInputs()
     }
 
     func updateEmergencyContacts(_ contacts: [EmergencyContact]) {
@@ -222,11 +268,68 @@ final class ProtectionReadinessService: ObservableObject {
             isLocationMonitoring: isLocationMonitoring,
             isPassiveWakeupMonitoring: isPassiveWakeupMonitoring,
             emergencyContacts: emergencyContacts,
-            isOnline: isOnline
+            isOnline: isOnline,
+            collectionHealth: collectionHealth
         )
         guard next != snapshot else { return }
         snapshot = next
         ViimDiagnostics.log("protection.readiness \(next.diagnosticSummary)")
     }
 
+    private static func loadCollectionHealth(
+        from journal: any CollectionHealthJournaling,
+        readiness: LocationCollectionReadiness,
+        hasStaleActiveDraft: Bool,
+        now: Date = Date()
+    ) -> CollectionHealthSnapshot {
+        do {
+            let events = try journal.load(now: now)
+            return CollectionHealthSnapshot.evaluate(
+                events: events,
+                collectionReadiness: readiness,
+                storageAvailable: journal.storageAvailable,
+                hasStaleActiveDraft: hasStaleActiveDraft,
+                now: now
+            )
+        } catch {
+            ViimDiagnostics.log("collection.health.load.failed")
+            try? journal.append(
+                .persistenceFailure(.healthJournalRead, at: now),
+                now: now
+            )
+            return CollectionHealthSnapshot.evaluate(
+                events: [],
+                collectionReadiness: readiness,
+                storageAvailable: false,
+                hasStaleActiveDraft: hasStaleActiveDraft,
+                now: now
+            )
+        }
+    }
+
+}
+
+extension CollectionHealthState {
+    var diagnosticValue: String {
+        switch self {
+        case .unavailable:
+            return "unavailable"
+        case .configurationRequired(let readiness):
+            return "configurationRequired:\(readiness.rawValue)"
+        case .persistenceAtRisk(let risk):
+            return "persistenceAtRisk:\(risk.rawValue)"
+        case .probableDataLoss:
+            return "probableDataLoss"
+        case .receivingFreshSamples:
+            return "receivingFreshSamples"
+        case .recentlyObserved:
+            return "recentlyObserved"
+        case .clockUntrusted:
+            return "clockUntrusted"
+        case .noRecentEvidence:
+            return "noRecentEvidence"
+        case .awaitingFirstEvidence:
+            return "awaitingFirstEvidence"
+        }
+    }
 }

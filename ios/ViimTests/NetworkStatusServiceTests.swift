@@ -25,14 +25,33 @@ final class NetworkStatusServiceTests: XCTestCase {
         }
     }
 
-    func testTripDetectionLooksReadyOnlyWhenConfiguredAndActive() {
+    func testConfiguredStandbyIsNeutralUntilCollectionEvidenceExists() {
         XCTAssertEqual(
             HomeStatusPresenter.tripDetectionTone(
                 readiness: .ready,
                 isMonitoring: false,
                 isPassiveWakeupMonitoring: true
             ),
+            .blue
+        )
+    }
+
+    func testCollectionHealthPresentationOnlyTurnsGreenForFreshSamples() {
+        XCTAssertEqual(
+            HomeStatusPresenter.collectionHealth(
+                .receivingFreshSamples(lastAcceptedSampleAt: Date())
+            ).tone,
             .success
+        )
+        XCTAssertNotEqual(
+            HomeStatusPresenter.collectionHealth(.awaitingFirstEvidence).tone,
+            .success
+        )
+        XCTAssertEqual(
+            HomeStatusPresenter.collectionHealth(
+                .probableDataLoss(movementDetectedAt: Date())
+            ).tone,
+            .danger
         )
     }
 

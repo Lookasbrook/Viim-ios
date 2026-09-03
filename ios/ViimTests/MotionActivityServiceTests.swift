@@ -91,4 +91,60 @@ final class MotionActivityServiceTests: XCTestCase {
 
         XCTAssertEqual(MotionActivityService.phase(for: snapshot, vehicleType: .voiture), .waitingForMovement)
     }
+
+    func testOnlyClassifiedVehicleMotionCreatesIndependentHealthEvidence() {
+        let automotive = MotionActivitySnapshot(
+            isAutomotive: true,
+            isCycling: false,
+            isWalking: false,
+            isRunning: false,
+            isStationary: false,
+            confidence: .medium
+        )
+        let unclassified = MotionActivitySnapshot(
+            isAutomotive: false,
+            isCycling: false,
+            isWalking: false,
+            isRunning: false,
+            isStationary: false,
+            confidence: .high
+        )
+
+        XCTAssertTrue(
+            MotionActivityService.isStrongVehicleMovementEvidence(
+                automotive,
+                vehicleType: .moto
+            )
+        )
+        XCTAssertFalse(
+            MotionActivityService.isStrongVehicleMovementEvidence(
+                unclassified,
+                vehicleType: .moto
+            )
+        )
+    }
+
+    func testCyclingIsStrongEvidenceOnlyForBikeProfile() {
+        let cycling = MotionActivitySnapshot(
+            isAutomotive: false,
+            isCycling: true,
+            isWalking: false,
+            isRunning: false,
+            isStationary: false,
+            confidence: .high
+        )
+
+        XCTAssertTrue(
+            MotionActivityService.isStrongVehicleMovementEvidence(
+                cycling,
+                vehicleType: .velo
+            )
+        )
+        XCTAssertFalse(
+            MotionActivityService.isStrongVehicleMovementEvidence(
+                cycling,
+                vehicleType: .moto
+            )
+        )
+    }
 }

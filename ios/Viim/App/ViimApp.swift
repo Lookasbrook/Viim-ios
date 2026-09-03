@@ -7,7 +7,7 @@ struct ViimApp: App {
 
     @StateObject private var onboardingStore: OnboardingStore
     @StateObject private var locationService: LocationService
-    @StateObject private var motionActivityService = MotionActivityService()
+    @StateObject private var motionActivityService: MotionActivityService
     @StateObject private var networkStatusService: NetworkStatusService
     @StateObject private var protectionReadinessService: ProtectionReadinessService
     @StateObject private var tripManager: TripManager
@@ -20,13 +20,15 @@ struct ViimApp: App {
         let persistenceController = PersistenceController.shared
         let context = persistenceController.container.viewContext
         let activeTripJournal = ActiveTripJournal(context: context)
+        let collectionHealthJournal = CollectionHealthJournal()
         let tripManager = TripManager(
             store: TripStore(context: context)
         )
         let onboardingStore = OnboardingStore()
         let tripRecorder = TripRecorder(
             journal: activeTripJournal,
-            tripManager: tripManager
+            tripManager: tripManager,
+            collectionHealthJournal: collectionHealthJournal
         )
 
         // Recuperer les brouillons avant d'instancier CLLocationManager. La
@@ -45,13 +47,29 @@ struct ViimApp: App {
         ViimDiagnostics.log("carburant.featureFlags \(carburantFeatureFlags.diagnosticSummary)")
         let locationService = LocationService(
             activeTripJournal: activeTripJournal,
+            collectionHealthJournal: collectionHealthJournal,
             carburantFeatureFlags: carburantFeatureFlags
         )
-        let motionActivityService = MotionActivityService()
+        let motionActivityService = MotionActivityService(
+            collectionHealthJournal: collectionHealthJournal
+        )
         let networkStatusService = NetworkStatusService()
         let protectionReadinessService = ProtectionReadinessService(
             locationService: locationService,
-            networkStatusService: networkStatusService
+            networkStatusService: networkStatusService,
+            collectionHealthJournal: collectionHealthJournal,
+            staleActiveDraftProvider: {
+                guard let drafts = try? activeTripJournal.activeDrafts() else {
+                    return true
+                }
+                return drafts.contains {
+                    $0.phase == .active &&
+                        TripRecorder.isActiveDraftStale(
+                            lastUpdatedAt: $0.lastUpdatedAt,
+                            now: Date()
+                        )
+                }
+            }
         )
         let collisionShadowJournal = CollisionShadowJournal()
         let collisionShadowCoverageJournal = CollisionShadowCoverageJournal()
@@ -155,10 +173,12 @@ private struct AppLaunchView: View {
             }
             locationService.prepareForForegroundUse()
             protectionReadinessService.refreshEmergencyContacts()
+            protectionReadinessService.refreshCollectionHealth()
         }
         .onChange(of: onboardingStore.isCompleted) { isCompleted in
             guard isCompleted else { return }
             protectionReadinessService.refreshEmergencyContacts()
+            protectionReadinessService.refreshCollectionHealth()
             locationService.prepareForForegroundUse()
         }
     }

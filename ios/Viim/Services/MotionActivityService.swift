@@ -52,16 +52,18 @@ struct MotionActivitySnapshot {
 final class MotionActivityService: ObservableObject {
     private let manager = CMMotionActivityManager()
     private let queue: OperationQueue
+    private let collectionHealthJournal: (any CollectionHealthJournaling)?
     private var vehicleType: VehicleType = .moto
 
     @Published private(set) var phase: MovementDetectionPhase = .waitingForMovement
     @Published private(set) var isAutoDetectionActive = false
 
-    init() {
+    init(collectionHealthJournal: (any CollectionHealthJournaling)? = nil) {
         let queue = OperationQueue()
         queue.name = "com.yamstack.viim.motion-activity"
         queue.qualityOfService = .utility
         self.queue = queue
+        self.collectionHealthJournal = collectionHealthJournal
     }
 
     func startAutoDetection(vehicleType: VehicleType) {
@@ -103,6 +105,12 @@ final class MotionActivityService: ObservableObject {
             Task { @MainActor in
                 guard let self else {
                     return
+                }
+                if Self.isStrongVehicleMovementEvidence(
+                    snapshot,
+                    vehicleType: self.vehicleType
+                ) {
+                    self.recordStrongMovementEvidence()
                 }
                 self.phase = Self.phase(for: snapshot, vehicleType: self.vehicleType)
             }
@@ -157,6 +165,30 @@ final class MotionActivityService: ObservableObject {
                 return .movementDetected
             }
             return .waitingForMovement
+        }
+    }
+
+    nonisolated static func isStrongVehicleMovementEvidence(
+        _ snapshot: MotionActivitySnapshot,
+        vehicleType: VehicleType
+    ) -> Bool {
+        guard snapshot.confidence != .low else { return false }
+        switch vehicleType {
+        case .voiture, .moto:
+            return snapshot.isAutomotive
+        case .velo:
+            return snapshot.isCycling
+        }
+    }
+
+    private func recordStrongMovementEvidence(at date: Date = Date()) {
+        do {
+            try collectionHealthJournal?.append(
+                CollectionHealthEvent(occurredAt: date, kind: .motionMovementDetected),
+                now: date
+            )
+        } catch {
+            ViimDiagnostics.log("collection.health.append.failed kind=motionMovementDetected")
         }
     }
 }

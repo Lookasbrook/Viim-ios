@@ -31,6 +31,7 @@ struct AccueilView: View {
                         isMonitoring: locationService.isMonitoring,
                         isPassiveWakeupMonitoring: locationService.isPassiveWakeupMonitoring,
                         tripPhase: locationService.tripPhase,
+                        collectionHealth: protectionReadinessService.snapshot.collectionHealth,
                         speedKmh: locationService.currentSpeedKmh,
                         onEnableBackgroundDetection: {
                             locationService.requestBackgroundAuthorization()
@@ -140,6 +141,12 @@ struct AccueilView: View {
                     tint: tripDetectionTint
                 )
                 HomeStatusRow(
+                    icon: "waveform.path.ecg",
+                    titleKey: "home.status.collectionHealth",
+                    detailKey: collectionHealthStatus.localizedDetailKey,
+                    tint: collectionHealthStatus.tint
+                )
+                HomeStatusRow(
                     icon: "exclamationmark.triangle.fill",
                     titleKey: "home.status.collisionDetection",
                     detailKey: collisionDetectionStatus.localizedDetailKey,
@@ -195,6 +202,12 @@ struct AccueilView: View {
     private var collisionDetectionStatus: HomeStatusPresentation {
         HomeStatusPresenter.collisionDetection(
             protectionReadinessService.snapshot.automaticCollision
+        )
+    }
+
+    private var collectionHealthStatus: HomeStatusPresentation {
+        HomeStatusPresenter.collectionHealth(
+            protectionReadinessService.snapshot.collectionHealth.state
         )
     }
 
@@ -312,12 +325,64 @@ enum HomeStatusPresenter {
         case .standby:
             return HomeStatusPresentation(
                 detailKey: "home.monitoring.status.passiveWakeup",
-                tone: .success
+                tone: .blue
             )
         case .collecting:
             return HomeStatusPresentation(
                 detailKey: "home.monitoring.status.gpsConfirming",
+                tone: .blue
+            )
+        }
+    }
+
+    static func collectionHealth(
+        _ state: CollectionHealthState
+    ) -> HomeStatusPresentation {
+        switch state {
+        case .unavailable:
+            return HomeStatusPresentation(
+                detailKey: "collection.health.unavailable",
+                tone: .danger
+            )
+        case .configurationRequired(let readiness):
+            return HomeStatusPresentation(
+                detailKey: readiness.statusKeyString,
+                tone: readiness.isPermissionBlocked ? .danger : .warning
+            )
+        case .persistenceAtRisk:
+            return HomeStatusPresentation(
+                detailKey: "collection.health.persistenceRisk",
+                tone: .danger
+            )
+        case .probableDataLoss:
+            return HomeStatusPresentation(
+                detailKey: "collection.health.probableLoss",
+                tone: .danger
+            )
+        case .receivingFreshSamples:
+            return HomeStatusPresentation(
+                detailKey: "collection.health.fresh",
                 tone: .success
+            )
+        case .recentlyObserved:
+            return HomeStatusPresentation(
+                detailKey: "collection.health.recent",
+                tone: .blue
+            )
+        case .clockUntrusted:
+            return HomeStatusPresentation(
+                detailKey: "collection.health.clockUntrusted",
+                tone: .warning
+            )
+        case .noRecentEvidence:
+            return HomeStatusPresentation(
+                detailKey: "collection.health.noRecentEvidence",
+                tone: .warning
+            )
+        case .awaitingFirstEvidence:
+            return HomeStatusPresentation(
+                detailKey: "collection.health.awaitingEvidence",
+                tone: .blue
             )
         }
     }
@@ -655,6 +720,7 @@ private struct AutoDetectionStatusCard: View {
     let isMonitoring: Bool
     let isPassiveWakeupMonitoring: Bool
     let tripPhase: TripDetectionPhase
+    let collectionHealth: CollectionHealthSnapshot
     let speedKmh: Double
     let onEnableBackgroundDetection: () -> Void
     let onOpenSettings: () -> Void
@@ -744,10 +810,7 @@ private struct AutoDetectionStatusCard: View {
         if !collectionReadiness.isReadyForBackground {
             return collectionReadiness.isPermissionBlocked ? ViimColors.danger : ViimColors.warning
         }
-        if isPassiveWakeupMonitoring {
-            return ViimColors.success
-        }
-        return isMonitoring ? ViimColors.success : movementPhase.tint
+        return HomeStatusPresenter.collectionHealth(collectionHealth.state).tint
     }
 
     private var detailKey: LocalizedStringKey {

@@ -7,6 +7,7 @@ final class TripRecorder: ObservableObject {
     static let maximumRecoverableActiveDraftAge: TimeInterval = 12 * 60 * 60
     private let journal: any ActiveTripJournaling
     private let tripManager: TripManager
+    private let collectionHealthJournal: (any CollectionHealthJournaling)?
     private var cancellables = Set<AnyCancellable>()
     private var observedLocationService: LocationService?
     private var processedTripIDs = Set<UUID>()
@@ -14,9 +15,14 @@ final class TripRecorder: ObservableObject {
     private var fuelProfile: VehicleFuelProfile?
     private var fuelSettings: FuelSettings?
 
-    init(journal: any ActiveTripJournaling, tripManager: TripManager) {
+    init(
+        journal: any ActiveTripJournaling,
+        tripManager: TripManager,
+        collectionHealthJournal: (any CollectionHealthJournaling)? = nil
+    ) {
         self.journal = journal
         self.tripManager = tripManager
+        self.collectionHealthJournal = collectionHealthJournal
     }
 
     func configure(profile: UserProfile, fuelSettings: FuelSettings? = nil) {
@@ -49,6 +55,7 @@ final class TripRecorder: ObservableObject {
                 recover(draft, now: now)
             }
         } catch {
+            recordCollectionHealthFailure(.activeTripJournalRead)
             ViimDiagnostics.log("trip.recorder.recover.failed")
         }
     }
@@ -67,12 +74,19 @@ final class TripRecorder: ObservableObject {
                 fuelProfile: fuelProfile,
                 fuelSettings: fuelSettings
             )
-            handle(outcome: outcome, tripId: completedTrip.id, sampleCount: samples.count, source: "live")
+            handle(
+                outcome: outcome,
+                tripId: completedTrip.id,
+                sampleCount: samples.count,
+                source: "live",
+                evidenceAt: completedTrip.endedAt
+            )
         } catch {
             // Le brouillon reste durable et sera retente au prochain lancement.
             // Persister avec un tableau vide transformerait une panne Core Data
             // transitoire en rejet terminal et ferait perdre le trajet.
             processedTripIDs.remove(completedTrip.id)
+            recordCollectionHealthFailure(.activeTripJournalRead)
             ViimDiagnostics.log(
                 "trip.recorder.samples.failed id=\(completedTrip.id.uuidString) source=live"
             )
@@ -89,6 +103,7 @@ final class TripRecorder: ObservableObject {
             samples = try journal.samples(for: draft.id)
         } catch {
             processedTripIDs.remove(draft.id)
+            recordCollectionHealthFailure(.activeTripJournalRead)
             ViimDiagnostics.log(
                 "trip.recorder.samples.failed id=\(draft.id.uuidString) source=recovery"
             )
@@ -106,6 +121,7 @@ final class TripRecorder: ObservableObject {
                 source: "recovery",
                 sampleCount: samples.count
             )
+            recordCollectionHealthOutcome(.rejected, at: draft.lastUpdatedAt)
             return
         }
         if draft.phase == .candidate,
@@ -119,6 +135,7 @@ final class TripRecorder: ObservableObject {
                     source: "recovery",
                     sampleCount: samples.count
                 )
+                recordCollectionHealthOutcome(.rejected, at: draft.lastUpdatedAt)
             } else {
                 // Un callback CoreLocation peut creer le premier point pendant
                 // le lancement, avant la fin du cablage de l'app. Ce candidat
@@ -147,7 +164,13 @@ final class TripRecorder: ObservableObject {
             fuelProfile: fuelProfile,
             fuelSettings: fuelSettings
         )
-        handle(outcome: outcome, tripId: draft.id, sampleCount: samples.count, source: "recovered")
+        handle(
+            outcome: outcome,
+            tripId: draft.id,
+            sampleCount: samples.count,
+            source: "recovered",
+            evidenceAt: draft.lastMovingAt
+        )
         if outcome.shouldDeleteJournal {
             ViimDiagnostics.log("trip.recorder.recovered id=\(draft.id.uuidString) samples=\(samples.count)")
         }
@@ -173,6 +196,7 @@ final class TripRecorder: ObservableObject {
                 sampleCount: sampleCount
             )
         } catch {
+            recordCollectionHealthFailure(.activeTripJournalWrite)
             ViimDiagnostics.log("trip.recorder.cleanup.failed")
         }
     }
@@ -181,11 +205,23 @@ final class TripRecorder: ObservableObject {
         outcome: TripPersistenceOutcome,
         tripId: UUID,
         sampleCount: Int,
-        source: String
+        source: String,
+        evidenceAt: Date
     ) {
         ViimDiagnostics.log(
             "trip.capture.outcome id=\(tripId.uuidString) status=\(outcome.status) reason=\(outcome.reason) source=\(source)"
         )
+        let healthOutcome: CollectionHealthTripOutcome
+        switch outcome {
+        case .persisted, .duplicate:
+            healthOutcome = source == "recovered" ? .recovered : .persisted
+        case .rejected:
+            healthOutcome = .rejected
+        case .failedRetryable:
+            healthOutcome = .failedRetryable
+        }
+        recordCollectionHealthOutcome(healthOutcome, at: evidenceAt)
+
         if outcome.shouldDeleteJournal {
             finalizeJournalTrip(
                 id: tripId,
@@ -196,6 +232,35 @@ final class TripRecorder: ObservableObject {
             )
         } else {
             processedTripIDs.remove(tripId)
+        }
+    }
+
+    private func recordCollectionHealthOutcome(
+        _ outcome: CollectionHealthTripOutcome,
+        at date: Date
+    ) {
+        let recordedAt = Date()
+        do {
+            try collectionHealthJournal?.append(
+                .outcome(outcome, at: recordedAt, evidenceAt: date),
+                now: recordedAt
+            )
+        } catch {
+            ViimDiagnostics.log("collection.health.append.failed kind=tripOutcome")
+        }
+    }
+
+    private func recordCollectionHealthFailure(
+        _ failure: CollectionHealthPersistenceFailure,
+        at date: Date = Date()
+    ) {
+        do {
+            try collectionHealthJournal?.append(
+                .persistenceFailure(failure, at: date),
+                now: date
+            )
+        } catch {
+            ViimDiagnostics.log("collection.health.append.failed kind=persistenceFailure")
         }
     }
 

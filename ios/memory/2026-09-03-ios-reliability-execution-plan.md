@@ -10,6 +10,32 @@ Chaque indicateur doit etre classe comme `mesure`, `calcule`, `estime` ou
 validation de toute sa chaine sur appareil reel, y compris ecran verrouille,
 absence de reseau, terminaison de l'app et accuse de reception externe.
 
+## Critique du rapport initial
+
+Le diagnostic est utile, mais plusieurs conclusions devaient etre resserrees avant
+de piloter une fonction de protection :
+
+1. `authorizedWhenInUse` ne signifie pas structurellement « aucune collecte ».
+   Apple autorise une collecte en arriere-plan tant qu'une activite de localisation
+   When-In-Use reste active et visible. En revanche, une app terminee n'est pas
+   relancee pour les changements significatifs, visites ou regions sans `Always`.
+   Dans cet incident, la panne vient donc du cumul entre la politique Viim qui
+   invalidait/desactivait ses sessions et l'absence de `Always`, pas du statut seul.
+2. L'absence de lignes dans `ViimDiagnostics.log` est un indice, pas une preuve de
+   non-execution : le fichier est asynchrone et rotatif. Une preuve de sante doit etre
+   synchrone, bornee, atomique et independante du journal de debogage.
+3. `196/196` ou `272/272` prouve une regression logicielle evitee, pas la capture
+   ecran verrouille. La validation terrain reste une porte distincte.
+4. Conserver `CLBackgroundActivitySession` augmente les chances de continuite mais
+   ne garantit ni l'absence de suspension, ni la relance apres fermeture forcee.
+5. Un cout derive de litres estimes ne peut pas etre annonce plus fiable que les
+   litres. Il doit heriter de leur intervalle d'incertitude, puis ajouter celle du prix.
+6. Une recuperation tardive ne doit jamais rafraichir artificiellement la date de
+   derniere collecte. Il faut separer date d'enregistrement et date de la preuve.
+7. SafetyKit couvre les collisions routieres graves detectees par Apple sur appareil
+   compatible. Il ne constitue ni une detection universelle, ni une couverture moto
+   ou velo garantie, et exige un entitlement restreint.
+
 Les notes subjectives sur 10 sont abandonnees. Chaque valeur doit exposer quatre
 preuves independantes : couverture des echantillons, provenance/fraicheur de la
 source, plage d'incertitude et statut de validation terrain. Une valeur derivee
@@ -156,6 +182,20 @@ Restent dans P0-C : la sante persistante sur 7 jours, la preuve fournisseur et l
 tests d'interface sur appareil. Le snapshot est le socle de ces ajouts, pas leur
 substitut.
 
+Lot build 33 : journal de sante JSON local, synchrone, atomique et protege. Le
+detail est borne a 7 jours ; au plus deux ancres historiques non sensibles
+(debut d'observation et derniere preuve) sont conservees afin qu'une relance apres
+8 jours sans donnees ne ressemble pas a une premiere installation. Il ne contient
+ni coordonnee, ni vitesse, ni contact, ni identifiant de
+trajet. Les preuves proviennent de la reception GPS, des echantillons acceptes, du
+signal Core Motion explicitement classe, des demarrages de trajet et des resultats
+de persistance. Une recuperation conserve separement l'heure de recuperation et
+l'heure du trajet et ne rend jamais la collecte « fraiche ». Les dates futures,
+reboots et divergences entre horloge murale et uptime ne peuvent pas produire un
+etat vert. Accueil et Assistance consomment le meme snapshot ; la veille passive
+reste neutre tant qu'aucun echantillon recent n'est prouve. Les alertes manuelles
+sont bloquees hors ligne au lieu d'afficher « Pret hors ligne ».
+
 Porte de sortie : le meme snapshot produit le meme statut sur tous les ecrans ; tout
 etat rassurant possede une preuve fraiche ; une panne silencieuse de plus de 24 h
 devient visible lors de la prochaine ouverture.
@@ -293,8 +333,8 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Ordre d'execution recommande
 
-1. Validation terrain P0-A sur le build 32.
-2. Completer la sante persistante P0-C a partir du snapshot unifie du build 32,
+1. Deverrouillage puis validation terrain P0-A sur le build 33.
+2. Valider sur appareil la sante persistante P0-C livree dans le build 33,
    sans activer d'alerte.
 3. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
    comme instrumentation secondaire.
@@ -306,16 +346,37 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 9. Release TestFlight limitee, tableau de sante de collecte, puis ouverture
    progressive seulement si toutes les portes sont franchies.
 
+## Lots precis, dependances et portes de sortie
+
+| Lot | Delivrable | Depend de | Verification exigee | Bloque la diffusion si |
+|---|---|---|---|---|
+| P0.1 | Permission et collecte build 33 | action utilisateur `Toujours` | 3 trajets verrouilles + hors ligne + terminaison systeme | un trajet ordinaire manque ou ecart distance > 5 % |
+| P0.2 | Sante de collecte 7 j | P0.1 pour preuve terrain | journal present, pas de PII, panne mouvement/GPS visible en < 10 min a la reouverture | un etat vert existe sans sample recent |
+| P0.3 | Persistance versionnee | fixtures des stores historiques | migration interrompue/reprise, sauvegarde intacte, aucune suppression | un store historique ne s'ouvre pas |
+| P0.4 | SafetyKit + livraison | entitlement Apple + fournisseur configure | simulateur SafetyKit, idempotence, offline/retry, accuse fournisseur | collision ou reception affichee sans preuve bout en bout |
+| P1.1 | Contrat commun des indicateurs | P0.1 + P0.3 | nature, couverture, provenance, intervalle et version sur chaque metrique | proxy presente comme mesure |
+| P1.2 | Profil vehicule et consommation | P1.1 | variante exacte, NRCan/FuelEconomy.gov, calibration par pleins, mediane/P90 | valeur unique sur profil ambigu |
+| P1.3 | Prix local securise | P1.2 | source officielle par juridiction, cache/fraicheur/schema/redirect tests | prix par defaut presente comme local |
+| P1.4 | Photos reelles | identifiants vehicule stables | auteur, URL, licence, hash, modele/generation verifies pour chaque asset | photo voisine ou licence absente |
+
 ## Etat d'execution verifie
 
-- Build 32 signe, installe et confirme `0.1.0 (32)` dans le bundle sur l'iPhone 16. Son lancement
-  est refuse uniquement parce que l'iPhone est verrouille.
+- Build 33 signe, installe et confirme `0.1.0 (33)` sur l'iPhone 16. La commande de
+  lancement n'a produit aucun nouveau `app.launch build=33` dans le diagnostic :
+  le demarrage reel et le rendu UI restent donc non prouves tant que l'iPhone n'est
+  pas deverrouille.
   Avant installation, le SQLite appareil a ete sauvegarde et controle `ok`. Apres
-  l'installation finale du build 32, sa copie est identique octet pour octet au
-  meme SHA-256 et contient toujours 126 trajets. Le lancement du store reel attend
-  encore le deverrouillage.
-- 272/272 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
+  l'installation du build 33, sa copie est identique octet pour octet au SHA-256
+  `9b26ce5bcf54778ba64268f460ecf0dedbde3d69dbd3308a5f76b48675fc01fc`
+  et contient toujours 126 trajets.
+- 314/314 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
   SQLite reelle d'un store sans les nouveaux champs de preuve carburant.
+- Le build 33 ajoute un journal local de sante de collecte sur 7 jours, atomique,
+  protege et borne, avec au plus deux ancres historiques non sensibles, sans
+  coordonnees ni identifiant de trajet. L'etat vert exige
+  des echantillons GPS acceptes recents ; mouvement fort sans GPS, timestamps futurs,
+  redemarrage et corruption du journal restent fail-closed. Son ecriture sur l'iPhone
+  n'est pas encore prouvee, car aucun lancement build 33 n'a ete observe.
 - Permission appareil encore `authorizedWhenInUse` : la porte terrain P0-A reste
   ouverte et exige une action utilisateur dans les reglages iOS.
 - Collision shadow sans alerte et sans reseau : base de calibration seulement.
@@ -327,7 +388,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   transmission de ville, controles de transport et de preuve, moyenne provinciale
   de repli et conservation du dernier prix encore valide. Le CSV reel et sa
   redirection officielle ont ete controles ; les tests complets sont verts.
-- Apres installation du build 32, les copies non destructives du store appareil
+- Apres installation du build 33, les copies non destructives du store appareil
   avant/apres sont identiques au SHA-256, passent `PRAGMA integrity_check=ok` et
   contiennent toujours 126 trajets. Le demarrage et les ecrans Assistance/prix sur
   appareil restent a verifier apres deverrouillage.
@@ -339,7 +400,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   les frames Core Motion, la couverture GPS qualifiee, les interruptions, erreurs,
   candidats et sessions non cloturees, sans coordonnees. L'interface ne presente plus un contact
   configure comme une detection active et maintient le statut « Aucune alerte ».
-  La suite iOS passe 272/272 ; aucune alerte automatique n'est activee.
+  La suite iOS passe 314/314 ; aucune alerte automatique n'est activee.
 
 ## References primaires — architecture collision
 
@@ -354,7 +415,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 32 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 33 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le
