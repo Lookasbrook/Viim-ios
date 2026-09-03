@@ -11,16 +11,21 @@ final class CollisionCalibrationReviewStore: ObservableObject {
 
     @Published private(set) var pendingCandidates: [CollisionShadowCandidate] = []
     @Published private(set) var isUnavailable = false
+    @Published private(set) var coverageSummary: CollisionShadowCoverageSummary?
+    @Published private(set) var isCoverageUnavailable = false
 
     private let candidateJournal: CollisionShadowJournal
     private let reviewJournal: CollisionShadowReviewJournal
+    private let coverageJournal: CollisionShadowCoverageJournal
 
     init(
         candidateJournal: CollisionShadowJournal = CollisionShadowJournal(),
-        reviewJournal: CollisionShadowReviewJournal = CollisionShadowReviewJournal()
+        reviewJournal: CollisionShadowReviewJournal = CollisionShadowReviewJournal(),
+        coverageJournal: CollisionShadowCoverageJournal = CollisionShadowCoverageJournal()
     ) {
         self.candidateJournal = candidateJournal
         self.reviewJournal = reviewJournal
+        self.coverageJournal = coverageJournal
     }
 
     func reload() {
@@ -38,6 +43,23 @@ final class CollisionCalibrationReviewStore: ObservableObject {
             let nsError = error as NSError
             ViimDiagnostics.log(
                 "collision.shadow.review.load failed=true errorDomain=\(nsError.domain) errorCode=\(nsError.code)"
+            )
+        }
+
+        do {
+            let currentAlgorithmRecords = try coverageJournal.load().filter {
+                $0.algorithmVersion == CollisionDetectionEngine.algorithmVersion
+            }
+            coverageSummary = CollisionShadowCoverageSummary.summarize(
+                currentAlgorithmRecords
+            )
+            isCoverageUnavailable = false
+        } catch {
+            coverageSummary = nil
+            isCoverageUnavailable = true
+            let nsError = error as NSError
+            ViimDiagnostics.log(
+                "collision.shadow.coverage.load failed=true errorDomain=\(nsError.domain) errorCode=\(nsError.code)"
             )
         }
     }
@@ -340,6 +362,11 @@ private struct CollisionCalibrationReviewView: View {
                     .foregroundStyle(ViimColors.warning)
                 }
 
+                CollisionCalibrationCoverageCard(
+                    summary: store.coverageSummary,
+                    isUnavailable: store.isCoverageUnavailable
+                )
+
                 if store.isUnavailable {
                     AssistanceDetailView(
                         icon: "externaldrive.badge.exclamationmark",
@@ -383,6 +410,77 @@ private struct CollisionCalibrationReviewView: View {
                 dismissButton: .default(Text("common.ok"))
             )
         }
+    }
+}
+
+private struct CollisionCalibrationCoverageCard: View {
+    let summary: CollisionShadowCoverageSummary?
+    let isUnavailable: Bool
+
+    var body: some View {
+        ViimCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("assistance.collisionCalibration.coverage.title", systemImage: "chart.bar.xaxis")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(ViimColors.text)
+
+                if isUnavailable {
+                    Text("assistance.collisionCalibration.coverage.unavailable")
+                        .font(.caption)
+                        .foregroundStyle(ViimColors.warning)
+                } else if let summary, summary.sessionCount > 0 {
+                    HStack(spacing: 8) {
+                        CollisionCoverageMetric(
+                            value: "\(summary.sessionCount)",
+                            labelKey: "assistance.collisionCalibration.coverage.sessions"
+                        )
+                        CollisionCoverageMetric(
+                            value: qualifiedGPSPercentage(summary),
+                            labelKey: "assistance.collisionCalibration.coverage.gps"
+                        )
+                        CollisionCoverageMetric(
+                            value: "\(summary.gapCount)",
+                            labelKey: "assistance.collisionCalibration.coverage.gaps"
+                        )
+                    }
+                    Text("assistance.collisionCalibration.coverage.detail \(summary.completedSessionCount) \(summary.unfinishedSessionCount) \(summary.motionErrorCount)")
+                        .font(.caption2)
+                        .foregroundStyle(ViimColors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("assistance.collisionCalibration.coverage.empty")
+                        .font(.caption)
+                        .foregroundStyle(ViimColors.muted)
+                }
+            }
+        }
+        .accessibilityIdentifier("collisionCalibration.coverage")
+    }
+
+    private func qualifiedGPSPercentage(_ summary: CollisionShadowCoverageSummary) -> String {
+        guard let ratio = summary.qualifiedGPSRatio else { return "--" }
+        return ratio.formatted(.percent.precision(.fractionLength(0)))
+    }
+}
+
+private struct CollisionCoverageMetric: View {
+    let value: String
+    let labelKey: LocalizedStringKey
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.headline.monospacedDigit())
+                .foregroundStyle(ViimColors.text)
+            Text(labelKey)
+                .font(.caption2)
+                .foregroundStyle(ViimColors.muted)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(ViimColors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 

@@ -48,9 +48,14 @@ struct ViimApp: App {
         )
         let motionActivityService = MotionActivityService()
         let collisionShadowJournal = CollisionShadowJournal()
-        let collisionShadowMonitor = CollisionShadowMonitor(journal: collisionShadowJournal)
+        let collisionShadowCoverageJournal = CollisionShadowCoverageJournal()
+        let collisionShadowMonitor = CollisionShadowMonitor(
+            journal: collisionShadowJournal,
+            coverageJournal: collisionShadowCoverageJournal
+        )
         let collisionCalibrationReviewStore = CollisionCalibrationReviewStore(
-            candidateJournal: collisionShadowJournal
+            candidateJournal: collisionShadowJournal,
+            coverageJournal: collisionShadowCoverageJournal
         )
         if let profile = onboardingStore.profile {
             // Un lancement de fond peut ne jamais creer de vue. Le type de
@@ -203,10 +208,14 @@ final class TripDetectionCoordinator: ObservableObject {
             .store(in: &cancellables)
 
         locationService.$activeTrip
-            .map(\.?.id)
+            .map { trip in
+                trip.map {
+                    CollisionShadowTripContext(id: $0.id, startedAt: $0.startedAt)
+                }
+            }
             .removeDuplicates()
-            .sink { [weak collisionShadowMonitor] tripID in
-                collisionShadowMonitor?.setActiveTrip(id: tripID)
+            .sink { [weak collisionShadowMonitor] context in
+                collisionShadowMonitor?.setActiveTrip(context: context)
             }
             .store(in: &cancellables)
 
@@ -225,7 +234,11 @@ final class TripDetectionCoordinator: ObservableObject {
         collisionShadowMonitor.configure(vehicleType: profile.vehicleType)
         collisionShadowMonitor.updateLocation(locationService.latestLocation)
         collisionShadowMonitor.setLocationCollectionActive(locationService.isMonitoring)
-        collisionShadowMonitor.setActiveTrip(id: locationService.activeTrip?.id)
+        collisionShadowMonitor.setActiveTrip(
+            context: locationService.activeTrip.map {
+                CollisionShadowTripContext(id: $0.id, startedAt: $0.startedAt)
+            }
+        )
         locationService.prepareForForegroundUse()
         motionActivityService.startAutoDetection(vehicleType: profile.vehicleType)
         reconcileAutomaticTracking()

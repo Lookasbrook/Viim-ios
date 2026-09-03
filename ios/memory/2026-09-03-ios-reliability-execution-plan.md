@@ -32,7 +32,7 @@ etre presente comme plus fiable que les litres estimes qui le produisent.
 
 ## P0-A — Retablir et prouver la collecte de trajets
 
-Etat logiciel : implemente dans le build 29 ; validation terrain bloquee par
+Etat logiciel : implemente dans le build 31 ; validation terrain bloquee par
 `authorizedWhenInUse` tant que l'utilisateur n'accorde pas `Toujours`.
 
 1. Accorder `Toujours` et la position precise dans les reglages iOS.
@@ -97,17 +97,51 @@ journal local et ne reecrit jamais la preuve capteur brute. Cette annotation per
 de calculer la precision parmi les candidats revus, mais ni le rappel ni les faux
 negatifs.
 
-Prochaine tranche de mesure : enregistrer, par session et sans coordonnees, la duree
-du trajet, la duree effectivement surveillee, les interruptions, le nombre de frames,
-la part de frames avec vitesse GPS qualifiee et les erreurs capteur. Ecrire un
-checkpoint au demarrage, toutes les 30 secondes, a chaque trou et a l'arret afin
-qu'une terminaison laisse une session inachevee auditable. Sans ce denominateur,
-un petit nombre de candidats ne constitue aucune preuve de fiabilite.
+Lot build 31 : un journal de couverture borne et protege enregistre, par session et
+sans coordonnees, le trajet exact, l'algorithme, les frames Core Motion, la part de
+frames avec vitesse GPS qualifiee, les interruptions, les erreurs capteur et les
+candidats. Il ecrit un checkpoint au demarrage, toutes les 30 secondes, a chaque
+trou, erreur, candidat et arret. Une terminaison laisse ainsi une session non cloturee
+auditable. Les compteurs ne peuvent que progresser et une session terminee ne peut
+pas etre rouverte. L'ecran de revue affiche uniquement le resume de la version
+d'algorithme courante et rappelle que ces chiffres mesurent la collecte, pas la
+detection des collisions.
+
+Prochaine tranche de mesure : joindre ces sessions aux trajets finalises pour publier
+le ratio duree surveillee/duree conduite et les candidats par 1 000 km. Definir avant
+la collecte les seuils de validation, puis exporter un rapport agrege sans trace GPS.
 
 Porte de sortie : entitlement approuve, tests SafetyKit complets, annulation fiable,
 livraison de bout en bout prouvee et taux d'echec publie. Avant cette porte,
 l'interface reste « detection automatique indisponible » et l'appel manuel reste
 accessible.
+
+## P0-C — Unifier l'etat de protection et la preuve de livraison
+
+Le rapport confond encore par endroits « suivi active », « capteurs disponibles » et
+« protection operationnelle ». Un seul etat calcule doit alimenter Accueil,
+Assistance et les diagnostics. Aucune vue ne doit reconstruire sa propre notion de
+disponibilite a partir d'un sous-ensemble de permissions.
+
+1. Definir un `ProtectionReadinessSnapshot` sans donnee de position : autorisation
+   localisation, position precise, actualisation en arriere-plan, reveils passifs,
+   collecte recente, disponibilite/autorisation SafetyKit, etat du canal backend et
+   derniere preuve de livraison fournisseur.
+2. Distinguer `indisponible`, `configuration requise`, `surveillance des trajets`,
+   `evenement detecte`, `alerte envoyee` et `alerte recue`. Un contact configure ne
+   constitue jamais une detection active ; un `HTTP 200` ne constitue jamais un
+   message recu.
+3. Afficher une sante de collecte sur 7 jours : dernier reveil, dernier echantillon,
+   trajets persistants/rejetes/recuperes, sessions shadow non cloturees et principale
+   cause de perte. Les logs restent locaux, bornes et sans trace GPS exportee par
+   defaut.
+4. Ajouter un test d'interface pour chaque combinaison P0 : `WhenInUse`, `Always`,
+   position approximative, actualisation desactivee, capteur indisponible, backend
+   en panne et livraison non accusee.
+
+Porte de sortie : le meme snapshot produit le meme statut sur tous les ecrans ; tout
+etat rassurant possede une preuve fraiche ; une panne silencieuse de plus de 24 h
+devient visible lors de la prochaine ouverture.
 
 ## P1-A — Estimation avancee de consommation
 
@@ -216,27 +250,53 @@ des vehicules les plus utilises au Burkina Faso et au Canada.
 Porte de sortie : ouverture et migration de chaque fixture historique, interruption
 simulee pendant migration, aucune suppression automatique de donnees.
 
+## P1-E — Rendre tous les indicateurs coherents et auditables
+
+1. Appliquer le contrat commun a Distance, Duree, Vitesses, Dynamique, Arrets,
+   Denivele, Consommation, Cout et Scores. Chaque carte affiche nature, couverture,
+   provenance, fraicheur et plage d'incertitude quand elle influence une decision.
+2. Renommer le « ralenti » en « temps a tres basse vitesse » : le GPS ne connait pas
+   l'etat du moteur. Ne parler de ralenti moteur qu'avec une source vehicule directe
+   telle qu'OBD, explicitement consentie et qualifiee.
+3. Conserver accelerations/freinages issus de la vitesse GPS comme estimation. Core
+   Motion peut confirmer un transitoire, mais ne devient une mesure longitudinale du
+   vehicule qu'apres qualification de l'orientation et de la fixation du telephone.
+4. Pour le score 30 jours, ignorer les trajets non eligibles et publier le nombre et
+   la part de trajets couverts ; ne pas rendre tout l'agregat indisponible parce qu'un
+   seul trajet manque une composante.
+5. Pour les couts, afficher un sous-total prouve et son taux de couverture plutot
+   qu'un faux total ou un ecran vide. Ne jamais imputer un prix absent a un trajet
+   historique.
+6. Construire un corpus terrain versionne avec distance de reference, pleins reels,
+   conditions meteo, profil vehicule et annotations. Publier biais median, erreur
+   absolue mediane et P90 par version d'algorithme et segment de vehicule.
+
+Porte de sortie : aucune unite ou nature ambigue, aucun proxy nomme comme une mesure,
+agregats accompagnes de leur denominateur, et regression detectee avant diffusion.
+
 ## Ordre d'execution recommande
 
-1. Validation terrain P0-A sur le build 30.
-2. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
+1. Validation terrain P0-A sur le build 31.
+2. Unification du statut et de la sante de collecte P0-C, sans activer d'alerte.
+3. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
    comme instrumentation secondaire.
-3. Schema vehicule versionne, puis imports officiels et photos P1-C.
-4. Modele de consommation/calibration par pleins P1-A.
-5. Etendre les connecteurs de prix locaux securises P1-B au-dela de l'Ontario.
-6. Core Data versionne P1-D avant toute evolution destructive du schema.
-7. Release TestFlight limitee, tableau de sante de collecte, puis ouverture
+4. Socle Core Data versionne P1-D avant d'ajouter de nouvelles entites persistantes.
+5. Schema vehicule versionne, puis imports officiels et photos P1-C.
+6. Integrite transversale des indicateurs P1-E.
+7. Modele de consommation/calibration par pleins P1-A.
+8. Etendre les connecteurs de prix locaux securises P1-B au-dela de l'Ontario.
+9. Release TestFlight limitee, tableau de sante de collecte, puis ouverture
    progressive seulement si toutes les portes sont franchies.
 
 ## Etat d'execution verifie
 
-- Build 30 signe, installe et confirme `0.1.0 (30)` dans le bundle sur l'iPhone 16. Son lancement
+- Build 31 signe, installe et confirme `0.1.0 (31)` dans le bundle sur l'iPhone 16. Son lancement
   est refuse uniquement parce que l'iPhone est verrouille.
   Avant installation, Application Support a ete sauvegarde et son SQLite controle
   `ok`. Apres installation sans lancement, SQLite, WAL et SHM sont identiques octet
   pour octet, y compris apres l'installation finale du build 27 : la migration du
   store reel attend encore le deverrouillage.
-- 259/259 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
+- 267/267 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
   SQLite reelle d'un store sans les nouveaux champs de preuve carburant.
 - Permission appareil encore `authorizedWhenInUse` : la porte terrain P0-A reste
   ouverte et exige une action utilisateur dans les reglages iOS.
@@ -249,17 +309,19 @@ simulee pendant migration, aucune suppression automatique de donnees.
   transmission de ville, controles de transport et de preuve, moyenne provinciale
   de repli et conservation du dernier prix encore valide. Le CSV reel et sa
   redirection officielle ont ete controles ; les tests complets sont verts.
-- Apres installation du build 30, les copies non destructives du store appareil
+- Apres installation du build 31, les copies non destructives du store appareil
   avant/apres sont identiques au SHA-256, passent `PRAGMA integrity_check=ok` et
   contiennent toujours 126 trajets. Le demarrage et les ecrans Assistance/prix sur
   appareil restent a verifier apres deverrouillage.
-- Collision build 30 : perte de vitesse qualifiee par l'incertitude GPS, profil
+- Collision builds 30-31 : perte de vitesse qualifiee par l'incertitude GPS, profil
   charge au lancement headless, arret fail-closed quand Core Location ne collecte
   plus, journal atomique/protege/borne avec quarantaine et retry en memoire. Les
   observations portent l'UUID exact du trajet et le type de vehicule ; leurs
-  etiquettes sont conservees separement. L'interface ne presente plus un contact
+  etiquettes sont conservees separement. Le journal de couverture build 31 mesure
+  les frames Core Motion, la couverture GPS qualifiee, les interruptions, erreurs,
+  candidats et sessions non cloturees, sans coordonnees. L'interface ne presente plus un contact
   configure comme une detection active et maintient le statut « Aucune alerte ».
-  La suite iOS passe 259/259 ; aucune alerte automatique n'est activee.
+  La suite iOS passe 267/267 ; aucune alerte automatique n'est activee.
 
 ## References primaires — architecture collision
 
@@ -274,15 +336,15 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 30 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 31 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le
    journal et mesurer completude, trous GPS et ecart de distance. Tout ecart > 5 %
    bloque la suite de diffusion.
 3. **Collision shadow — prochaine tranche logicielle puis 2 a 4 semaines de conduite :**
-   ajouter d'abord le journal de couverture de session. Collecter ensuite les
-   etiquettes volontaires et publier le taux de candidats par 1 000 km, le taux de
+   joindre le journal de couverture deja livre aux trajets finalises. Collecter ensuite
+   les etiquettes volontaires et publier la duree surveillee/duree conduite, le taux de candidats par 1 000 km, le taux de
    revue et la precision observee parmi les candidats revus. Le rappel et les faux
    negatifs exigent un jeu de verite terrain independant en laboratoire ou les
    evenements de test SafetyKit ; ils ne doivent jamais etre deduits du shadow.

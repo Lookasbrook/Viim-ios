@@ -595,7 +595,10 @@ final class CollisionDetectionEngineTests: XCTestCase {
         )
         let store = CollisionCalibrationReviewStore(
             candidateJournal: candidateJournal,
-            reviewJournal: reviewJournal
+            reviewJournal: reviewJournal,
+            coverageJournal: CollisionShadowCoverageJournal(
+                fileURL: directory.appendingPathComponent("collision-coverage.json")
+            )
         )
 
         XCTAssertThrowsError(
@@ -629,6 +632,314 @@ final class CollisionDetectionEngineTests: XCTestCase {
         ).filter { $0.lastPathComponent.contains(".corrupt-") }
         XCTAssertEqual(quarantineURLs.count, 1)
         XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(quarantineURLs.first)), malformed)
+    }
+
+    func testCollisionPolicyQualifiesOnlyFreshAccurateGPSSpeed() {
+        let now = Date(timeIntervalSinceReferenceDate: 200)
+        let valid = frame(
+            at: now,
+            accelerationG: 0,
+            speedKmh: 45,
+            speedAccuracyKmh: 4,
+            speedTimestamp: now.addingTimeInterval(-1)
+        )
+        let stale = frame(
+            at: now,
+            accelerationG: 0,
+            speedKmh: 45,
+            speedAccuracyKmh: 4,
+            speedTimestamp: now.addingTimeInterval(-4)
+        )
+        let inaccurate = frame(
+            at: now,
+            accelerationG: 0,
+            speedKmh: 45,
+            speedAccuracyKmh: 10,
+            speedTimestamp: now
+        )
+
+        XCTAssertEqual(CollisionDetectionPolicy.shadowV2.qualifiedSpeed(from: valid)?.value, 45)
+        XCTAssertNil(CollisionDetectionPolicy.shadowV2.qualifiedSpeed(from: stale))
+        XCTAssertNil(CollisionDetectionPolicy.shadowV2.qualifiedSpeed(from: inaccurate))
+    }
+
+    func testCoverageAccumulatorMeasuresFramesGPSGapsCandidatesAndErrors() {
+        let startedAt = Date(timeIntervalSinceReferenceDate: 300)
+        var accumulator = CollisionShadowCoverageAccumulator(
+            context: CollisionShadowTripContext(
+                id: UUID(),
+                startedAt: startedAt.addingTimeInterval(-10)
+            ),
+            vehicleType: .voiture,
+            startedAt: startedAt,
+            sessionID: UUID()
+        )
+
+        XCTAssertFalse(
+            accumulator.ingest(
+                frame: frame(
+                    at: startedAt.addingTimeInterval(0.1),
+                    accelerationG: 0,
+                    speedKmh: 40,
+                    speedTimestamp: startedAt.addingTimeInterval(0.1)
+                ),
+                hasQualifiedGPS: true
+            )
+        )
+        XCTAssertFalse(
+            accumulator.ingest(
+                frame: frame(
+                    at: startedAt.addingTimeInterval(0.2),
+                    accelerationG: 0,
+                    speedKmh: nil,
+                    speedTimestamp: nil
+                ),
+                hasQualifiedGPS: false
+            )
+        )
+        XCTAssertTrue(
+            accumulator.ingest(
+                frame: frame(
+                    at: startedAt.addingTimeInterval(2),
+                    accelerationG: 0,
+                    speedKmh: 40,
+                    speedTimestamp: startedAt.addingTimeInterval(2)
+                ),
+                hasQualifiedGPS: true
+            )
+        )
+        accumulator.noteCandidate(at: startedAt.addingTimeInterval(2))
+        accumulator.noteMotionError(at: startedAt.addingTimeInterval(2.5))
+        accumulator.finish(at: startedAt.addingTimeInterval(3), reason: .tripEnded)
+
+        let record = accumulator.record
+        XCTAssertEqual(record.frameCount, 3)
+        XCTAssertEqual(record.qualifiedGPSFrameCount, 2)
+        XCTAssertEqual(record.gapCount, 1)
+        XCTAssertEqual(record.missingMotionDuration, 1.78, accuracy: 0.000_001)
+        XCTAssertEqual(record.maximumMotionGap, 1.8, accuracy: 0.000_001)
+        XCTAssertEqual(record.candidateCount, 1)
+        XCTAssertEqual(record.motionErrorCount, 1)
+        XCTAssertEqual(record.endReason, .tripEnded)
+        XCTAssertEqual(record.endedAt, startedAt.addingTimeInterval(3))
+        XCTAssertTrue(record.isStructurallyValid)
+    }
+
+    func testCoverageAccumulatorRejectsRegressingFrameWithoutCorruptingCounters() {
+        let startedAt = Date(timeIntervalSinceReferenceDate: 400)
+        var accumulator = CollisionShadowCoverageAccumulator(
+            context: CollisionShadowTripContext(
+                id: UUID(),
+                startedAt: startedAt
+            ),
+            vehicleType: .moto,
+            startedAt: startedAt
+        )
+        let first = frame(
+            at: startedAt.addingTimeInterval(1),
+            accelerationG: 0,
+            speedKmh: nil,
+            speedTimestamp: nil
+        )
+        let regressing = frame(
+            at: startedAt.addingTimeInterval(0.5),
+            accelerationG: 0,
+            speedKmh: nil,
+            speedTimestamp: nil
+        )
+
+        _ = accumulator.ingest(frame: first, hasQualifiedGPS: false)
+        _ = accumulator.ingest(frame: regressing, hasQualifiedGPS: false)
+
+        XCTAssertEqual(accumulator.record.frameCount, 1)
+        XCTAssertEqual(accumulator.record.lastCheckpointAt, first.timestamp)
+        XCTAssertTrue(accumulator.record.isStructurallyValid)
+    }
+
+    func testCoverageJournalPersistsUnfinishedCheckpointAndMonotonicFinalRecord() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-coverage.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = CollisionShadowCoverageJournal(fileURL: fileURL)
+        let startedAt = Date(timeIntervalSinceReferenceDate: 500)
+        var accumulator = CollisionShadowCoverageAccumulator(
+            context: CollisionShadowTripContext(
+                id: UUID(),
+                startedAt: startedAt.addingTimeInterval(-5)
+            ),
+            vehicleType: .voiture,
+            startedAt: startedAt,
+            sessionID: UUID()
+        )
+
+        try journal.upsert(accumulator.record)
+        XCTAssertNil(try journal.load().first?.endedAt)
+
+        _ = accumulator.ingest(
+            frame: frame(
+                at: startedAt.addingTimeInterval(1),
+                accelerationG: 0,
+                speedKmh: 30,
+                speedTimestamp: startedAt.addingTimeInterval(1)
+            ),
+            hasQualifiedGPS: true
+        )
+        try journal.upsert(accumulator.record)
+        accumulator.finish(at: startedAt.addingTimeInterval(2), reason: .tripEnded)
+        try journal.upsert(accumulator.record)
+
+        let persisted = try XCTUnwrap(journal.load().first)
+        XCTAssertEqual(persisted, accumulator.record)
+        XCTAssertEqual(persisted.frameCount, 1)
+        XCTAssertEqual(persisted.endReason, .tripEnded)
+        XCTAssertTrue(persisted.isStructurallyValid)
+    }
+
+    func testCoverageJournalRejectsRegressionAndNeverReopensFinalSession() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-coverage.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = CollisionShadowCoverageJournal(fileURL: fileURL)
+        let startedAt = Date(timeIntervalSinceReferenceDate: 600)
+        var accumulator = CollisionShadowCoverageAccumulator(
+            context: CollisionShadowTripContext(id: UUID(), startedAt: startedAt),
+            vehicleType: .voiture,
+            startedAt: startedAt,
+            sessionID: UUID()
+        )
+        _ = accumulator.ingest(
+            frame: frame(
+                at: startedAt.addingTimeInterval(1),
+                accelerationG: 0,
+                speedKmh: nil,
+                speedTimestamp: nil
+            ),
+            hasQualifiedGPS: false
+        )
+        let checkpoint = accumulator.record
+        try journal.upsert(checkpoint)
+        accumulator.finish(at: startedAt.addingTimeInterval(2), reason: .tripEnded)
+        let final = accumulator.record
+        try journal.upsert(final)
+
+        XCTAssertThrowsError(try journal.upsert(checkpoint)) { error in
+            XCTAssertEqual(
+                error as? CollisionShadowCoverageJournal.IntegrityError,
+                .conflictingSession
+            )
+        }
+        XCTAssertEqual(try journal.load(), [final])
+    }
+
+    func testCoverageJournalIsBoundedProtectedAndContainsNoCoordinates() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-coverage.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = CollisionShadowCoverageJournal(fileURL: fileURL, retentionLimit: 2)
+        let baseDate = Date(timeIntervalSinceReferenceDate: 700)
+
+        for offset in 0..<3 {
+            let startedAt = baseDate.addingTimeInterval(Double(offset))
+            let accumulator = CollisionShadowCoverageAccumulator(
+                context: CollisionShadowTripContext(id: UUID(), startedAt: startedAt),
+                vehicleType: .voiture,
+                startedAt: startedAt,
+                sessionID: UUID()
+            )
+            try journal.upsert(accumulator.record)
+        }
+
+        let data = try Data(contentsOf: fileURL)
+        let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+        XCTAssertEqual(try journal.load().count, 2)
+        XCTAssertFalse(json.localizedCaseInsensitiveContains("latitude"))
+        XCTAssertFalse(json.localizedCaseInsensitiveContains("longitude"))
+        XCTAssertTrue(CollisionShadowJournal.protectedWriteOptions.contains(.atomic))
+        XCTAssertTrue(
+            CollisionShadowJournal.protectedWriteOptions.contains(
+                .completeFileProtectionUntilFirstUserAuthentication
+            )
+        )
+    }
+
+    func testCoverageJournalQuarantinesMalformedDataAndKeepsRecording() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-coverage.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let malformed = Data("{truncated".utf8)
+        try malformed.write(to: fileURL)
+        let journal = CollisionShadowCoverageJournal(fileURL: fileURL)
+        let startedAt = Date(timeIntervalSinceReferenceDate: 800)
+        let accumulator = CollisionShadowCoverageAccumulator(
+            context: CollisionShadowTripContext(id: UUID(), startedAt: startedAt),
+            vehicleType: .moto,
+            startedAt: startedAt
+        )
+
+        try journal.upsert(accumulator.record)
+
+        XCTAssertEqual(try journal.load(), [accumulator.record])
+        let quarantineURLs = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ).filter { $0.lastPathComponent.contains(".corrupt-") }
+        XCTAssertEqual(quarantineURLs.count, 1)
+        XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(quarantineURLs.first)), malformed)
+    }
+
+    func testCoverageSummaryKeepsCollectionAndDetectionCountersSeparate() {
+        let startedAt = Date(timeIntervalSinceReferenceDate: 900)
+        var completed = CollisionShadowCoverageAccumulator(
+            context: CollisionShadowTripContext(id: UUID(), startedAt: startedAt),
+            vehicleType: .voiture,
+            startedAt: startedAt
+        )
+        _ = completed.ingest(
+            frame: frame(
+                at: startedAt.addingTimeInterval(1),
+                accelerationG: 0,
+                speedKmh: 30,
+                speedTimestamp: startedAt.addingTimeInterval(1)
+            ),
+            hasQualifiedGPS: true
+        )
+        completed.noteCandidate(at: startedAt.addingTimeInterval(1))
+        completed.finish(at: startedAt.addingTimeInterval(2), reason: .tripEnded)
+
+        var unfinished = CollisionShadowCoverageAccumulator(
+            context: CollisionShadowTripContext(id: UUID(), startedAt: startedAt),
+            vehicleType: .moto,
+            startedAt: startedAt
+        )
+        _ = unfinished.ingest(
+            frame: frame(
+                at: startedAt.addingTimeInterval(1),
+                accelerationG: 0,
+                speedKmh: nil,
+                speedTimestamp: nil
+            ),
+            hasQualifiedGPS: false
+        )
+        unfinished.noteMotionError(at: startedAt.addingTimeInterval(2))
+
+        let summary = CollisionShadowCoverageSummary.summarize([
+            completed.record,
+            unfinished.record
+        ])
+
+        XCTAssertEqual(summary.sessionCount, 2)
+        XCTAssertEqual(summary.completedSessionCount, 1)
+        XCTAssertEqual(summary.unfinishedSessionCount, 1)
+        XCTAssertEqual(summary.frameCount, 2)
+        XCTAssertEqual(summary.qualifiedGPSFrameCount, 1)
+        XCTAssertEqual(summary.qualifiedGPSRatio, 0.5)
+        XCTAssertEqual(summary.candidateCount, 1)
+        XCTAssertEqual(summary.motionErrorCount, 1)
     }
 
     private func shadowCandidate(at impactAt: Date) -> CollisionShadowCandidate {
