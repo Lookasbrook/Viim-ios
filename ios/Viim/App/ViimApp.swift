@@ -12,6 +12,7 @@ struct ViimApp: App {
     @StateObject private var tripManager: TripManager
     @StateObject private var tripRecorder: TripRecorder
     @StateObject private var tripDetectionCoordinator: TripDetectionCoordinator
+    @StateObject private var collisionCalibrationReviewStore: CollisionCalibrationReviewStore
 
     init() {
         ViimDiagnostics.logBuildIdentity()
@@ -46,7 +47,11 @@ struct ViimApp: App {
             carburantFeatureFlags: carburantFeatureFlags
         )
         let motionActivityService = MotionActivityService()
-        let collisionShadowMonitor = CollisionShadowMonitor()
+        let collisionShadowJournal = CollisionShadowJournal()
+        let collisionShadowMonitor = CollisionShadowMonitor(journal: collisionShadowJournal)
+        let collisionCalibrationReviewStore = CollisionCalibrationReviewStore(
+            candidateJournal: collisionShadowJournal
+        )
         if let profile = onboardingStore.profile {
             // Un lancement de fond peut ne jamais creer de vue. Le type de
             // vehicule doit donc etre connu avant toute activation capteur.
@@ -78,6 +83,9 @@ struct ViimApp: App {
         )
         _tripRecorder = StateObject(wrappedValue: tripRecorder)
         _tripDetectionCoordinator = StateObject(wrappedValue: tripDetectionCoordinator)
+        _collisionCalibrationReviewStore = StateObject(
+            wrappedValue: collisionCalibrationReviewStore
+        )
     }
 
     var body: some Scene {
@@ -90,6 +98,7 @@ struct ViimApp: App {
                 .environmentObject(tripManager)
                 .environmentObject(tripRecorder)
                 .environmentObject(tripDetectionCoordinator)
+                .environmentObject(collisionCalibrationReviewStore)
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 // La charte Viim est une palette claire fixe (cartes blanches,
                 // fonds clairs). Sans ce verrou, iOS applique des barres et
@@ -194,10 +203,10 @@ final class TripDetectionCoordinator: ObservableObject {
             .store(in: &cancellables)
 
         locationService.$activeTrip
-            .map { $0 != nil }
+            .map(\.?.id)
             .removeDuplicates()
-            .sink { [weak collisionShadowMonitor] isActive in
-                collisionShadowMonitor?.setTripActive(isActive)
+            .sink { [weak collisionShadowMonitor] tripID in
+                collisionShadowMonitor?.setActiveTrip(id: tripID)
             }
             .store(in: &cancellables)
 
@@ -216,7 +225,7 @@ final class TripDetectionCoordinator: ObservableObject {
         collisionShadowMonitor.configure(vehicleType: profile.vehicleType)
         collisionShadowMonitor.updateLocation(locationService.latestLocation)
         collisionShadowMonitor.setLocationCollectionActive(locationService.isMonitoring)
-        collisionShadowMonitor.setTripActive(locationService.activeTrip != nil)
+        collisionShadowMonitor.setActiveTrip(id: locationService.activeTrip?.id)
         locationService.prepareForForegroundUse()
         motionActivityService.startAutoDetection(vehicleType: profile.vehicleType)
         reconcileAutomaticTracking()

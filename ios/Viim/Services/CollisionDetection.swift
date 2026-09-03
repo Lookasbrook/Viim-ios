@@ -14,6 +14,15 @@ struct CollisionSensorFrame: Equatable {
     let gpsTimestamp: Date?
 }
 
+enum CollisionShadowReviewLabel: String, Codable, CaseIterable, Equatable {
+    case noUnusualEvent
+    case hardBraking
+    case roadImpact
+    case phoneMovement
+    case realCollision
+    case uncertain
+}
+
 struct CollisionShadowCandidate: Codable, Equatable, Identifiable {
     let id: UUID
     let algorithmVersion: String
@@ -26,6 +35,8 @@ struct CollisionShadowCandidate: Codable, Equatable, Identifiable {
     let speedLossKmh: Double
     let preImpactSpeedAccuracyKmh: Double?
     let postImpactSpeedAccuracyKmh: Double?
+    let tripID: UUID?
+    let vehicleType: VehicleType?
 
     init(
         id: UUID,
@@ -38,7 +49,9 @@ struct CollisionShadowCandidate: Codable, Equatable, Identifiable {
         postImpactSpeedKmh: Double,
         speedLossKmh: Double,
         preImpactSpeedAccuracyKmh: Double? = nil,
-        postImpactSpeedAccuracyKmh: Double? = nil
+        postImpactSpeedAccuracyKmh: Double? = nil,
+        tripID: UUID? = nil,
+        vehicleType: VehicleType? = nil
     ) {
         self.id = id
         self.algorithmVersion = algorithmVersion
@@ -51,6 +64,8 @@ struct CollisionShadowCandidate: Codable, Equatable, Identifiable {
         self.speedLossKmh = speedLossKmh
         self.preImpactSpeedAccuracyKmh = preImpactSpeedAccuracyKmh
         self.postImpactSpeedAccuracyKmh = postImpactSpeedAccuracyKmh
+        self.tripID = tripID
+        self.vehicleType = vehicleType
     }
 
     /// Validation volontairement large : elle rejette uniquement les donnees
@@ -81,6 +96,24 @@ struct CollisionShadowCandidate: Codable, Equatable, Identifiable {
     private static func isValidAccuracy(_ accuracyKmh: Double?) -> Bool {
         guard let accuracyKmh else { return true }
         return accuracyKmh.isFinite && (0...100).contains(accuracyKmh)
+    }
+
+    func contextualized(tripID: UUID, vehicleType: VehicleType) -> Self {
+        Self(
+            id: id,
+            algorithmVersion: algorithmVersion,
+            impactAt: impactAt,
+            confirmedAt: confirmedAt,
+            peakUserAccelerationG: peakUserAccelerationG,
+            peakRotationRate: peakRotationRate,
+            preImpactSpeedKmh: preImpactSpeedKmh,
+            postImpactSpeedKmh: postImpactSpeedKmh,
+            speedLossKmh: speedLossKmh,
+            preImpactSpeedAccuracyKmh: preImpactSpeedAccuracyKmh,
+            postImpactSpeedAccuracyKmh: postImpactSpeedAccuracyKmh,
+            tripID: tripID,
+            vehicleType: vehicleType
+        )
     }
 }
 
@@ -273,7 +306,7 @@ final class CollisionShadowJournal {
     private let fileURL: URL
     private let retentionLimit: Int
     private let maximumFileBytes: Int
-    private let lock = NSLock()
+    private static let processLock = NSLock()
 
     init(
         fileURL: URL = CollisionShadowJournal.defaultFileURL(),
@@ -286,14 +319,14 @@ final class CollisionShadowJournal {
     }
 
     func load() throws -> [CollisionShadowCandidate] {
-        lock.lock()
-        defer { lock.unlock() }
+        Self.processLock.lock()
+        defer { Self.processLock.unlock() }
         return try loadUnlocked()
     }
 
     func append(_ candidate: CollisionShadowCandidate) throws {
-        lock.lock()
-        defer { lock.unlock() }
+        Self.processLock.lock()
+        defer { Self.processLock.unlock() }
 
         guard candidate.isStructurallyValid else {
             throw IntegrityError.invalidEvidence
@@ -322,6 +355,10 @@ final class CollisionShadowJournal {
             candidates = Array(candidates.suffix(retentionLimit))
         }
 
+        try writeUnlocked(candidates)
+    }
+
+    private func writeUnlocked(_ candidates: [CollisionShadowCandidate]) throws {
         let fileManager = FileManager.default
         let directoryURL = fileURL.deletingLastPathComponent()
         try fileManager.createDirectory(
@@ -386,6 +423,171 @@ final class CollisionShadowJournal {
     }
 }
 
+struct CollisionShadowReviewAnnotation: Codable, Equatable, Identifiable {
+    static let schemaVersion = 1
+
+    let candidateID: UUID
+    let label: CollisionShadowReviewLabel
+    let reviewedAt: Date
+    let version: Int
+
+    var id: UUID { candidateID }
+
+    init(
+        candidateID: UUID,
+        label: CollisionShadowReviewLabel,
+        reviewedAt: Date,
+        version: Int = Self.schemaVersion
+    ) {
+        self.candidateID = candidateID
+        self.label = label
+        self.reviewedAt = reviewedAt
+        self.version = version
+    }
+
+    var isStructurallyValid: Bool {
+        version == Self.schemaVersion && reviewedAt.timeIntervalSinceReferenceDate.isFinite
+    }
+}
+
+/// Les reponses utilisateur sont separees de la preuve capteur brute : corriger
+/// une etiquette ne reecrit jamais le journal des candidats.
+final class CollisionShadowReviewJournal {
+    static let defaultRetentionLimit = CollisionShadowJournal.defaultRetentionLimit
+    static let defaultMaximumFileBytes = 128_000
+
+    enum IntegrityError: Error, Equatable {
+        case oversized
+        case malformed
+        case invalidAnnotation
+        case duplicateIdentifier
+
+        var diagnosticReason: String {
+            switch self {
+            case .oversized: "oversized"
+            case .malformed: "malformed"
+            case .invalidAnnotation: "invalidAnnotation"
+            case .duplicateIdentifier: "duplicateIdentifier"
+            }
+        }
+    }
+
+    private let fileURL: URL
+    private let retentionLimit: Int
+    private let maximumFileBytes: Int
+    private static let processLock = NSLock()
+
+    init(
+        fileURL: URL = CollisionShadowReviewJournal.defaultFileURL(),
+        retentionLimit: Int = CollisionShadowReviewJournal.defaultRetentionLimit,
+        maximumFileBytes: Int = CollisionShadowReviewJournal.defaultMaximumFileBytes
+    ) {
+        self.fileURL = fileURL
+        self.retentionLimit = max(1, retentionLimit)
+        self.maximumFileBytes = max(1, maximumFileBytes)
+    }
+
+    func load() throws -> [CollisionShadowReviewAnnotation] {
+        Self.processLock.lock()
+        defer { Self.processLock.unlock() }
+        return try loadUnlocked()
+    }
+
+    func setReview(
+        candidateID: UUID,
+        label: CollisionShadowReviewLabel,
+        reviewedAt: Date = Date()
+    ) throws {
+        let annotation = CollisionShadowReviewAnnotation(
+            candidateID: candidateID,
+            label: label,
+            reviewedAt: reviewedAt
+        )
+        guard annotation.isStructurallyValid else {
+            throw IntegrityError.invalidAnnotation
+        }
+
+        Self.processLock.lock()
+        defer { Self.processLock.unlock() }
+
+        var annotations: [CollisionShadowReviewAnnotation]
+        do {
+            annotations = try loadUnlocked()
+        } catch let error as IntegrityError {
+            try quarantineCorruptFileUnlocked()
+            annotations = []
+            ViimDiagnostics.log(
+                "collision.shadow.reviewJournal.recovered reason=\(error.diagnosticReason) quarantine=true"
+            )
+        }
+
+        if let index = annotations.firstIndex(where: { $0.candidateID == candidateID }) {
+            guard annotations[index].label != label else { return }
+            annotations[index] = annotation
+        } else {
+            annotations.append(annotation)
+        }
+        annotations.sort { $0.reviewedAt < $1.reviewedAt }
+        if annotations.count > retentionLimit {
+            annotations = Array(annotations.suffix(retentionLimit))
+        }
+        try writeUnlocked(annotations)
+    }
+
+    private func loadUnlocked() throws -> [CollisionShadowReviewAnnotation] {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
+        let handle = try FileHandle(forReadingFrom: fileURL)
+        defer { try? handle.close() }
+        let data = try handle.read(upToCount: maximumFileBytes + 1) ?? Data()
+        guard data.count <= maximumFileBytes else { throw IntegrityError.oversized }
+
+        let annotations: [CollisionShadowReviewAnnotation]
+        do {
+            annotations = try JSONDecoder().decode(
+                [CollisionShadowReviewAnnotation].self,
+                from: data
+            )
+        } catch {
+            throw IntegrityError.malformed
+        }
+        guard annotations.allSatisfy(\.isStructurallyValid) else {
+            throw IntegrityError.invalidAnnotation
+        }
+        guard Set(annotations.map(\.candidateID)).count == annotations.count else {
+            throw IntegrityError.duplicateIdentifier
+        }
+        return annotations
+    }
+
+    private func writeUnlocked(_ annotations: [CollisionShadowReviewAnnotation]) throws {
+        let directoryURL = fileURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: true
+        )
+        let data = try JSONEncoder().encode(annotations)
+        guard data.count <= maximumFileBytes else { throw IntegrityError.oversized }
+        try data.write(to: fileURL, options: CollisionShadowJournal.protectedWriteOptions)
+    }
+
+    private func quarantineCorruptFileUnlocked() throws {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: fileURL.path) else { return }
+        let baseName = fileURL.deletingPathExtension().lastPathComponent
+        let quarantineURL = fileURL.deletingLastPathComponent()
+            .appendingPathComponent("\(baseName).corrupt-\(UUID().uuidString).json")
+        try fileManager.moveItem(at: fileURL, to: quarantineURL)
+    }
+
+    private static func defaultFileURL() -> URL {
+        let directory = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.temporaryDirectory
+        return directory.appendingPathComponent("ViimCollisionShadowReviews.json")
+    }
+}
+
 /// Collecte locale de calibration uniquement pendant un trajet motorise actif.
 /// Ce service ne declenche aucune alerte et ne transmet aucune donnee. Il sert a
 /// observer des candidats. Sans couverture de session ni etiquette utilisateur,
@@ -396,7 +598,7 @@ final class CollisionShadowMonitor {
     private let journal: CollisionShadowJournal
     private var engine = CollisionDetectionEngine()
     private var vehicleType: VehicleType?
-    private var isTripActive = false
+    private var activeTripID: UUID?
     private var isLocationCollectionActive = false
     private var isMonitoring = false
     private var latestLocation: CLLocation?
@@ -425,15 +627,32 @@ final class CollisionShadowMonitor {
     func configure(vehicleType: VehicleType) {
         queue.addOperation { [weak self] in
             guard let self else { return }
+            if Self.shouldResetMonitoringContext(
+                currentTripID: self.activeTripID,
+                nextTripID: self.activeTripID,
+                currentVehicleType: self.vehicleType,
+                nextVehicleType: vehicleType
+            ), self.isMonitoring {
+                self.stopMonitoring()
+            }
             self.vehicleType = vehicleType
             self.reconcileMonitoring()
         }
     }
 
-    func setTripActive(_ isActive: Bool) {
+    func setActiveTrip(id: UUID?) {
         queue.addOperation { [weak self] in
             guard let self else { return }
-            self.isTripActive = isActive
+            if Self.shouldResetMonitoringContext(
+                currentTripID: self.activeTripID,
+                nextTripID: id,
+                currentVehicleType: self.vehicleType,
+                nextVehicleType: self.vehicleType
+            ), self.isMonitoring {
+                // Un impact en attente ne doit jamais traverser deux trajets.
+                self.stopMonitoring()
+            }
+            self.activeTripID = id
             self.reconcileMonitoring()
         }
     }
@@ -455,7 +674,7 @@ final class CollisionShadowMonitor {
     func stop() {
         queue.addOperation { [weak self] in
             guard let self else { return }
-            self.isTripActive = false
+            self.activeTripID = nil
             self.reconcileMonitoring()
         }
     }
@@ -472,9 +691,18 @@ final class CollisionShadowMonitor {
             deviceMotionAvailable
     }
 
+    static func shouldResetMonitoringContext(
+        currentTripID: UUID?,
+        nextTripID: UUID?,
+        currentVehicleType: VehicleType?,
+        nextVehicleType: VehicleType?
+    ) -> Bool {
+        currentTripID != nextTripID || currentVehicleType != nextVehicleType
+    }
+
     private func reconcileMonitoring() {
         let shouldMonitor = Self.shouldMonitor(
-            tripActive: isTripActive,
+            tripActive: activeTripID != nil,
             vehicleType: vehicleType,
             locationCollectionActive: isLocationCollectionActive,
             deviceMotionAvailable: motionManager.isDeviceMotionAvailable
@@ -484,11 +712,11 @@ final class CollisionShadowMonitor {
             startMonitoring()
         } else if !shouldMonitor, isMonitoring {
             stopMonitoring()
-        } else if isTripActive, !motionManager.isDeviceMotionAvailable {
+        } else if activeTripID != nil, !motionManager.isDeviceMotionAvailable {
             ViimDiagnostics.log("collision.shadow.unavailable reason=deviceMotion")
-        } else if isTripActive, vehicleType == nil {
+        } else if activeTripID != nil, vehicleType == nil {
             ViimDiagnostics.log("collision.shadow.unavailable reason=vehicleProfile")
-        } else if isTripActive, !isLocationCollectionActive {
+        } else if activeTripID != nil, !isLocationCollectionActive {
             ViimDiagnostics.log("collision.shadow.unavailable reason=locationCollection")
         }
     }
@@ -574,7 +802,13 @@ final class CollisionShadowMonitor {
             gpsTimestamp: hasReportedSpeed ? location?.timestamp : nil
         )
 
-        guard let candidate = engine.ingest(frame) else { return }
+        guard let rawCandidate = engine.ingest(frame),
+              let activeTripID,
+              let vehicleType else { return }
+        let candidate = rawCandidate.contextualized(
+            tripID: activeTripID,
+            vehicleType: vehicleType
+        )
         guard candidatesAwaitingPersistence.count < Self.maximumPendingPersistenceCandidates else {
             ViimDiagnostics.log("collision.shadow.persistenceQueue.full candidateDropped=true alerts=false")
             return

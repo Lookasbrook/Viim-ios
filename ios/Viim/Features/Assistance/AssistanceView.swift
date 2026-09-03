@@ -3,9 +3,77 @@ import MapKit
 import SwiftUI
 import UIKit
 
+@MainActor
+final class CollisionCalibrationReviewStore: ObservableObject {
+    enum ReviewError: Error, Equatable {
+        case candidateMissing
+    }
+
+    @Published private(set) var pendingCandidates: [CollisionShadowCandidate] = []
+    @Published private(set) var isUnavailable = false
+
+    private let candidateJournal: CollisionShadowJournal
+    private let reviewJournal: CollisionShadowReviewJournal
+
+    init(
+        candidateJournal: CollisionShadowJournal = CollisionShadowJournal(),
+        reviewJournal: CollisionShadowReviewJournal = CollisionShadowReviewJournal()
+    ) {
+        self.candidateJournal = candidateJournal
+        self.reviewJournal = reviewJournal
+    }
+
+    func reload() {
+        do {
+            let candidates = try candidateJournal.load()
+            let annotations = try reviewJournal.load()
+            pendingCandidates = Self.pending(
+                candidates: candidates,
+                annotations: annotations
+            )
+            isUnavailable = false
+        } catch {
+            pendingCandidates = []
+            isUnavailable = true
+            let nsError = error as NSError
+            ViimDiagnostics.log(
+                "collision.shadow.review.load failed=true errorDomain=\(nsError.domain) errorCode=\(nsError.code)"
+            )
+        }
+    }
+
+    func review(
+        candidateID: UUID,
+        label: CollisionShadowReviewLabel,
+        reviewedAt: Date = Date()
+    ) throws {
+        let knownCandidateIDs = Set(try candidateJournal.load().map(\.id))
+        guard knownCandidateIDs.contains(candidateID) else {
+            throw ReviewError.candidateMissing
+        }
+        try reviewJournal.setReview(
+            candidateID: candidateID,
+            label: label,
+            reviewedAt: reviewedAt
+        )
+        reload()
+    }
+
+    static func pending(
+        candidates: [CollisionShadowCandidate],
+        annotations: [CollisionShadowReviewAnnotation]
+    ) -> [CollisionShadowCandidate] {
+        let reviewedIDs = Set(annotations.map(\.candidateID))
+        return candidates
+            .filter { !reviewedIDs.contains($0.id) }
+            .sorted { $0.impactAt > $1.impactAt }
+    }
+}
+
 struct AssistanceView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var locationService: LocationService
+    @EnvironmentObject private var collisionCalibrationReviewStore: CollisionCalibrationReviewStore
     @State private var emergencyContacts: [EmergencyContact] = []
     @State private var hasInvalidEmergencyContact = false
     @State private var medicalProfile: MedicalProfile?
@@ -21,13 +89,13 @@ struct AssistanceView: View {
                     ViimCard {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
-                                Label("assistance.realtime.title", systemImage: "dot.radiowaves.left.and.right")
+                                Label("assistance.manualAlerts.title", systemImage: "paperplane.fill")
                                     .font(.system(size: 14, weight: .bold))
                                     .foregroundStyle(ViimColors.text)
                                 Spacer()
                                 ViimChip(titleKey: emergencyContactStatusKey, style: emergencyContactStatusStyle)
                             }
-                            Text("assistance.realtime.detail")
+                            Text("assistance.manualAlerts.detail")
                                 .font(.caption)
                                 .foregroundStyle(ViimColors.muted)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -43,6 +111,41 @@ struct AssistanceView: View {
                             .buttonStyle(.borderedProminent)
                             .tint(ViimColors.red)
                             .disabled(emergencyContacts.isEmpty || isSendingTest)
+                        }
+                    }
+
+                    ViimCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(alignment: .top) {
+                                Label("assistance.collisionCalibration.title", systemImage: "waveform.path.ecg")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(ViimColors.text)
+                                Spacer(minLength: 8)
+                                ViimChip(titleKey: "assistance.collisionCalibration.noAlerts", style: .warning)
+                            }
+
+                            Text("assistance.collisionCalibration.detail")
+                                .font(.caption)
+                                .foregroundStyle(ViimColors.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            NavigationLink {
+                                CollisionCalibrationReviewView()
+                            } label: {
+                                HStack {
+                                    Text("assistance.collisionCalibration.reviewAction")
+                                    Spacer()
+                                    Text("\(collisionCalibrationReviewStore.pendingCandidates.count)")
+                                        .monospacedDigit()
+                                    Image(systemName: "chevron.right")
+                                }
+                                .font(.caption.weight(.bold))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(ViimColors.warning)
+                            .accessibilityIdentifier("assistance.collisionCalibration.review")
                         }
                     }
 
@@ -145,6 +248,7 @@ struct AssistanceView: View {
         emergencyContacts = storedContacts.compactMap(BurkinaPhoneNumber.normalizedContact)
         hasInvalidEmergencyContact = !storedContacts.isEmpty && emergencyContacts.isEmpty
         medicalProfile = try? SecureMedicalProfileStore.shared.load()
+        collisionCalibrationReviewStore.reload()
     }
 
     private var emergencyNumbers: EmergencyNumbers {
@@ -157,7 +261,7 @@ struct AssistanceView: View {
         if hasInvalidEmergencyContact {
             return "assistance.contacts.needsCorrection"
         }
-        return emergencyContacts.isEmpty ? "status.disabled" : "status.enabled"
+        return emergencyContacts.isEmpty ? "assistance.contacts.status" : "assistance.contacts.configured"
     }
 
     private var emergencyContactDetailKey: LocalizedStringKey {
@@ -214,6 +318,146 @@ struct AssistanceView: View {
             } else if let firstError {
                 alertMessage = AssistanceAlertMessage(titleKey: "assistance.error.title", detailKey: AssistanceAPIErrorPresenter.detailKey(for: firstError, fallbackKey: "assistance.test.error"))
             }
+        }
+    }
+}
+
+private struct CollisionCalibrationReviewView: View {
+    @EnvironmentObject private var store: CollisionCalibrationReviewStore
+    @State private var alertMessage: AssistanceAlertMessage?
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                ViimCard {
+                    Label {
+                        Text("assistance.collisionCalibration.disclaimer")
+                            .font(.caption.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .foregroundStyle(ViimColors.warning)
+                }
+
+                if store.isUnavailable {
+                    AssistanceDetailView(
+                        icon: "externaldrive.badge.exclamationmark",
+                        titleKey: "assistance.collisionCalibration.unavailable.title",
+                        detailKey: "assistance.collisionCalibration.unavailable.detail",
+                        tint: ViimColors.warning
+                    )
+                    .frame(minHeight: 260)
+                } else if store.pendingCandidates.isEmpty {
+                    AssistanceDetailView(
+                        icon: "checkmark.circle",
+                        titleKey: "assistance.collisionCalibration.empty.title",
+                        detailKey: "assistance.collisionCalibration.empty.detail",
+                        tint: ViimColors.blue
+                    )
+                    .frame(minHeight: 260)
+                } else {
+                    ForEach(store.pendingCandidates) { candidate in
+                        CollisionCalibrationCandidateCard(candidate: candidate) { label in
+                            do {
+                                try store.review(candidateID: candidate.id, label: label)
+                            } catch {
+                                alertMessage = AssistanceAlertMessage(
+                                    titleKey: "assistance.error.title",
+                                    detailKey: "assistance.collisionCalibration.reviewError"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(14)
+        }
+        .background(ViimColors.background.ignoresSafeArea())
+        .navigationTitle("assistance.collisionCalibration.reviewTitle")
+        .task { store.reload() }
+        .alert(item: $alertMessage) { message in
+            Alert(
+                title: Text(message.titleKey),
+                message: Text(message.detailKey),
+                dismissButton: .default(Text("common.ok"))
+            )
+        }
+    }
+}
+
+private struct CollisionCalibrationCandidateCard: View {
+    let candidate: CollisionShadowCandidate
+    let onReview: (CollisionShadowReviewLabel) -> Void
+
+    var body: some View {
+        ViimCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("assistance.collisionCalibration.event.title", systemImage: candidate.vehicleType?.symbolName ?? "waveform.path")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(ViimColors.text)
+                    Spacer()
+                    Text(candidate.impactAt, format: .dateTime.day().month(.abbreviated).hour().minute())
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(ViimColors.muted)
+                }
+
+                if let vehicleType = candidate.vehicleType {
+                    Text(vehicleType.titleKey)
+                        .font(.caption)
+                        .foregroundStyle(ViimColors.muted)
+                }
+
+                DisclosureGroup("assistance.collisionCalibration.technical") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(String.localizedStringWithFormat(
+                            String(localized: "assistance.collisionCalibration.peakG"),
+                            candidate.peakUserAccelerationG
+                        ))
+                        Text(String.localizedStringWithFormat(
+                            String(localized: "assistance.collisionCalibration.speedLoss"),
+                            candidate.speedLossKmh
+                        ))
+                        Text(candidate.algorithmVersion)
+                    }
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(ViimColors.muted)
+                    .padding(.top, 6)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(ViimColors.text)
+
+                Menu {
+                    ForEach(CollisionShadowReviewLabel.allCases, id: \.rawValue) { label in
+                        Button(label.titleKey) {
+                            onReview(label)
+                        }
+                        .accessibilityIdentifier("collisionCalibration.label.\(label.rawValue)")
+                    }
+                } label: {
+                    Label("assistance.collisionCalibration.labelAction", systemImage: "checkmark.bubble.fill")
+                        .font(.caption.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ViimColors.blue)
+                .accessibilityIdentifier("collisionCalibration.candidate.\(candidate.id.uuidString)")
+            }
+        }
+    }
+}
+
+private extension CollisionShadowReviewLabel {
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .noUnusualEvent: "assistance.collisionCalibration.label.noUnusualEvent"
+        case .hardBraking: "assistance.collisionCalibration.label.hardBraking"
+        case .roadImpact: "assistance.collisionCalibration.label.roadImpact"
+        case .phoneMovement: "assistance.collisionCalibration.label.phoneMovement"
+        case .realCollision: "assistance.collisionCalibration.label.realCollision"
+        case .uncertain: "assistance.collisionCalibration.label.uncertain"
         }
     }
 }

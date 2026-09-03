@@ -61,6 +61,36 @@ final class CollisionDetectionEngineTests: XCTestCase {
         )
     }
 
+    func testShadowMonitorResetsWhenTripOrVehicleContextChanges() {
+        let tripA = UUID()
+        let tripB = UUID()
+
+        XCTAssertFalse(
+            CollisionShadowMonitor.shouldResetMonitoringContext(
+                currentTripID: tripA,
+                nextTripID: tripA,
+                currentVehicleType: .voiture,
+                nextVehicleType: .voiture
+            )
+        )
+        XCTAssertTrue(
+            CollisionShadowMonitor.shouldResetMonitoringContext(
+                currentTripID: tripA,
+                nextTripID: tripB,
+                currentVehicleType: .voiture,
+                nextVehicleType: .voiture
+            )
+        )
+        XCTAssertTrue(
+            CollisionShadowMonitor.shouldResetMonitoringContext(
+                currentTripID: tripA,
+                nextTripID: tripA,
+                currentVehicleType: .voiture,
+                nextVehicleType: .moto
+            )
+        )
+    }
+
     func testImpactAtRestDoesNotArmCollisionCandidate() {
         var engine = CollisionDetectionEngine()
         let now = Date(timeIntervalSinceReferenceDate: 1_000)
@@ -431,6 +461,174 @@ final class CollisionDetectionEngineTests: XCTestCase {
                 .completeFileProtectionUntilFirstUserAuthentication
             )
         )
+    }
+
+    func testLegacyShadowCandidateDecodesWithoutTripContext() throws {
+        let original = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 80))
+            .contextualized(tripID: UUID(), vehicleType: .moto)
+        let encoded = try JSONEncoder().encode(original)
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        object.removeValue(forKey: "tripID")
+        object.removeValue(forKey: "vehicleType")
+
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+        let decoded = try JSONDecoder().decode(
+            CollisionShadowCandidate.self,
+            from: legacyData
+        )
+
+        XCTAssertNil(decoded.tripID)
+        XCTAssertNil(decoded.vehicleType)
+        XCTAssertEqual(decoded.id, original.id)
+        XCTAssertTrue(decoded.isStructurallyValid)
+    }
+
+    func testContextualizedShadowCandidateRoundTripsExactTripAndVehicle() throws {
+        let tripID = UUID()
+        let candidate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 90))
+            .contextualized(tripID: tripID, vehicleType: .voiture)
+
+        let data = try JSONEncoder().encode(candidate)
+        let decoded = try JSONDecoder().decode(CollisionShadowCandidate.self, from: data)
+
+        XCTAssertEqual(decoded, candidate)
+        XCTAssertEqual(decoded.tripID, tripID)
+        XCTAssertEqual(decoded.vehicleType, .voiture)
+        let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+        XCTAssertFalse(json.localizedCaseInsensitiveContains("latitude"))
+        XCTAssertFalse(json.localizedCaseInsensitiveContains("longitude"))
+    }
+
+    func testReviewJournalDoesNotRewriteRawEvidence() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let candidateURL = directory.appendingPathComponent("collision-shadow.json")
+        let reviewURL = directory.appendingPathComponent("collision-reviews.json")
+        let candidate = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 100))
+        let candidateJournal = CollisionShadowJournal(fileURL: candidateURL)
+        let reviewJournal = CollisionShadowReviewJournal(fileURL: reviewURL)
+        try candidateJournal.append(candidate)
+        let rawEvidenceBeforeReview = try Data(contentsOf: candidateURL)
+
+        try reviewJournal.setReview(
+            candidateID: candidate.id,
+            label: .roadImpact,
+            reviewedAt: Date(timeIntervalSinceReferenceDate: 101)
+        )
+
+        XCTAssertEqual(try Data(contentsOf: candidateURL), rawEvidenceBeforeReview)
+        XCTAssertEqual(
+            try reviewJournal.load(),
+            [
+                CollisionShadowReviewAnnotation(
+                    candidateID: candidate.id,
+                    label: .roadImpact,
+                    reviewedAt: Date(timeIntervalSinceReferenceDate: 101)
+                )
+            ]
+        )
+    }
+
+    func testReviewJournalIdempotentRetryPreservesOriginalReviewDate() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let reviewURL = directory.appendingPathComponent("collision-reviews.json")
+        let journal = CollisionShadowReviewJournal(fileURL: reviewURL)
+        let candidateID = UUID()
+        let originalDate = Date(timeIntervalSinceReferenceDate: 110)
+
+        try journal.setReview(
+            candidateID: candidateID,
+            label: .hardBraking,
+            reviewedAt: originalDate
+        )
+        try journal.setReview(
+            candidateID: candidateID,
+            label: .hardBraking,
+            reviewedAt: originalDate.addingTimeInterval(60)
+        )
+
+        XCTAssertEqual(try journal.load().first?.reviewedAt, originalDate)
+    }
+
+    @MainActor
+    func testPendingReviewExcludesReviewedCandidatesAndSortsNewestFirst() {
+        let older = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 120))
+        let reviewed = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 130))
+        let newer = shadowCandidate(at: Date(timeIntervalSinceReferenceDate: 140))
+        let annotations = [
+            CollisionShadowReviewAnnotation(
+                candidateID: reviewed.id,
+                label: .noUnusualEvent,
+                reviewedAt: Date(timeIntervalSinceReferenceDate: 150)
+            ),
+            CollisionShadowReviewAnnotation(
+                candidateID: UUID(),
+                label: .uncertain,
+                reviewedAt: Date(timeIntervalSinceReferenceDate: 150)
+            )
+        ]
+
+        XCTAssertEqual(
+            CollisionCalibrationReviewStore.pending(
+                candidates: [older, reviewed, newer],
+                annotations: annotations
+            ),
+            [newer, older]
+        )
+    }
+
+    @MainActor
+    func testReviewStoreRejectsCandidateAbsentFromEvidenceJournal() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let candidateJournal = CollisionShadowJournal(
+            fileURL: directory.appendingPathComponent("collision-shadow.json")
+        )
+        let reviewJournal = CollisionShadowReviewJournal(
+            fileURL: directory.appendingPathComponent("collision-reviews.json")
+        )
+        let store = CollisionCalibrationReviewStore(
+            candidateJournal: candidateJournal,
+            reviewJournal: reviewJournal
+        )
+
+        XCTAssertThrowsError(
+            try store.review(candidateID: UUID(), label: .uncertain)
+        ) { error in
+            XCTAssertEqual(
+                error as? CollisionCalibrationReviewStore.ReviewError,
+                .candidateMissing
+            )
+        }
+        XCTAssertEqual(try reviewJournal.load(), [])
+    }
+
+    func testReviewJournalQuarantinesMalformedAnnotationsAndKeepsRecording() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let fileURL = directory.appendingPathComponent("collision-reviews.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let malformed = Data("{truncated".utf8)
+        try malformed.write(to: fileURL)
+        let journal = CollisionShadowReviewJournal(fileURL: fileURL)
+        let candidateID = UUID()
+
+        try journal.setReview(candidateID: candidateID, label: .phoneMovement)
+
+        XCTAssertEqual(try journal.load().map(\.candidateID), [candidateID])
+        let quarantineURLs = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ).filter { $0.lastPathComponent.contains(".corrupt-") }
+        XCTAssertEqual(quarantineURLs.count, 1)
+        XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(quarantineURLs.first)), malformed)
     }
 
     private func shadowCandidate(at impactAt: Date) -> CollisionShadowCandidate {

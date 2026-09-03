@@ -54,7 +54,7 @@ forcee possede son propre budget de trou et ne peut pas promettre une trace cont
 ## P0-B — Rendre la detection de collision reellement protectrice
 
 Etat : moteur `collision-shadow-v2-impact-gps-uncertainty` local de recherche seulement ; alertes
-desactivees. Pour le build 29, son journal est borne a 512 Ko, valide chaque
+desactivees. Depuis le build 29, son journal est borne a 512 Ko, valide chaque
 observation, rend les reprises idempotentes, ecrit atomiquement avec une protection
 compatible apres le premier deverrouillage et met en quarantaine toute preuve
 corrompue sans l'ecraser. Ce moteur Core Motion n'est pas une base de securite
@@ -87,6 +87,22 @@ garantit ni chaque collision, ni une position, ni la couverture moto/velo.
 7. Continuer le moteur shadow uniquement pour mesurer les limites locales :
    freinages forts, nid-de-poule et chute du telephone, sans coordonnees ni alerte.
    Ne jamais provoquer de collision reelle.
+
+Lot build 30 : l'ecran Assistance separe explicitement les messages manuels de la
+calibration capteur et affiche en permanence « Aucune alerte ». Chaque candidat
+est lie a l'identifiant exact du trajet et au type de vehicule. Un changement de
+trajet ou de vehicule remet le moteur a zero. L'utilisateur peut classer une
+observation dans six categories fermees ; l'annotation est stockee dans un second
+journal local et ne reecrit jamais la preuve capteur brute. Cette annotation permet
+de calculer la precision parmi les candidats revus, mais ni le rappel ni les faux
+negatifs.
+
+Prochaine tranche de mesure : enregistrer, par session et sans coordonnees, la duree
+du trajet, la duree effectivement surveillee, les interruptions, le nombre de frames,
+la part de frames avec vitesse GPS qualifiee et les erreurs capteur. Ecrire un
+checkpoint au demarrage, toutes les 30 secondes, a chaque trou et a l'arret afin
+qu'une terminaison laisse une session inachevee auditable. Sans ce denominateur,
+un petit nombre de candidats ne constitue aucune preuve de fiabilite.
 
 Porte de sortie : entitlement approuve, tests SafetyKit complets, annulation fiable,
 livraison de bout en bout prouvee et taux d'echec publie. Avant cette porte,
@@ -202,7 +218,7 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Ordre d'execution recommande
 
-1. Validation terrain P0-A sur le build 29.
+1. Validation terrain P0-A sur le build 30.
 2. Demande d'entitlement et prototype SafetyKit P0-B ; collecte shadow uniquement
    comme instrumentation secondaire.
 3. Schema vehicule versionne, puis imports officiels et photos P1-C.
@@ -214,13 +230,13 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Etat d'execution verifie
 
-- Build 29 signe, installe et confirme `0.1.0 (29)` sur l'iPhone 16. Son lancement
+- Build 30 signe, installe et confirme `0.1.0 (30)` dans le bundle sur l'iPhone 16. Son lancement
   est refuse uniquement parce que l'iPhone est verrouille.
   Avant installation, Application Support a ete sauvegarde et son SQLite controle
   `ok`. Apres installation sans lancement, SQLite, WAL et SHM sont identiques octet
   pour octet, y compris apres l'installation finale du build 27 : la migration du
   store reel attend encore le deverrouillage.
-- 251/251 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
+- 259/259 tests iOS reussis ; 0 echec et 0 test ignore. Cela inclut une migration
   SQLite reelle d'un store sans les nouveaux champs de preuve carburant.
 - Permission appareil encore `authorizedWhenInUse` : la porte terrain P0-A reste
   ouverte et exige une action utilisateur dans les reglages iOS.
@@ -233,14 +249,17 @@ simulee pendant migration, aucune suppression automatique de donnees.
   transmission de ville, controles de transport et de preuve, moyenne provinciale
   de repli et conservation du dernier prix encore valide. Le CSV reel et sa
   redirection officielle ont ete controles ; les tests complets sont verts.
-- Apres installation du build 29, les copies non destructives du store appareil
+- Apres installation du build 30, les copies non destructives du store appareil
   avant/apres sont identiques au SHA-256, passent `PRAGMA integrity_check=ok` et
-  contiennent toujours 126 trajets. Le demarrage et le bouton de prix sur appareil
-  restent a verifier apres deverrouillage.
-- Collision build 29 : perte de vitesse qualifiee par l'incertitude GPS, profil
+  contiennent toujours 126 trajets. Le demarrage et les ecrans Assistance/prix sur
+  appareil restent a verifier apres deverrouillage.
+- Collision build 30 : perte de vitesse qualifiee par l'incertitude GPS, profil
   charge au lancement headless, arret fail-closed quand Core Location ne collecte
-  plus, journal atomique/protege/borne avec quarantaine et retry en memoire. La
-  suite iOS passe 251/251 ; aucune alerte automatique n'est activee.
+  plus, journal atomique/protege/borne avec quarantaine et retry en memoire. Les
+  observations portent l'UUID exact du trajet et le type de vehicule ; leurs
+  etiquettes sont conservees separement. L'interface ne presente plus un contact
+  configure comme une detection active et maintient le statut « Aucune alerte ».
+  La suite iOS passe 259/259 ; aucune alerte automatique n'est activee.
 
 ## References primaires — architecture collision
 
@@ -255,15 +274,19 @@ simulee pendant migration, aucune suppression automatique de donnees.
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 29 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 30 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le
    journal et mesurer completude, trous GPS et ecart de distance. Tout ecart > 5 %
    bloque la suite de diffusion.
-3. **Collision shadow — 2 a 4 semaines de conduite :** collecter des negatifs reels
-   et des simulations controlees, puis produire precision/rappel/faux positifs par
-   1 000 km. Aucun SOS automatique avant seuils signes.
+3. **Collision shadow — prochaine tranche logicielle puis 2 a 4 semaines de conduite :**
+   ajouter d'abord le journal de couverture de session. Collecter ensuite les
+   etiquettes volontaires et publier le taux de candidats par 1 000 km, le taux de
+   revue et la precision observee parmi les candidats revus. Le rappel et les faux
+   negatifs exigent un jeu de verite terrain independant en laboratoire ou les
+   evenements de test SafetyKit ; ils ne doivent jamais etre deduits du shadow.
+   Aucun SOS automatique avant seuils signes.
 4. **Catalogue officiel — prochaine tranche logicielle :** ajouter NRCan avec le
    meme schema de preuve, puis une plage basse/haute quand plusieurs variantes
    restent possibles. NHTSA vPIC reste limite a l'identite VIN.
