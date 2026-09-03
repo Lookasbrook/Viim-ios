@@ -93,17 +93,56 @@ def copy_store_from_device(device: str, output_dir: Path, bundle_id: str) -> Pat
             str(destination),
         ]
         result = subprocess.run(command, text=True, capture_output=True)
-        if result.returncode != 0 and filename == "Viim.sqlite":
+        if result.returncode != 0 and filename == "ViimDiagnostics.log":
+            continue
+        if result.returncode != 0 and filename in {"Viim.sqlite-wal", "Viim.sqlite-shm"}:
+            if remote_file_is_absent(result):
+                continue
             raise RuntimeError(
-                "failed to copy Viim.sqlite from device: "
+                f"failed to copy {filename} from device: "
+                + (result.stderr.strip() or result.stdout.strip())
+            )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"failed to copy {filename} from device: "
                 + (result.stderr.strip() or result.stdout.strip())
                 + "\nFallback: export the app container from Xcode Devices & Simulators, "
                 + "then run this script with --store '<container>/AppData/Library/Application Support/Viim.sqlite'."
             )
-        if result.returncode != 0 and filename == "ViimDiagnostics.log":
-            continue
 
-    return copied_store
+    return create_consistent_snapshot(copied_store)
+
+
+def remote_file_is_absent(result: subprocess.CompletedProcess) -> bool:
+    message = f"{result.stderr}\n{result.stdout}".lower()
+    return any(
+        marker in message
+        for marker in (
+            "no such file",
+            "source file does not exist",
+            "source path does not exist",
+        )
+    )
+
+
+def create_consistent_snapshot(store_path: Path) -> Path:
+    """Checkpoint SQLite/WAL into one standalone, verified QA snapshot."""
+    if not store_path.exists():
+        raise FileNotFoundError(store_path)
+    snapshot_path = store_path.with_name("Viim.qa-snapshot.sqlite")
+    if snapshot_path.exists():
+        raise FileExistsError(snapshot_path)
+
+    source_uri = f"file:{store_path}?mode=ro"
+    with sqlite3.connect(source_uri, uri=True) as source:
+        with sqlite3.connect(snapshot_path) as destination:
+            source.backup(destination)
+            integrity = destination.execute("PRAGMA integrity_check").fetchone()
+            if integrity is None or integrity[0] != "ok":
+                raise RuntimeError(
+                    f"QA SQLite snapshot failed integrity_check: {integrity}"
+                )
+    return snapshot_path
 
 
 def build_report(store_path: Path, reference_km: float | None) -> dict:
