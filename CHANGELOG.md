@@ -2,6 +2,12 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (catalogue moto réel — build 43 privé)
+
+- **[Motos]** Trois photographies réelles et licenciées ajoutées pour Bajaj Pulsar 150, Yamaha XTZ 125 et Suzuki Gixxer 155. Les alias incomplets `Pulsar`, `XTZ` et `Gixxer` restent volontairement sur l'illustration neutre.
+- **[Auditabilité]** Les fichiers embarqués sont limités à 1200 px et portent auteur, URL source, licence, SHA-1 de révision et méthode `photograph` dans le manifeste iOS.
+- **[QA/Appareil]** 342/342 tests iOS réussis. Build 43 signé, installé et confirmé sur l'iPhone 16 ; la base avant/après installation est identique, contient 126 trajets et passe `integrity_check`. Le lancement automatisé expire toujours, donc la migration et l'autorisation `Toujours` restent à valider téléphone déverrouillé.
+
 ## 2026-09-03 (catalogue photo réel — build 42 privé)
 
 - **[Véhicules]** Quatre photographies réelles et non générées ont été ajoutées pour Toyota Fortuner AN160, Nissan X-Trail T33, Hyundai Tucson NX4 et Kia Sportage NQ5. Chaque fichier est embarqué, inspecté, attribué à son auteur et lié à sa licence ainsi qu'à sa révision Wikimedia Commons.

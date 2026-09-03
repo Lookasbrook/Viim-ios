@@ -19,12 +19,15 @@ final class VehiclePhotoCatalogTests: XCTestCase {
     func testMotoModelsResolveToExactAssets() {
         XCTAssertEqual(asset(.moto, "Yamaha", "Crypton"), "VehiclePhotoYamahaCrypton")
         XCTAssertEqual(asset(.moto, "Yamaha", "YBR 125"), "VehiclePhotoYamahaYBR")
+        XCTAssertEqual(asset(.moto, "Yamaha", "XTZ 125"), "VehiclePhotoYamahaXTZ125")
         XCTAssertEqual(asset(.moto, "Yamaha", "FZ-S 150"), "VehiclePhotoYamahaFZS")
         XCTAssertEqual(asset(.moto, "Honda", "CB125F"), "VehiclePhotoHondaCB125F")
         XCTAssertEqual(asset(.moto, "Bajaj", "Boxer BM 150"), "VehiclePhotoBajajBoxer")
         XCTAssertEqual(asset(.moto, "TVS", "Apache RTR 200"), "VehiclePhotoTVSApache")
         XCTAssertEqual(asset(.moto, "Honda", "CG 125"), "VehiclePhotoHondaCG125")
         XCTAssertEqual(asset(.moto, "Suzuki", "GN 125"), "VehiclePhotoSuzukiGN125")
+        XCTAssertEqual(asset(.moto, "Suzuki", "Gixxer 155"), "VehiclePhotoSuzukiGixxer155")
+        XCTAssertEqual(asset(.moto, "Bajaj", "Pulsar 150"), "VehiclePhotoBajajPulsar150")
         XCTAssertEqual(
             VehiclePhotoCatalog.resolve(
                 vehicleType: .moto,
@@ -98,6 +101,9 @@ final class VehiclePhotoCatalogTests: XCTestCase {
         XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .moto, brand: "TVS", model: "Apache"))
         XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .moto, brand: "Honda", model: "CG"))
         XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .moto, brand: "Honda", model: "Wave 110"))
+        XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .moto, brand: "Yamaha", model: "XTZ"))
+        XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .moto, brand: "Suzuki", model: "Gixxer"))
+        XCTAssertNil(VehiclePhotoCatalog.resolve(vehicleType: .moto, brand: "Bajaj", model: "Pulsar"))
         XCTAssertNil(
             VehiclePhotoCatalog.resolve(
                 vehicleType: .moto,

@@ -480,3 +480,16 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 - Le lancement automatise a expire apres 8 secondes. La base ne contient toujours
   pas l'entite `FuelFillUp` : l'app n'a donc pas encore execute la migration Build41
   sur l'appareil. Il faut deverrouiller et ouvrir Viim avant de controler cette porte.
+
+## Execution build 43 — catalogue moto reel
+
+- Ajout de trois photos inspectees et sous licence pour Bajaj Pulsar 150, Yamaha
+  XTZ 125 et Suzuki Gixxer 155. Le catalogue visuel contient maintenant 25 entrees.
+- Les correspondances n'acceptent que les noms complets ; `Pulsar`, `XTZ` ou
+  `Gixxer` seuls conservent l'illustration neutre.
+- Test catalogue 9/9 et suite complete 342/342, sans echec ni test ignore.
+- Build 43 signe, installe et confirme sur l'iPhone 16. La base avant/apres reste
+  identique au SHA-256 historique, avec 126 trajets et integrite `ok`.
+- Le lancement automatise expire toujours apres 8 secondes. Au controle precedant
+  l'installation, le dernier lancement journalise reste le build 23 en
+  `authorizedWhenInUse`; aucune migration Build41 n'est encore prouvee.

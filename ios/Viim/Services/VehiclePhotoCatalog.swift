@@ -94,13 +94,16 @@ enum VehiclePhotoCatalog {
         photo(.voiture, ["nissan"], ["navara"], "VehiclePhotoNissanNavara", "Nissan Navara 2025", "Captainmorlypogi1959", "https://commons.wikimedia.org/wiki/File:Nissan_Navara_4x2_VE_2025_(3).jpg", .ccBySA40, "069c0d7fc63c1a5aebd6056b1024d071554cbf9f"),
         photo(.moto, ["yamaha"], ["crypton", "t110c"], "VehiclePhotoYamahaCrypton", "Yamaha Crypton", "Thigre", "https://commons.wikimedia.org/wiki/File:Crypton.jpg", .ccBySA40, "342d89697a5c646da958bbc1f9c530cdfb14bb45"),
         photo(.moto, ["yamaha"], ["ybr125"], "VehiclePhotoYamahaYBR", "Yamaha YBR 125", "Kyrylo Danylchenko", "https://commons.wikimedia.org/wiki/File:Yamaha_YBR-125_Kiev1.JPG", .publicDomain, "f4d12aa7747d740a730f02e88f599fc502ddb657"),
+        photo(.moto, ["yamaha"], ["xtz125"], "VehiclePhotoYamahaXTZ125", "Yamaha XTZ 125", "Borowskki", "https://commons.wikimedia.org/wiki/File:Yamaha_XTZ_125_Brazil.jpg", .publicDomain, "e6c1cab8e35864d29a0d180e80efd6db34197dd7"),
         photo(.moto, ["yamaha"], ["fzs", "fzs150"], "VehiclePhotoYamahaFZS", "Yamaha FZ-S", "Rosinisubramani", "https://commons.wikimedia.org/wiki/File:Fz_bike.jpg", .ccBySA40, "80cd6d19c258d5fbfb0406c8b26bfa2de0541fb7"),
         photo(.moto, ["bajaj"], ["boxerbm150", "bm150"], "VehiclePhotoBajajBoxer", "Bajaj Boxer BM 150", "Axxter99", "https://commons.wikimedia.org/wiki/File:Bajaj_Boxer_BM_150.jpg", .ccBySA40, "dc63ad7ca23684c4972fcc547403500b4ac30778"),
+        photo(.moto, ["bajaj"], ["pulsar150"], "VehiclePhotoBajajPulsar150", "Bajaj Pulsar 150", "CAPTAIN RAJU", "https://commons.wikimedia.org/wiki/File:Bajaj_Pulsar_150_motorcycle_with_a_cat_sitting_on_the_seat_in_2025.02.jpg", .cc0, "857674cba0de4e7347816f1490651486053cb89f"),
         photo(.moto, ["tvs"], ["apachertr200", "rtr200"], "VehiclePhotoTVSApache", "TVS Apache RTR 200 4V", "OffPoynt", "https://commons.wikimedia.org/wiki/File:TVS_Apache_RTR_200_4V_Front-Right_Profile.jpg", .ccBySA40, "62dbf9941650902629208910a5fca5335a5732ab"),
         photo(.moto, ["honda"], ["cg125"], "VehiclePhotoHondaCG125", "Honda CG125", "SEDJRO SETONDJI", "https://commons.wikimedia.org/wiki/File:Honda_CG125.jpg", .ccBySA40, "f9e9d9cf1787a69025bfbab5812c001369d76472"),
         photo(.moto, ["honda"], ["cb125", "cb125f"], "VehiclePhotoHondaCB125F", "Honda CB125F", "Hasan HH", "https://commons.wikimedia.org/wiki/File:CB_125_F_in_Pakistan.jpg", .ccBySA40, "13bb77d16dcc72454862c9bb77b9f77fd235723d"),
         photo(.moto, ["honda"], ["wave110"], "VehiclePhotoHondaWave110", "Honda Wave 110 Special Edition 2026", "Chanokchon", "https://commons.wikimedia.org/wiki/File:2026_Honda_Wave_110_Special_Edition_(Alloy_Type).jpg", .ccBySA40, "dad5561136623982ec722eaf1457626c639be6a3", yearRange: 2026...2026),
-        photo(.moto, ["suzuki"], ["gn125"], "VehiclePhotoSuzukiGN125", "Suzuki GN 125", "Addvisor", "https://commons.wikimedia.org/wiki/File:Suzuki_GN_125_DSCF0735.JPG", .ccBySA40, "fc8d5a3745392ad267da7972ce031c6d38743efb")
+        photo(.moto, ["suzuki"], ["gn125"], "VehiclePhotoSuzukiGN125", "Suzuki GN 125", "Addvisor", "https://commons.wikimedia.org/wiki/File:Suzuki_GN_125_DSCF0735.JPG", .ccBySA40, "fc8d5a3745392ad267da7972ce031c6d38743efb"),
+        photo(.moto, ["suzuki"], ["gixxer155"], "VehiclePhotoSuzukiGixxer155", "Suzuki Gixxer 155", "NahidHossain", "https://commons.wikimedia.org/wiki/File:Suzuki_Gixxer_155cc_DD_black_edition.jpg", .ccBySA40, "81b0a79a2eeaf34851190949409c4566fa040872")
     ]
 
     private static func photo(

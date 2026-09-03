@@ -2,7 +2,7 @@
 
 Photos intégrées localement dans `ios/Viim/Resources/Assets.xcassets`. Elles sont redimensionnées à 1200 px maximum et ne déclenchent aucun appel réseau dans l'app. Une photo n'est affichée que lorsque la marque et le modèle saisis correspondent au catalogue local.
 
-Contrôle du 2026-09-03 : les 22 auteurs, licences, types MIME JPEG et empreintes
+Contrôle du 2026-09-03 : les 25 entrées, auteurs, licences, types MIME JPEG et empreintes
 SHA-1 de révision ont été relus via l'API officielle Wikimedia Commons. Le manifeste
 exécutable se trouve dans `VehiclePhotoCatalog.swift` ; une entrée sans source HTTPS,
 auteur, licence autorisée, empreinte ou méthode `photograph` est automatiquement
@@ -10,9 +10,10 @@ exclue. L'app affiche près de chaque image les liens vers le fichier source et 
 licence, ainsi que la mention de redimensionnement. Aucun traitement génératif n'a
 été appliqué.
 
-Les six ajouts du 2026-09-03 sont des photographies inspectées visuellement :
+Les neuf ajouts du 2026-09-03 sont des photographies inspectées visuellement :
 Honda Wave 110 Special Edition 2026, Suzuki GN 125, Toyota Fortuner AN160,
-Nissan X-Trail T33, Hyundai Tucson NX4 et Kia Sportage NQ5. Les quatre photos de
+Nissan X-Trail T33, Hyundai Tucson NX4, Kia Sportage NQ5, Bajaj Pulsar 150,
+Yamaha XTZ 125 et Suzuki Gixxer 155. Les quatre photos de
 voitures récentes ne sont affichées que si l'année du profil appartient à la
 génération représentée ; sinon l'app conserve l'illustration neutre. Aucune photo suffisamment
 précise et licenciée n'a été trouvée pour TVS HLX 125 ou Bajaj Boxer BM 100 ; ces
@@ -42,3 +43,6 @@ modèles conservent donc l'illustration neutre.
 | `VehiclePhotoHondaCB125F` | [CB 125 F in Pakistan](https://commons.wikimedia.org/wiki/File:CB_125_F_in_Pakistan.jpg) | Hasan HH | CC BY-SA 4.0 |
 | `VehiclePhotoHondaWave110` | [2026 Honda Wave 110 Special Edition](https://commons.wikimedia.org/wiki/File:2026_Honda_Wave_110_Special_Edition_(Alloy_Type).jpg) | Chanokchon | CC BY-SA 4.0 |
 | `VehiclePhotoSuzukiGN125` | [Suzuki GN 125 DSCF0735](https://commons.wikimedia.org/wiki/File:Suzuki_GN_125_DSCF0735.JPG) | Addvisor | CC BY-SA 4.0 |
+| `VehiclePhotoBajajPulsar150` | [Bajaj Pulsar 150 motorcycle with a cat sitting on the seat in 2025.02](https://commons.wikimedia.org/wiki/File:Bajaj_Pulsar_150_motorcycle_with_a_cat_sitting_on_the_seat_in_2025.02.jpg) | CAPTAIN RAJU | CC0 1.0 |
+| `VehiclePhotoYamahaXTZ125` | [Yamaha XTZ 125 Brazil](https://commons.wikimedia.org/wiki/File:Yamaha_XTZ_125_Brazil.jpg) | Borowskki | Domaine public |
+| `VehiclePhotoSuzukiGixxer155` | [Suzuki Gixxer 155cc DD black edition](https://commons.wikimedia.org/wiki/File:Suzuki_Gixxer_155cc_DD_black_edition.jpg) | NahidHossain | CC BY-SA 4.0 |
