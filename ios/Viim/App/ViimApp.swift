@@ -236,7 +236,11 @@ private struct AppLaunchView: View {
             settings.capturedAt.map { String($0.timeIntervalSince1970) } ?? "undated",
             settings.sourceIdentifier ?? "no-source",
             settings.sourceURL?.absoluteString ?? "no-url",
-            settings.locality ?? "no-locality"
+            settings.locality ?? "no-locality",
+            settings.locationEvidence?.countryCode ?? "no-country",
+            settings.locationEvidence?.regionCode ?? "no-region",
+            settings.locationEvidence?.locality ?? "no-request-locality",
+            settings.locationEvidence.map { String($0.resolvedAt.timeIntervalSince1970) } ?? "no-location-date"
         ].joined(separator: "|")
     }
 

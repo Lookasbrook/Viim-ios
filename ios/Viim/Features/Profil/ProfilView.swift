@@ -715,7 +715,13 @@ struct ProfilView: View {
                     fuelType: quote.fuelType,
                     sourceIdentifier: quote.source,
                     sourceURL: quote.sourceURL,
-                    locality: quote.locality
+                    locality: quote.locality,
+                    locationEvidence: FuelPriceLocationEvidence(
+                        countryCode: countryCode,
+                        regionCode: regionCode,
+                        locality: locality,
+                        resolvedAt: Date()
+                    )
                 )
             try onboardingStore.updateFuelConfiguration(
                 fuelType: request.fuelType,
@@ -889,6 +895,7 @@ struct FuelPriceLookupRequest: Equatable {
             settings.source == .officialPublicData &&
             settings.fuelType == fuelType &&
             settings.canSnapshotCost(at: date),
+            FuelPriceGeographyMatcher.acquisitionMatchesPrice(settings),
             let countryCode,
             let regionCode,
             let locality,

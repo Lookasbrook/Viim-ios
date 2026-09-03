@@ -219,6 +219,7 @@ struct FuelSettings: Codable, Equatable, Hashable {
     let sourceIdentifier: String?
     let sourceURL: URL?
     let locality: String?
+    let locationEvidence: FuelPriceLocationEvidence?
 
     init(
         currency: SupportedCurrency,
@@ -228,7 +229,8 @@ struct FuelSettings: Codable, Equatable, Hashable {
         fuelType: VehicleFuelType? = nil,
         sourceIdentifier: String? = nil,
         sourceURL: URL? = nil,
-        locality: String? = nil
+        locality: String? = nil,
+        locationEvidence: FuelPriceLocationEvidence? = nil
     ) {
         self.currency = currency
         self.pricePerLiter = pricePerLiter
@@ -238,6 +240,7 @@ struct FuelSettings: Codable, Equatable, Hashable {
         self.sourceIdentifier = sourceIdentifier
         self.sourceURL = sourceURL
         self.locality = locality
+        self.locationEvidence = locationEvidence
     }
 
     static func defaults(for locale: Locale = .current) -> FuelSettings {

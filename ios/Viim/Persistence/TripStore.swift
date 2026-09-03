@@ -36,6 +36,19 @@ struct TripRecord: Identifiable, Equatable {
     let fuelPriceSourceIdentifier: String?
     let fuelPriceSourceURL: URL?
     let fuelPriceLocality: String?
+    var fuelPriceCountryCode: String? = nil
+    var fuelPriceRegionCode: String? = nil
+    var fuelPriceRequestedLocality: String? = nil
+    var fuelPriceLocationResolvedAt: Date? = nil
+    var fuelPriceGeographyMatchVersion: String? = nil
+    var fuelPriceGeographyMatchedAt: Date? = nil
+    var fuelTripStartCountryCode: String? = nil
+    var fuelTripStartRegionCode: String? = nil
+    var fuelTripStartLocality: String? = nil
+    var fuelTripEndCountryCode: String? = nil
+    var fuelTripEndRegionCode: String? = nil
+    var fuelTripEndLocality: String? = nil
+    var fuelProfileFuelType: VehicleFuelType? = nil
     let fuelProfileName: String?
     let fuelProfileLitersPer100Km: Double?
     let fuelProfileSource: String?
@@ -487,6 +500,10 @@ struct TripStore {
                 object.setValue(fuelEstimate.referenceResolution.rawValue, forKey: "fuelReferenceResolution")
                 object.setValue(nil, forKey: "fuelFCFA")
                 object.setValue(resolvedFuelProfile?.canonicalName, forKey: "fuelProfileName")
+                object.setValue(
+                    (resolvedFuelProfile?.fuelType ?? fuelSettings?.fuelType)?.rawValue,
+                    forKey: "fuelProfileFuelType"
+                )
                 object.setValue(resolvedFuelProfile?.litersPer100Km, forKey: "fuelProfileLitersPer100Km")
                 object.setValue(resolvedFuelProfile?.sourceIdentifier, forKey: "fuelProfileSource")
 
@@ -503,6 +520,7 @@ struct TripStore {
                     object.setValue(nil, forKey: "fuelPriceSourceURL")
                     object.setValue(nil, forKey: "fuelPriceLocality")
                 } else if let fuelSettings,
+                          fuelSettings.source != .officialPublicData,
                           fuelSettings.canSnapshotCost(at: completedTrip.endedAt),
                           (resolvedFuelProfile?.fuelType == nil ||
                             fuelSettings.fuelType == resolvedFuelProfile?.fuelType),
@@ -560,6 +578,7 @@ struct TripStore {
                 object.setValue(nil, forKey: "fuelPriceSourceURL")
                 object.setValue(nil, forKey: "fuelPriceLocality")
                 object.setValue(nil, forKey: "fuelProfileName")
+                object.setValue(nil, forKey: "fuelProfileFuelType")
                 object.setValue(nil, forKey: "fuelProfileLitersPer100Km")
                 object.setValue(nil, forKey: "fuelProfileSource")
             }
@@ -582,6 +601,75 @@ struct TripStore {
             )
 
             try context.save()
+        }
+    }
+
+    /// Ajoute un cout public seulement apres persistance du trajet et verification
+    /// de ses deux extremites. Un instantane existant n'est jamais reecrit.
+    @discardableResult
+    func applyVerifiedOfficialFuelCost(
+        tripID: UUID,
+        settings: FuelSettings,
+        match: VerifiedFuelPriceGeographyMatch
+    ) throws -> Bool {
+        try context.performAndWait {
+            guard settings.source == .officialPublicData,
+                  settings.canSnapshotCost,
+                  match.matches(tripID: tripID, settings: settings) else {
+                return false
+            }
+
+            let request = NSFetchRequest<NSManagedObject>(entityName: "Trip")
+            request.predicate = NSPredicate(format: "id == %@", tripID as CVarArg)
+            request.fetchLimit = 1
+            guard let object = try context.fetch(request).first,
+                  object.value(forKey: "fuelCostMinorUnits") == nil,
+                  let endDate = object.value(forKey: "endDate") as? Date,
+                  settings.canSnapshotCost(at: endDate),
+                  match.matchedAt.timeIntervalSince(endDate) >= -FuelSettings.maximumFutureClockSkew,
+                  let settingsFuelType = settings.fuelType,
+                  let storedFuelTypeRaw = object.value(forKey: "fuelProfileFuelType") as? String,
+                  VehicleFuelType(rawValue: storedFuelTypeRaw) == settingsFuelType,
+                  let liters = object.value(forKey: "fuelLiters") as? Double,
+                  let cost = settings.costMinorUnits(for: liters) else {
+                return false
+            }
+
+            let lowerLiters = object.value(forKey: "fuelLitersLowerBound") as? Double
+            let upperLiters = object.value(forKey: "fuelLitersUpperBound") as? Double
+            object.setValue(Int64(cost), forKey: "fuelCostMinorUnits")
+            Self.setOptionalInt(
+                settings.costMinorUnits(for: lowerLiters),
+                forKey: "fuelCostLowerBoundMinorUnits",
+                on: object
+            )
+            Self.setOptionalInt(
+                settings.costMinorUnits(for: upperLiters),
+                forKey: "fuelCostUpperBoundMinorUnits",
+                on: object
+            )
+            object.setValue(settings.currency.rawValue, forKey: "fuelCurrencyCode")
+            object.setValue(settings.pricePerLiter, forKey: "fuelPricePerLiter")
+            object.setValue(settings.capturedAt, forKey: "fuelPriceCapturedAt")
+            object.setValue(settings.source?.rawValue, forKey: "fuelPriceSource")
+            object.setValue(settings.sourceIdentifier, forKey: "fuelPriceSourceIdentifier")
+            object.setValue(settings.sourceURL?.absoluteString, forKey: "fuelPriceSourceURL")
+            object.setValue(settings.locality, forKey: "fuelPriceLocality")
+            object.setValue(match.priceCountryCode, forKey: "fuelPriceCountryCode")
+            object.setValue(match.priceRegionCode, forKey: "fuelPriceRegionCode")
+            object.setValue(match.priceRequestedLocality, forKey: "fuelPriceRequestedLocality")
+            object.setValue(match.priceLocationResolvedAt, forKey: "fuelPriceLocationResolvedAt")
+            object.setValue(match.version, forKey: "fuelPriceGeographyMatchVersion")
+            object.setValue(match.matchedAt, forKey: "fuelPriceGeographyMatchedAt")
+            object.setValue(match.start.countryCode, forKey: "fuelTripStartCountryCode")
+            object.setValue(match.start.regionCode, forKey: "fuelTripStartRegionCode")
+            object.setValue(match.start.locality, forKey: "fuelTripStartLocality")
+            object.setValue(match.end.countryCode, forKey: "fuelTripEndCountryCode")
+            object.setValue(match.end.regionCode, forKey: "fuelTripEndRegionCode")
+            object.setValue(match.end.locality, forKey: "fuelTripEndLocality")
+            object.setValue(false, forKey: "synced")
+            try context.save()
+            return true
         }
     }
 
@@ -662,6 +750,10 @@ struct TripStore {
         }
 
         let distanceKm = object.value(forKey: "distanceKm") as? Double ?? 0
+        let fuelPriceSource = (object.value(forKey: "fuelPriceSource") as? String)
+            .flatMap(FuelPriceSource.init(rawValue:))
+        let officialCostIsAuditable = fuelPriceSource != .officialPublicData ||
+            hasVerifiedOfficialCostGeography(object, tripID: id)
 
         return TripRecord(
             id: id,
@@ -688,18 +780,36 @@ struct TripStore {
             fuelReferenceResolution: (object.value(forKey: "fuelReferenceResolution") as? String)
                 .flatMap(VehicleFuelReferenceResolution.init(rawValue:)),
             fuelFCFA: optionalInt(object.value(forKey: "fuelFCFA")),
-            fuelCostMinorUnits: optionalInt(object.value(forKey: "fuelCostMinorUnits")),
-            fuelCostLowerBoundMinorUnits: optionalInt(object.value(forKey: "fuelCostLowerBoundMinorUnits")),
-            fuelCostUpperBoundMinorUnits: optionalInt(object.value(forKey: "fuelCostUpperBoundMinorUnits")),
-            fuelCurrency: (object.value(forKey: "fuelCurrencyCode") as? String)
-                .flatMap(SupportedCurrency.init(rawValue:)),
+            fuelCostMinorUnits: officialCostIsAuditable
+                ? optionalInt(object.value(forKey: "fuelCostMinorUnits")) : nil,
+            fuelCostLowerBoundMinorUnits: officialCostIsAuditable
+                ? optionalInt(object.value(forKey: "fuelCostLowerBoundMinorUnits")) : nil,
+            fuelCostUpperBoundMinorUnits: officialCostIsAuditable
+                ? optionalInt(object.value(forKey: "fuelCostUpperBoundMinorUnits")) : nil,
+            fuelCurrency: officialCostIsAuditable
+                ? (object.value(forKey: "fuelCurrencyCode") as? String)
+                    .flatMap(SupportedCurrency.init(rawValue:))
+                : nil,
             fuelPricePerLiter: object.value(forKey: "fuelPricePerLiter") as? Double,
             fuelPriceCapturedAt: object.value(forKey: "fuelPriceCapturedAt") as? Date,
-            fuelPriceSource: (object.value(forKey: "fuelPriceSource") as? String)
-                .flatMap(FuelPriceSource.init(rawValue:)),
+            fuelPriceSource: fuelPriceSource,
             fuelPriceSourceIdentifier: object.value(forKey: "fuelPriceSourceIdentifier") as? String,
             fuelPriceSourceURL: (object.value(forKey: "fuelPriceSourceURL") as? String).flatMap(URL.init(string:)),
             fuelPriceLocality: object.value(forKey: "fuelPriceLocality") as? String,
+            fuelPriceCountryCode: object.value(forKey: "fuelPriceCountryCode") as? String,
+            fuelPriceRegionCode: object.value(forKey: "fuelPriceRegionCode") as? String,
+            fuelPriceRequestedLocality: object.value(forKey: "fuelPriceRequestedLocality") as? String,
+            fuelPriceLocationResolvedAt: object.value(forKey: "fuelPriceLocationResolvedAt") as? Date,
+            fuelPriceGeographyMatchVersion: object.value(forKey: "fuelPriceGeographyMatchVersion") as? String,
+            fuelPriceGeographyMatchedAt: object.value(forKey: "fuelPriceGeographyMatchedAt") as? Date,
+            fuelTripStartCountryCode: object.value(forKey: "fuelTripStartCountryCode") as? String,
+            fuelTripStartRegionCode: object.value(forKey: "fuelTripStartRegionCode") as? String,
+            fuelTripStartLocality: object.value(forKey: "fuelTripStartLocality") as? String,
+            fuelTripEndCountryCode: object.value(forKey: "fuelTripEndCountryCode") as? String,
+            fuelTripEndRegionCode: object.value(forKey: "fuelTripEndRegionCode") as? String,
+            fuelTripEndLocality: object.value(forKey: "fuelTripEndLocality") as? String,
+            fuelProfileFuelType: (object.value(forKey: "fuelProfileFuelType") as? String)
+                .flatMap(VehicleFuelType.init(rawValue:)),
             fuelProfileName: object.value(forKey: "fuelProfileName") as? String,
             fuelProfileLitersPer100Km: object.value(forKey: "fuelProfileLitersPer100Km") as? Double,
             fuelProfileSource: object.value(forKey: "fuelProfileSource") as? String,
@@ -724,6 +834,71 @@ struct TripStore {
             vehicleType: vehicleType,
             synced: object.value(forKey: "synced") as? Bool ?? false
         )
+    }
+
+    private static func hasVerifiedOfficialCostGeography(
+        _ object: NSManagedObject,
+        tripID: UUID
+    ) -> Bool {
+        guard object.value(forKey: "fuelPriceGeographyMatchVersion") as? String ==
+                VerifiedFuelPriceGeographyMatch.version,
+              let matchedAt = object.value(forKey: "fuelPriceGeographyMatchedAt") as? Date,
+              let endDate = object.value(forKey: "endDate") as? Date,
+              matchedAt.timeIntervalSince(endDate) >= -FuelSettings.maximumFutureClockSkew,
+              let currencyRaw = object.value(forKey: "fuelCurrencyCode") as? String,
+              let currency = SupportedCurrency(rawValue: currencyRaw),
+              let pricePerLiter = object.value(forKey: "fuelPricePerLiter") as? Double,
+              let capturedAt = object.value(forKey: "fuelPriceCapturedAt") as? Date,
+              let fuelTypeRaw = object.value(forKey: "fuelProfileFuelType") as? String,
+              let fuelType = VehicleFuelType(rawValue: fuelTypeRaw),
+              let sourceIdentifier = object.value(forKey: "fuelPriceSourceIdentifier") as? String,
+              let sourceURLRaw = object.value(forKey: "fuelPriceSourceURL") as? String,
+              let sourceURL = URL(string: sourceURLRaw),
+              let evidenceLocality = object.value(forKey: "fuelPriceLocality") as? String,
+              let priceCountryCode = object.value(forKey: "fuelPriceCountryCode") as? String,
+              let priceRegionCode = object.value(forKey: "fuelPriceRegionCode") as? String,
+              let priceRequestedLocality = object.value(forKey: "fuelPriceRequestedLocality") as? String,
+              let priceLocationResolvedAt = object.value(forKey: "fuelPriceLocationResolvedAt") as? Date,
+              let startCountryCode = object.value(forKey: "fuelTripStartCountryCode") as? String,
+              let startRegionCode = object.value(forKey: "fuelTripStartRegionCode") as? String,
+              let startLocality = object.value(forKey: "fuelTripStartLocality") as? String,
+              let endCountryCode = object.value(forKey: "fuelTripEndCountryCode") as? String,
+              let endRegionCode = object.value(forKey: "fuelTripEndRegionCode") as? String,
+              let endLocality = object.value(forKey: "fuelTripEndLocality") as? String else {
+            return false
+        }
+
+        let settings = FuelSettings(
+            currency: currency,
+            pricePerLiter: pricePerLiter,
+            source: .officialPublicData,
+            capturedAt: capturedAt,
+            fuelType: fuelType,
+            sourceIdentifier: sourceIdentifier,
+            sourceURL: sourceURL,
+            locality: evidenceLocality,
+            locationEvidence: FuelPriceLocationEvidence(
+                countryCode: priceCountryCode,
+                regionCode: priceRegionCode,
+                locality: priceRequestedLocality,
+                resolvedAt: priceLocationResolvedAt
+            )
+        )
+        return FuelPriceGeographyMatcher.verifiedMatch(
+            tripID: tripID,
+            settings: settings,
+            start: TripEndpointLocality(
+                countryCode: startCountryCode,
+                regionCode: startRegionCode,
+                locality: startLocality
+            ),
+            end: TripEndpointLocality(
+                countryCode: endCountryCode,
+                regionCode: endRegionCode,
+                locality: endLocality
+            ),
+            matchedAt: matchedAt
+        ) != nil
     }
 
     private static func summary(

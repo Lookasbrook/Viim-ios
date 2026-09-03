@@ -200,7 +200,7 @@ final class TripStoreTests: XCTestCase {
                 "ActiveTripSample": "AFLB97Fd8gePYDIlGzD1OJGP+9VzuHeCsDy9LPVrD14=",
                 "DailySummary": "v/1GqNAqKZVeZ5jhUC7LKfMIASI2IsrkSIADn71C3l4=",
                 "FuelFillUp": "vMS9N2zNLubsceQ3m7xa5mD5WZpNwDukCCK375jD8fA=",
-                "Trip": "erx+v4xSw/7RIgqIgjXtfDGal9pyJ/B3877fPVEuljE=",
+                "Trip": "Ua2G5omlAlix7Bq1iw5EQV6cXyEubG+h45j83PyGW0A=",
                 "TripCaptureOutcome": "KUaAcCoZEiwc76Hm03ZuBtsnnlR8/zzkAjDWlQSa2Do=",
                 "TripEvent": "qWwt7sJI3onRYopoFtBkPA3E95uW+uwtFylzUixoHk4=",
                 "TripQualityTelemetry": "Bv4RWTEY/HGLL9UVlJ9wje/1s4ljHSwXJMgFUCH1oW8="
@@ -374,7 +374,7 @@ final class TripStoreTests: XCTestCase {
         XCTAssertNil(migratedTrips[0].value(forKey: "fuelReferenceResolution"))
     }
 
-    func testVersionedBuild33StoreMigratesToBuild41WithoutLosingTrip() throws {
+    func testVersionedBuild33StoreMigratesToCurrentWithoutLosingTrip() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("ViimBuild33To41-\(UUID().uuidString)", isDirectory: true)
         let backupRoot = directory.appendingPathComponent("backups", isDirectory: true)
@@ -412,7 +412,7 @@ final class TripStoreTests: XCTestCase {
             migrationBackupRootURL: backupRoot
         )
         guard case .ready(let migrated) = result else {
-            return XCTFail("Le store Build33 doit migrer vers Build41")
+            return XCTFail("Le store Build33 doit migrer vers le modele courant")
         }
         let trips = try migrated.container.viewContext.fetch(
             NSFetchRequest<NSManagedObject>(entityName: "Trip")
@@ -426,6 +426,66 @@ final class TripStoreTests: XCTestCase {
         )
         XCTAssertEqual(
             try FileManager.default.contentsOfDirectory(at: backupRoot, includingPropertiesForKeys: nil).count,
+            1
+        )
+    }
+
+    func testVersionedBuild41StoreMigratesToBuild49WithoutInventingGeography() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ViimBuild41To49-\(UUID().uuidString)", isDirectory: true)
+        let backupRoot = directory.appendingPathComponent("backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+        let build41Model = PersistenceController.makeManagedObjectModel(version: .build41)
+        let legacyContainer = NSPersistentContainer(name: "Viim", managedObjectModel: build41Model)
+        let description = NSPersistentStoreDescription(url: storeURL)
+        description.type = NSSQLiteStoreType
+        description.shouldAddStoreAsynchronously = false
+        legacyContainer.persistentStoreDescriptions = [description]
+        var loadError: Error?
+        legacyContainer.loadPersistentStores { _, error in loadError = error }
+        XCTAssertNil(loadError)
+
+        let tripEntity = try XCTUnwrap(build41Model.entitiesByName["Trip"])
+        let trip = NSManagedObject(entity: tripEntity, insertInto: legacyContainer.viewContext)
+        for attribute in tripEntity.attributesByName.values
+            where !attribute.isOptional && attribute.defaultValue == nil {
+            trip.setValue(legacyValue(for: attribute), forKey: attribute.name)
+        }
+        let tripID = UUID()
+        trip.setValue(tripID, forKey: "id")
+        trip.setValue(Date(timeIntervalSince1970: 1_788_100_000), forKey: "startDate")
+        trip.setValue(Date(timeIntervalSince1970: 1_788_100_600), forKey: "endDate")
+        trip.setValue(VehicleType.voiture.rawValue, forKey: "vehicleType")
+        try legacyContainer.viewContext.save()
+        for store in legacyContainer.persistentStoreCoordinator.persistentStores {
+            try legacyContainer.persistentStoreCoordinator.remove(store)
+        }
+
+        let result = PersistenceController.bootstrap(
+            storeURL: storeURL,
+            migrationBackupRootURL: backupRoot
+        )
+        guard case .ready(let migrated) = result else {
+            return XCTFail("Le store Build41 doit migrer vers Build49")
+        }
+        let trips = try migrated.container.viewContext.fetch(
+            NSFetchRequest<NSManagedObject>(entityName: "Trip")
+        )
+        let migratedTrip = try XCTUnwrap(trips.first)
+        XCTAssertEqual(migratedTrip.value(forKey: "id") as? UUID, tripID)
+        XCTAssertNil(migratedTrip.value(forKey: "fuelPriceCountryCode"))
+        XCTAssertNil(migratedTrip.value(forKey: "fuelPriceGeographyMatchVersion"))
+        XCTAssertNil(migratedTrip.value(forKey: "fuelPriceLocationResolvedAt"))
+        XCTAssertNil(migratedTrip.value(forKey: "fuelProfileFuelType"))
+        XCTAssertNil(migratedTrip.value(forKey: "fuelTripStartLocality"))
+        XCTAssertNil(migratedTrip.value(forKey: "fuelTripEndLocality"))
+        XCTAssertEqual(
+            try FileManager.default.contentsOfDirectory(
+                at: backupRoot,
+                includingPropertiesForKeys: nil
+            ).count,
             1
         )
     }
@@ -780,21 +840,79 @@ final class TripStoreTests: XCTestCase {
         let source = "government_of_ontario_fuel_price_survey"
         let sourceURL = try XCTUnwrap(URL(string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"))
 
+        let settings = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.55,
+            source: .officialPublicData,
+            capturedAt: trip.endedAt.addingTimeInterval(-2 * 24 * 60 * 60),
+            fuelType: .gasoline,
+            sourceIdentifier: source,
+            sourceURL: sourceURL,
+            locality: "Toronto",
+            locationEvidence: FuelPriceLocationEvidence(
+                countryCode: "CA",
+                regionCode: "ON",
+                locality: "Toronto",
+                resolvedAt: trip.endedAt
+            )
+        )
         try store.insertCompletedTrip(
             trip,
             samples: samples(start: trip.startedAt),
             vehicleType: .voiture,
             isCalibration: false,
             fuelProfile: fuelProfile,
-            fuelSettings: FuelSettings(
-                currency: .cad,
-                pricePerLiter: 1.55,
-                source: .officialPublicData,
-                capturedAt: trip.endedAt.addingTimeInterval(-2 * 24 * 60 * 60),
-                fuelType: .gasoline,
-                sourceIdentifier: source,
-                sourceURL: sourceURL,
-                locality: "Toronto"
+            fuelSettings: settings
+        )
+
+        let beforeGeographyMatch = try store.fetchRecentTrips(limit: 1).first
+        XCTAssertNil(beforeGeographyMatch?.fuelCostMinorUnits)
+        let endpoint = TripEndpointLocality(
+            countryCode: "CA",
+            regionCode: "ON",
+            locality: "Toronto"
+        )
+        let match = try XCTUnwrap(
+            FuelPriceGeographyMatcher.verifiedMatch(
+                tripID: trip.id,
+                settings: settings,
+                start: endpoint,
+                end: endpoint,
+                matchedAt: trip.endedAt
+            )
+        )
+        let dieselSettings = FuelSettings(
+            currency: .cad,
+            pricePerLiter: settings.pricePerLiter,
+            source: .officialPublicData,
+            capturedAt: settings.capturedAt,
+            fuelType: .diesel,
+            sourceIdentifier: settings.sourceIdentifier,
+            sourceURL: settings.sourceURL,
+            locality: settings.locality,
+            locationEvidence: settings.locationEvidence
+        )
+        let dieselMatch = try XCTUnwrap(
+            FuelPriceGeographyMatcher.verifiedMatch(
+                tripID: trip.id,
+                settings: dieselSettings,
+                start: endpoint,
+                end: endpoint,
+                matchedAt: trip.endedAt
+            )
+        )
+        XCTAssertFalse(
+            try store.applyVerifiedOfficialFuelCost(
+                tripID: trip.id,
+                settings: dieselSettings,
+                match: dieselMatch
+            )
+        )
+        XCTAssertTrue(
+            try store.applyVerifiedOfficialFuelCost(
+                tripID: trip.id,
+                settings: settings,
+                match: match
             )
         )
 
@@ -804,6 +922,35 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(saved.fuelPriceSourceIdentifier, source)
         XCTAssertEqual(saved.fuelPriceSourceURL, sourceURL)
         XCTAssertEqual(saved.fuelPriceLocality, "Toronto")
+        XCTAssertEqual(saved.fuelProfileFuelType, .gasoline)
+        XCTAssertEqual(saved.fuelPriceCountryCode, "CA")
+        XCTAssertEqual(saved.fuelPriceRegionCode, "ON")
+        XCTAssertEqual(saved.fuelPriceRequestedLocality, "Toronto")
+        XCTAssertEqual(saved.fuelPriceLocationResolvedAt, trip.endedAt)
+        XCTAssertEqual(
+            saved.fuelPriceGeographyMatchVersion,
+            VerifiedFuelPriceGeographyMatch.version
+        )
+        XCTAssertEqual(saved.fuelTripStartLocality, "Toronto")
+        XCTAssertEqual(saved.fuelTripEndLocality, "Toronto")
+        XCTAssertFalse(
+            try store.applyVerifiedOfficialFuelCost(
+                tripID: trip.id,
+                settings: settings,
+                match: match
+            )
+        )
+
+        let request = NSFetchRequest<NSManagedObject>(entityName: "Trip")
+        request.predicate = NSPredicate(format: "id == %@", trip.id as CVarArg)
+        let rawTrip = try XCTUnwrap(store.context.fetch(request).first)
+        rawTrip.setValue(nil, forKey: "fuelPriceGeographyMatchVersion")
+        try store.context.save()
+
+        let unprovenLegacyRecord = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertNil(unprovenLegacyRecord.fuelCostMinorUnits)
+        XCTAssertNil(unprovenLegacyRecord.fuelCurrency)
+        XCTAssertEqual(try store.fetchSummary().fuelCostEligibleTripCount, 0)
     }
 
     func testFetchTripsReturnsAllTripsFromStartOfDay() throws {

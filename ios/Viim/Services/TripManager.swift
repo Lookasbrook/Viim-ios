@@ -31,7 +31,7 @@ enum TripPersistenceOutcome: Equatable {
 }
 
 @MainActor
-final class TripManager: ObservableObject {
+final class TripManager: ObservableObject, TripFuelCostPersisting {
     @Published private(set) var todayTrips: [TripRecord] = []
     @Published private(set) var recentTrips: [TripRecord] = []
     @Published private(set) var todaySummary: DrivingSummary = .empty
@@ -161,6 +161,26 @@ final class TripManager: ObservableObject {
 
         let summary = try? store.fetchSummary(since: profile.odometerBaselineDate)
         return baselineKm + (summary?.totalKm ?? 0)
+    }
+
+    @discardableResult
+    func persistVerifiedOfficialFuelCost(
+        tripID: UUID,
+        settings: FuelSettings,
+        match: VerifiedFuelPriceGeographyMatch
+    ) throws -> Bool {
+        let updated = try store.applyVerifiedOfficialFuelCost(
+            tripID: tripID,
+            settings: settings,
+            match: match
+        )
+        if updated {
+            ViimDiagnostics.log(
+                "trip.fuelCost.enriched id=\(tripID.uuidString) version=\(match.version)"
+            )
+            refresh()
+        }
+        return updated
     }
 
     @discardableResult

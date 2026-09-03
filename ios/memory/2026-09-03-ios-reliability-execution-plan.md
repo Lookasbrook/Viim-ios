@@ -292,13 +292,15 @@ maximale 60 jours), distincte du releve Ontario hebdomadaire (14 jours). Le cach
 est maintenant lie au pays et au marche resolu : un prix de ville ne suit plus
 l'utilisateur dans une autre ville.
 
-Risque prioritaire restant : le prix courant est attache au Profil, alors que le
-trajet ne fige pas encore sa propre preuve geographique. Un prix local valide pour
-le domicile peut donc valoriser un trajet realise dans un autre marche. Le build 49
-doit rendre la concordance trajet/prix obligatoire avant tout cout, avec repli
-national uniquement si la source est elle-meme nationale. Le contrat de preuve
-actuel est aussi canadien (CAD) et rejette structurellement une reponse BF/XOF ;
-le Burkina exige un contrat separe et une source officielle qualifiee.
+Extension build 49 : le trajet est persiste avant tout geocodage, puis les deux
+extremites GPS qualifiees sont resolues par Apple. Un prix de ville exige la meme
+ville canonique au depart et a l'arrivee ; les replis Ontario et Canada exigent
+respectivement deux extremites dans la province ou le pays. Sans concordance,
+precision <= 100 m, type de carburant identique et preuve complete, le cout reste
+indisponible. Les couts officiels historiques sans cette preuve sont masques mais
+jamais reecrits. Le contrat reste canadien (CAD) et rejette structurellement une
+reponse BF/XOF ; le Burkina exige un contrat separe et une source officielle
+qualifiee.
 
 1. Selectionner la source par pays/region sans transmettre la trace du trajet :
    pays et subdivision suffisent dans la plupart des cas.
@@ -416,7 +418,7 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
    puis prouver trois trajets de 5 min/2 km ecran verrouille, un trajet hors ligne
    et une reprise apres terminaison. Exiger 100 % de persistance et un ecart de
    distance <= 5 % face a une reference independante.
-2. **P0 cout/localite, build 49 :** figer sur chaque trajet un marche canonique
+2. **P0 cout/localite, build 49 livre :** figer sur chaque trajet un marche canonique
    prouve (pays, subdivision, marche ou niveau national, date et niveau de
    resolution). Un prix de profil local ne peut valoriser un trajet d'un autre
    marche ; sans concordance, le cout reste indisponible. Ajouter une migration
@@ -458,10 +460,15 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Etat d'execution verifie
 
-- Etat actuel : build 48 signe, installe et confirme sur l'iPhone 16 ; 375/375
+- Etat actuel : build 49 signe et installe sur l'iPhone 16 ; 385/385
   tests iOS passent. La base appareil avant/apres installation est identique, avec
   126 trajets et `integrity_check=ok`. Le lancement automatise expire encore : le
   dernier lancement prouve reste le build 23 en `authorizedWhenInUse`.
+- Le cout officiel build 49 exige une preuve grossiere des extremites depart/arrivee
+  concordante avec le marche du prix. Les anciens couts officiels sans preuve sont
+  exclus de l'affichage et des agregats. Les migrations Build 33→49 et Build 41→49
+  sont prouvees sur simulateur ; la migration du store appareil ne l'est pas tant
+  que le telephone reste verrouille.
 - L'inbox collision build 48 est local, durable et fail-closed, mais aucune source
   SafetyKit, UI, notification, alerte ou livraison n'est branchee. Le statut public
   reste `unavailable`.
@@ -520,25 +527,23 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
 
 ## Prochaines actions ordonnees et responsables
 
-1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 48 et
+1. **Utilisateur — aujourd'hui :** deverrouiller l'iPhone, ouvrir le build 49 et
    accorder Position `Toujours` + precise. Sans cela, aucun correctif logiciel ne
    peut prouver la capture ecran verrouille.
 2. **Validation terrain — 1 jour :** executer les cinq scenarios P0-A, extraire le
    journal et mesurer completude, trous GPS et ecart de distance. Tout ecart > 5 %
    bloque la suite de diffusion.
-3. **Build 49 — equipe iOS :** preuve de localite figee au trajet et concordance
-   obligatoire avec la preuve de prix avant tout calcul de cout.
-4. **Build 50 — donnees publiques :** contrat BF/XOF distinct ; source officielle
+3. **Build 50 — donnees publiques :** contrat BF/XOF distinct ; source officielle
    qualifiee ou repli explicite vers saisie utilisateur seulement.
-5. **Build 51 — modelisation :** references ville/route/mixte, episodes de conduite
+4. **Build 51 — modelisation :** references ville/route/mixte, episodes de conduite
    invariants a la cadence et calibration sans double comptage ; mesurer mediane/P90.
-6. **Build 52 — catalogue, sans IA :** alias canoniques, SHA-256 local, annees et
+5. **Build 52 — catalogue, sans IA :** alias canoniques, SHA-256 local, annees et
    nouvelles photos reelles seulement apres verification du modele et de la licence.
-7. **Collision — apres entitlement :** adaptateur SafetyKit vers l'inbox deja livree,
+6. **Collision — apres entitlement :** adaptateur SafetyKit vers l'inbox deja livree,
    puis UI et livraison en lots separes avec tests d'idempotence et d'accuse reel.
-8. **Persistance :** fixture historique et sauvegarde obligatoire a chaque nouveau
+7. **Persistance :** fixture historique et sauvegarde obligatoire a chaque nouveau
    schema ; aucune suppression ou reecriture automatique en cas d'echec.
-9. **Diffusion :** TestFlight restreint seulement apres P0-A ; promesse de detection
+8. **Diffusion :** TestFlight restreint seulement apres P0-A ; promesse de detection
    collision seulement apres la chaine capteur-confirmation-livraison complete.
 
 ## Execution build 42 — photos reelles et exactitude visuelle
@@ -697,3 +702,33 @@ agregats accompagnes de leur denominateur, et regression detectee avant diffusio
   `app.launch build=48` n'apparait. L'etat appareil indique un code requis et un
   deverrouillage depuis le demarrage, sans exposer l'etat instantane de l'ecran.
   Le dernier lancement prouve reste donc le build 23 en `authorizedWhenInUse`.
+
+## Execution build 49 — concordance geographique du cout officiel
+
+- Le trajet est toujours persiste localement en premier. Un prix officiel est
+  volontairement omis de cette transaction, puis un enrichisseur asynchrone tente
+  de qualifier les premiere et derniere positions de la trace avec une precision
+  horizontale maximale de 100 m.
+- Le geocodage inverse utilise Apple sur l'iPhone. Les sources Ontario et Statistique
+  Canada ne recoivent ni coordonnee ni ville ; le store conserve seulement pays,
+  subdivision et localite grossiere. Aucun nom de ville ni coordonnee n'entre dans
+  le diagnostic d'enrichissement.
+- Le contrat `fuel-price-geography-v1-start-end` exige la meme ville canonique aux
+  deux extremites pour un prix urbain. Les replis `Ontario` et `Canada` restent
+  valides uniquement si les deux extremites appartiennent respectivement a la
+  province ou au pays. Le type de carburant attache a l'estimation doit aussi
+  correspondre au prix.
+- Un echec Apple/reseau, une trace trop imprecise, une sortie du marche ou une
+  preuve legacy laisse le cout indisponible sans toucher aux litres ni au trajet.
+  Les couts officiels anterieurs sans preuve geographique restent dans SQLite pour
+  audit mais sont masques et exclus des agregats ; aucun montant historique n'est
+  recalcule.
+- `ViimBuild49` ajoute des champs optionnels et conserve la sauvegarde brute avant
+  migration. Les tests ouvrent et migrent des stores Build 33 et Build 41, puis
+  verifient l'absence d'invention de preuve. La suite complete passe 385/385,
+  sans echec ni test ignore.
+- Le Release `0.1.0 (49)` est signe et installe sur l'iPhone 16. Avant et apres
+  installation, le store conserve 126 trajets, `integrity_check=ok` et le SHA-256
+  `9b26ce5bcf54778ba64268f460ecf0dedbde3d69dbd3308a5f76b48675fc01fc`.
+  Le lancement est explicitement refuse par iOS car l'appareil est verrouille ;
+  aucune migration appareil ni ligne `app.launch build=49` n'est revendiquee.

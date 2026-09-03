@@ -7,6 +7,7 @@ final class TripRecorder: ObservableObject {
     static let maximumRecoverableActiveDraftAge: TimeInterval = 12 * 60 * 60
     private let journal: any ActiveTripJournaling
     private let tripManager: TripManager
+    private let fuelCostEnricher: TripFuelCostEnricher
     private let collectionHealthJournal: (any CollectionHealthJournaling)?
     private var cancellables = Set<AnyCancellable>()
     private var observedLocationService: LocationService?
@@ -19,11 +20,13 @@ final class TripRecorder: ObservableObject {
     init(
         journal: any ActiveTripJournaling,
         tripManager: TripManager,
-        collectionHealthJournal: (any CollectionHealthJournaling)? = nil
+        collectionHealthJournal: (any CollectionHealthJournaling)? = nil,
+        fuelCostEnricher: TripFuelCostEnricher? = nil
     ) {
         self.journal = journal
         self.tripManager = tripManager
         self.collectionHealthJournal = collectionHealthJournal
+        self.fuelCostEnricher = fuelCostEnricher ?? TripFuelCostEnricher(persister: tripManager)
     }
 
     func configure(profile: UserProfile, fuelSettings: FuelSettings? = nil) {
@@ -31,6 +34,7 @@ final class TripRecorder: ObservableObject {
         userProfile = profile
         fuelProfile = VehicleFuelCatalog.profile(for: profile)
         self.fuelSettings = fuelSettings
+        schedulePendingOfficialFuelCostEnrichment()
     }
 
     func observe(locationService: LocationService) {
@@ -75,6 +79,10 @@ final class TripRecorder: ObservableObject {
                 vehicleType: vehicleType,
                 fuelProfile: resolvedFuelProfile(for: vehicleType),
                 fuelSettings: fuelSettings
+            )
+            scheduleOfficialFuelCostEnrichmentIfNeeded(
+                tripID: completedTrip.id,
+                outcome: outcome
             )
             handle(
                 outcome: outcome,
@@ -166,6 +174,10 @@ final class TripRecorder: ObservableObject {
             fuelProfile: resolvedFuelProfile(for: draft.vehicleType),
             fuelSettings: fuelSettings
         )
+        scheduleOfficialFuelCostEnrichmentIfNeeded(
+            tripID: draft.id,
+            outcome: outcome
+        )
         handle(
             outcome: outcome,
             tripId: draft.id,
@@ -188,6 +200,55 @@ final class TripRecorder: ObservableObject {
         }
         let resolved = tripManager.calibratedFuelProfile(for: userProfile)
         return resolved?.vehicleType == tripVehicleType ? resolved : nil
+    }
+
+    private func schedulePendingOfficialFuelCostEnrichment() {
+        guard let settings = fuelSettings,
+              settings.source == .officialPublicData,
+              let activeProfile = resolvedFuelProfile(for: vehicleType) else {
+            return
+        }
+        let requests = tripManager.recentTrips.compactMap { trip -> TripFuelCostEnrichmentRequest? in
+            guard trip.vehicleType == vehicleType,
+                  trip.fuelCostMinorUnits == nil,
+                  trip.fuelLiters != nil,
+                  trip.fuelProfileName == activeProfile.canonicalName,
+                  trip.fuelProfileFuelType == settings.fuelType,
+                  trip.fuelProfileSource == activeProfile.sourceIdentifier,
+                  settings.canSnapshotCost(at: trip.endDate) else {
+                return nil
+            }
+            return TripFuelCostEnrichmentRequest(
+                tripID: trip.id,
+                routePoints: trip.routePoints,
+                settings: settings,
+                tripEndedAt: trip.endDate
+            )
+        }
+        fuelCostEnricher.schedulePending(requests)
+    }
+
+    private func scheduleOfficialFuelCostEnrichmentIfNeeded(
+        tripID: UUID,
+        outcome: TripPersistenceOutcome
+    ) {
+        guard outcome == .persisted || outcome == .duplicate,
+              let settings = fuelSettings,
+              settings.source == .officialPublicData,
+              let trip = tripManager.recentTrips.first(where: { $0.id == tripID }),
+              trip.fuelCostMinorUnits == nil,
+              trip.fuelLiters != nil,
+              trip.fuelProfileFuelType == settings.fuelType else {
+            return
+        }
+        fuelCostEnricher.schedule(
+            TripFuelCostEnrichmentRequest(
+                tripID: trip.id,
+                routePoints: trip.routePoints,
+                settings: settings,
+                tripEndedAt: trip.endDate
+            )
+        )
     }
 
     private func finalizeJournalTrip(

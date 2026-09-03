@@ -6,8 +6,9 @@ import CoreData
 enum ViimStoreModelVersion: String, CaseIterable {
     case build33 = "Viim.build33"
     case build41 = "Viim.build41"
+    case build49 = "Viim.build49"
 
-    static let current = ViimStoreModelVersion.build41
+    static let current = ViimStoreModelVersion.build49
 }
 
 enum PersistenceBackupError: LocalizedError {
@@ -376,6 +377,23 @@ struct PersistenceController {
             attribute("synced", .booleanAttributeType),
             attribute("createdAt", .dateAttributeType)
         ]
+        if version == .build49 {
+            trip.properties.append(contentsOf: [
+                attribute("fuelPriceCountryCode", .stringAttributeType, isOptional: true),
+                attribute("fuelPriceRegionCode", .stringAttributeType, isOptional: true),
+                attribute("fuelPriceRequestedLocality", .stringAttributeType, isOptional: true),
+                attribute("fuelPriceLocationResolvedAt", .dateAttributeType, isOptional: true),
+                attribute("fuelPriceGeographyMatchVersion", .stringAttributeType, isOptional: true),
+                attribute("fuelPriceGeographyMatchedAt", .dateAttributeType, isOptional: true),
+                attribute("fuelTripStartCountryCode", .stringAttributeType, isOptional: true),
+                attribute("fuelTripStartRegionCode", .stringAttributeType, isOptional: true),
+                attribute("fuelTripStartLocality", .stringAttributeType, isOptional: true),
+                attribute("fuelTripEndCountryCode", .stringAttributeType, isOptional: true),
+                attribute("fuelTripEndRegionCode", .stringAttributeType, isOptional: true),
+                attribute("fuelTripEndLocality", .stringAttributeType, isOptional: true),
+                attribute("fuelProfileFuelType", .stringAttributeType, isOptional: true)
+            ])
+        }
 
         let tripEvent = NSEntityDescription()
         tripEvent.name = "TripEvent"
@@ -504,7 +522,7 @@ struct PersistenceController {
             activeTripSample,
             tripCaptureOutcome
         ]
-        if version == .build41 {
+        if version != .build33 {
             entities.append(fuelFillUp)
         }
         model.entities = entities

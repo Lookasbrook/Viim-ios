@@ -877,7 +877,13 @@ final class VehicleFuelCatalogTests: XCTestCase {
             fuelType: .gasoline,
             sourceIdentifier: "government_of_ontario_fuel_price_survey",
             sourceURL: try XCTUnwrap(URL(string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv")),
-            locality: "Toronto"
+            locality: "Toronto",
+            locationEvidence: FuelPriceLocationEvidence(
+                countryCode: "CA",
+                regionCode: "Ontario",
+                locality: "Toronto",
+                resolvedAt: now
+            )
         )
         let request = FuelPriceLookupRequest(
             id: UUID(),
@@ -955,7 +961,13 @@ final class VehicleFuelCatalogTests: XCTestCase {
             fuelType: .gasoline,
             sourceIdentifier: "government_of_ontario_fuel_price_survey",
             sourceURL: try XCTUnwrap(URL(string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv")),
-            locality: "Sudbury"
+            locality: "Sudbury",
+            locationEvidence: FuelPriceLocationEvidence(
+                countryCode: "CA",
+                regionCode: "ON",
+                locality: "Greater Sudbury",
+                resolvedAt: now
+            )
         )
         let sudburyRequest = FuelPriceLookupRequest(
             id: UUID(),
@@ -989,7 +1001,11 @@ final class VehicleFuelCatalogTests: XCTestCase {
             synced: false,
             fuelType: .gasoline
         )
-        func request(locality: String) throws -> (FuelPriceLookupRequest, FuelSettings) {
+        func request(
+            locality: String,
+            requestedRegion: String,
+            requestedLocality: String
+        ) throws -> (FuelPriceLookupRequest, FuelSettings) {
             let settings = FuelSettings(
                 currency: .cad,
                 pricePerLiter: 1.50,
@@ -1000,7 +1016,13 @@ final class VehicleFuelCatalogTests: XCTestCase {
                 sourceURL: try XCTUnwrap(
                     URL(string: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000101")
                 ),
-                locality: locality
+                locality: locality,
+                locationEvidence: FuelPriceLocationEvidence(
+                    countryCode: "CA",
+                    regionCode: requestedRegion,
+                    locality: requestedLocality,
+                    resolvedAt: now
+                )
             )
             return (
                 FuelPriceLookupRequest(
@@ -1013,7 +1035,11 @@ final class VehicleFuelCatalogTests: XCTestCase {
             )
         }
 
-        let (montrealRequest, montreal) = try request(locality: "Montréal")
+        let (montrealRequest, montreal) = try request(
+            locality: "Montréal",
+            requestedRegion: "QC",
+            requestedLocality: "Montreal"
+        )
         XCTAssertTrue(
             montrealRequest.canReuseCachedOfficialPrice(
                 activeRequestID: montrealRequest.id,
@@ -1039,7 +1065,11 @@ final class VehicleFuelCatalogTests: XCTestCase {
             )
         )
 
-        let (canadaRequest, canada) = try request(locality: "Canada")
+        let (canadaRequest, canada) = try request(
+            locality: "Canada",
+            requestedRegion: "Nunavut",
+            requestedLocality: "Iqaluit"
+        )
         XCTAssertTrue(
             canadaRequest.canReuseCachedOfficialPrice(
                 activeRequestID: canadaRequest.id,

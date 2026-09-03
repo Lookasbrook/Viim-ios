@@ -2,6 +2,14 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-03 (preuve géographique du coût carburant — build 49 privé)
+
+- **[Fiabilité]** Un prix public officiel n’est plus appliqué au moment de la persistance du trajet. Le trajet est d’abord sauvegardé sans attendre le réseau, puis ses première et dernière positions qualifiées sont géocodées par Apple. Le coût reste indisponible si une extrémité sort du marché publié, si la précision dépasse 100 m, si le géocodage échoue ou si le carburant diffère.
+- **[Preuve]** Chaque nouveau coût officiel fige pays, subdivision, localité demandée, marchés de départ et d’arrivée, date et version `fuel-price-geography-v1-start-end`. Une moyenne Ontario exige deux extrémités en Ontario ; une moyenne Canada exige deux extrémités au Canada ; un prix de ville exige la même ville canonique aux deux extrémités.
+- **[Legacy]** Les coûts officiels créés avant cette version restent dans SQLite pour audit, mais ne sont plus exposés ni agrégés faute de preuve géographique. Ils ne sont ni recalculés ni réécrits. Les prix saisis explicitement par l’utilisateur conservent leur comportement historique.
+- **[Confidentialité]** Les deux coordonnées déjà présentes dans la trace locale sont transmises uniquement au géocodeur Apple. Viim et les sources publiques ne reçoivent aucune coordonnée ; seuls les résultats géographiques grossiers sont persistés. Les diagnostics ne consignent ni coordonnée ni nom de ville.
+- **[Core Data/QA]** Nouveau modèle immuable `ViimBuild49`, avec sauvegarde pré-migration et tests Build 33→49 / Build 41→49. Suite iOS complète 385/385, zéro échec ou test ignoré. Le Release 0.1.0 (49) est signé et installé sur l’iPhone 16 ; installation confirmée avec 126 trajets, SQLite `ok` et SHA-256 inchangé. Le lancement est refusé car l’iPhone est verrouillé, donc la migration réelle sur cet appareil n’est pas revendiquée.
+
 ## 2026-09-03 (inbox collision local et durable — build 48 privé)
 
 - **[Persistance]** Un événement collision reçu est maintenant journalisé localement avant toute publication d’état. L’identité déterministe déduplique les relectures entre lancements sans prolonger la fenêtre de décision ; la reprise expire une échéance passée au lieu de recréer un compte à rebours.

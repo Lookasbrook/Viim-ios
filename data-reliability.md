@@ -2,6 +2,24 @@
 
 Objectif : aucune valeur metier ne doit etre affichee sans source de verite, formule, condition de validite et raison explicite quand la valeur manque.
 
+## Etat au 2026-09-03 — concordance prix/trajet iOS, build 49
+
+- Un prix officiel ne cree plus de cout pendant la transaction qui sauvegarde le
+  trajet. La persistance locale aboutit d'abord ; un enrichissement asynchrone
+  traite ensuite les extremites qualifiees sans pouvoir supprimer le trajet.
+- Le depart et l'arrivee doivent avoir une precision horizontale de 100 m ou mieux,
+  etre resolus par Apple et appartenir tous deux au marche canonique de la preuve.
+  Echec reseau, geocodage absent, ville differente, sortie de province/pays ou
+  carburant discordant laissent le cout indisponible.
+- La preuve fige pays, subdivision, localite demandee, marche publie, localites
+  grossieres des deux extremites, date et version. Les diagnostics ne conservent
+  ni coordonnee ni ville.
+- Un cout officiel historique sans cette preuve reste stocke pour audit mais est
+  masque et exclu des agregats. Il n'est jamais recalcule avec le profil courant.
+- Les migrations Build 33→49 et Build 41→49 passent sur de vrais stores SQLite de
+  test. Le build 49 est installe sur l'iPhone 16, mais son lancement est bloque par
+  le verrouillage ; la migration du store appareil reste donc a prouver.
+
 ## Etat au 2026-09-03 — collision shadow iOS, build 29
 
 - La detection automatique reste explicitement indisponible et aucune alerte
@@ -115,7 +133,7 @@ Bareme : /10. « Terrain » signifie une preuve obtenue pendant un roulage reel 
 | Vitesse max | Samples avec precision de vitesse | Maximum filtre | Precision connue et valeur physiquement plausible | `GPS trop imprecis` ou `A verifier` |
 | Route | Polyline validee | Trace des points retenus | Trajet affichable et >= 2 points | Carte masquee avec cause |
 | Score | `ScoreEngine` `score-v3` | Moyenne vitesse + fluidite + eco | Les trois composantes implementees existent | Partiel ou indisponible |
-| Cout | Instantane CoreData du trajet | litres x prix utilisateur, arrondi en unite mineure | Profil vehicule exact + prix utilisateur + trajet affichable | `A renseigner`, `Vehicule a confirmer` ou `A verifier` |
+| Cout | Instantane CoreData du trajet | litres estimes x prix, arrondi en unite mineure | Profil/carburant concordants ; prix utilisateur date ou prix officiel dont depart et arrivee correspondent au marche | `A renseigner`, `Prix local non verifie`, `Vehicule a confirmer` ou `A verifier` |
 | Urgence | `EmergencyNumberCatalog` | Numero par pays et service | Pays BF ou CA connu | Bouton desactive, numero non verifie |
 | Region Prevention | Position iOS recente | Pays estime seulement si precision <= 10 km et age <= 15 min | Localisation autorisee et exploitable | Region inconnue |
 | WhatsApp | API + `providerMessageId` | Un resultat par contact | Reponse fournisseur prouvee et statut persiste | Erreur detaillee ou succes partiel |
