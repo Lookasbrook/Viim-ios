@@ -279,7 +279,9 @@ enum TripMetricsCalculator {
                 longitude: sample.longitude,
                 speedKmh: sample.speedKmh,
                 horizontalAccuracy: sample.horizontalAccuracy,
-                speedAccuracy: sample.speedAccuracy
+                speedAccuracy: sample.speedAccuracy,
+                altitudeMeters: sample.altitudeMeters,
+                verticalAccuracy: sample.verticalAccuracy
             )
         }
     }

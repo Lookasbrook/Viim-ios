@@ -54,6 +54,8 @@
 		920000000000000000000002 /* MaintenanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920000000000000000000102 /* MaintenanceStore.swift */; };
 		920000000000000000000003 /* DrivingDynamicsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920000000000000000000103 /* DrivingDynamicsTests.swift */; };
 		920000000000000000000004 /* MaintenanceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920000000000000000000104 /* MaintenanceStoreTests.swift */; };
+		960000000000000000000001 /* CarburantContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960000000000000000000101 /* CarburantContracts.swift */; };
+		960000000000000000000002 /* CarburantContractsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960000000000000000000102 /* CarburantContractsTests.swift */; };
 		10000000000000000000000E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010E /* Localizable.strings */; };
 		10000000000000000000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000010F /* InfoPlist.strings */; };
 		100000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000110 /* Assets.xcassets */; };
@@ -126,6 +128,8 @@
 		920000000000000000000102 /* MaintenanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/MaintenanceStore.swift; sourceTree = "<group>"; };
 		920000000000000000000103 /* DrivingDynamicsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrivingDynamicsTests.swift; sourceTree = "<group>"; };
 		920000000000000000000104 /* MaintenanceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceStoreTests.swift; sourceTree = "<group>"; };
+		960000000000000000000101 /* CarburantContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CarburantContracts.swift; sourceTree = "<group>"; };
+		960000000000000000000102 /* CarburantContractsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarburantContractsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -171,6 +175,7 @@
 				900000000000000000000108 /* VehicleFuelCatalog.swift */,
 				920000000000000000000101 /* DrivingDynamics.swift */,
 				920000000000000000000102 /* MaintenanceStore.swift */,
+				960000000000000000000101 /* CarburantContracts.swift */,
 				910000000000000000000102 /* TripRecorder.swift */,
 				10000000000000000000010B /* SensorFiltering.swift */,
 				10000000000000000000010C /* LocationService.swift */,
@@ -231,6 +236,7 @@
 				910000000000000000000104 /* TripRecorderTests.swift */,
 				920000000000000000000103 /* DrivingDynamicsTests.swift */,
 				920000000000000000000104 /* MaintenanceStoreTests.swift */,
+				960000000000000000000102 /* CarburantContractsTests.swift */,
 			);
 			path = ViimTests;
 			sourceTree = "<group>";
@@ -373,6 +379,7 @@
 				900000000000000000000008 /* VehicleFuelCatalog.swift in Sources */,
 				920000000000000000000001 /* DrivingDynamics.swift in Sources */,
 				920000000000000000000002 /* MaintenanceStore.swift in Sources */,
+				960000000000000000000001 /* CarburantContracts.swift in Sources */,
 				910000000000000000000001 /* ActiveTripJournal.swift in Sources */,
 				910000000000000000000002 /* TripRecorder.swift in Sources */,
 			);
@@ -397,6 +404,7 @@
 				910000000000000000000004 /* TripRecorderTests.swift in Sources */,
 				920000000000000000000003 /* DrivingDynamicsTests.swift in Sources */,
 				920000000000000000000004 /* MaintenanceStoreTests.swift in Sources */,
+				960000000000000000000002 /* CarburantContractsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -533,7 +541,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;
@@ -557,7 +565,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Viim/Resources/Viim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = MJJ6A56JHS;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Viim/Resources/Info.plist;

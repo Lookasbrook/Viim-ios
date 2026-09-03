@@ -136,6 +136,100 @@ final class DrivingDynamicsTests: XCTestCase {
         XCTAssertEqual(dynamics.meanMovingSpeedKmh, 45, accuracy: 0.5)
     }
 
+    func testElevationProfileKeepsOnlyConservativeClimb() throws {
+        let start = Date(timeIntervalSince1970: 1_783_000_000)
+        let routePoints = (0...6).map { index in
+            TripRoutePoint(
+                timestamp: start.addingTimeInterval(Double(index) * 20),
+                latitude: 12.3714 + Double(index) * 0.0018,
+                longitude: -1.5197,
+                speedKmh: 36,
+                horizontalAccuracy: 5,
+                speedAccuracy: 1,
+                altitudeMeters: 300 + Double(index) * 10,
+                verticalAccuracy: 3
+            )
+        }
+
+        let profile = try XCTUnwrap(
+            ElevationProfileAnalyzer.profile(
+                routePoints: routePoints,
+                referenceDistanceKm: 1.2
+            )
+        )
+
+        XCTAssertGreaterThan(profile.gainMeters, 38)
+        XCTAssertLessThan(profile.gainMeters, 45)
+        XCTAssertEqual(profile.lossMeters, 0, accuracy: 0.001)
+        XCTAssertGreaterThan(profile.coverageRatio, 0.9)
+    }
+
+    func testElevationProfileDoesNotTurnVerticalNoiseIntoClimbing() throws {
+        let start = Date(timeIntervalSince1970: 1_783_000_000)
+        let routePoints = (0...6).map { index in
+            TripRoutePoint(
+                timestamp: start.addingTimeInterval(Double(index) * 20),
+                latitude: 12.3714 + Double(index) * 0.0018,
+                longitude: -1.5197,
+                speedKmh: 36,
+                horizontalAccuracy: 5,
+                speedAccuracy: 1,
+                altitudeMeters: index.isMultiple(of: 2) ? 300 : 301,
+                verticalAccuracy: 5
+            )
+        }
+
+        let profile = try XCTUnwrap(
+            ElevationProfileAnalyzer.profile(
+                routePoints: routePoints,
+                referenceDistanceKm: 1.2
+            )
+        )
+
+        XCTAssertEqual(profile.gainMeters, 0, accuracy: 0.001)
+        XCTAssertEqual(profile.lossMeters, 0, accuracy: 0.001)
+    }
+
+    func testElevationProfileRejectsPoorVerticalCoverage() {
+        let start = Date(timeIntervalSince1970: 1_783_000_000)
+        let routePoints = (0...6).map { index in
+            TripRoutePoint(
+                timestamp: start.addingTimeInterval(Double(index) * 20),
+                latitude: 12.3714 + Double(index) * 0.0018,
+                longitude: -1.5197,
+                speedKmh: 36,
+                horizontalAccuracy: 5,
+                speedAccuracy: 1,
+                altitudeMeters: 300 + Double(index) * 10,
+                verticalAccuracy: 30
+            )
+        }
+
+        XCTAssertNil(
+            ElevationProfileAnalyzer.profile(
+                routePoints: routePoints,
+                referenceDistanceKm: 1.2
+            )
+        )
+    }
+
+    func testLegacyRoutePointDecodingKeepsMissingAltitudeUnavailable() throws {
+        let legacy = LegacyRoutePoint(
+            timestamp: Date(timeIntervalSince1970: 1_783_000_000),
+            latitude: 12.3714,
+            longitude: -1.5197,
+            speedKmh: 40,
+            horizontalAccuracy: 5,
+            speedAccuracy: 1
+        )
+
+        let data = try JSONEncoder().encode([legacy])
+        let decoded = try JSONDecoder().decode([TripRoutePoint].self, from: data)
+
+        XCTAssertNil(decoded.first?.altitudeMeters)
+        XCTAssertEqual(decoded.first?.verticalAccuracy, -1)
+    }
+
     func testScoreEngineActivatesFluidityAndEcoScores() {
         let calmDynamics = DrivingDynamics(
             meanMovingSpeedKmh: 60,
@@ -179,5 +273,14 @@ final class DrivingDynamicsTests: XCTestCase {
             horizontalAccuracy: 5,
             speedAccuracy: 1
         )
+    }
+
+    private struct LegacyRoutePoint: Encodable {
+        let timestamp: Date
+        let latitude: Double
+        let longitude: Double
+        let speedKmh: Double
+        let horizontalAccuracy: Double
+        let speedAccuracy: Double
     }
 }

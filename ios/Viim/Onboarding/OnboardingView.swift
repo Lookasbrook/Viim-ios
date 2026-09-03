@@ -149,6 +149,20 @@ struct OnboardingView: View {
             )
             .keyboardType(.numberPad)
 
+            if draft.vehicleType != .velo {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("onboarding.vehicle.fuelType.label")
+                        .fieldLabelStyle()
+                    Picker("onboarding.vehicle.fuelType.label", selection: $draft.fuelType) {
+                        Text("onboarding.vehicle.fuelType.placeholder")
+                            .tag(nil as VehicleFuelType?)
+                        ForEach(VehicleFuelType.allCases) { fuelType in
+                            Text(fuelType.displayName).tag(Optional(fuelType))
+                        }
+                    }
+                }
+            }
+
             LabeledTextField(
                 labelKey: "onboarding.vehicle.odometer.label",
                 placeholderKey: "onboarding.vehicle.odometer.placeholder",
@@ -276,7 +290,8 @@ struct OnboardingView: View {
             synced: false,
             odometerBaselineKm: draft.normalizedOdometerKm,
             odometerBaselineDate: draft.normalizedOdometerKm != nil ? Date() : nil,
-            countryCode: draft.country.rawValue
+            countryCode: draft.country.rawValue,
+            fuelType: draft.vehicleType == .velo ? nil : draft.fuelType
         )
 
         let emergencyContact = draft.emergencyContact
@@ -307,6 +322,7 @@ private struct OnboardingDraft {
     var vehicleBrand = ""
     var vehicleModel = ""
     var vehicleYear = ""
+    var fuelType: VehicleFuelType?
     var odometerKm = ""
     var emergencyContactName = ""
     var emergencyContactPhone = ""
@@ -350,6 +366,9 @@ private struct OnboardingDraft {
             return
         }
         vehicleType = type
+        if type == .velo {
+            fuelType = nil
+        }
         if canonicalVehicleSuggestion == nil {
             vehicleBrand = ""
             vehicleModel = ""
@@ -396,7 +415,8 @@ private struct OnboardingDraft {
         let hasValidYear = year.map { (1950...(currentYear + 1)).contains($0) } == true
         let hasValidOdometer = odometerKm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
             normalizedOdometerKm != nil
-        return !brand.isEmpty && !model.isEmpty && hasValidYear && hasValidOdometer
+        return !brand.isEmpty && !model.isEmpty && hasValidYear &&
+            fuelType != nil && hasValidOdometer
     }
 }
 
@@ -516,8 +536,22 @@ private struct VehiclePreviewCard: View {
     var body: some View {
         ViimCard {
             VStack(spacing: 7) {
-                VehicleIllustration(type: draft.vehicleType)
-                    .frame(maxWidth: .infinity)
+                if let photo = VehiclePhotoCatalog.resolve(
+                    vehicleType: draft.vehicleType,
+                    brand: draft.vehicleBrand,
+                    model: draft.vehicleModel
+                ) {
+                    Image(photo.assetName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 116)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .accessibilityHidden(true)
+                } else {
+                    VehicleIllustration(type: draft.vehicleType)
+                        .frame(maxWidth: .infinity)
+                }
 
                 Text(vehicleName.uppercased())
                     .font(.system(size: 14, weight: .heavy))

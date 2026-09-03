@@ -8,6 +8,16 @@ Base : `https://api.burktech-ia.com/v1` ([ADR sous-domaine](../decisions/2026-07
 |---|---|---|
 | GET | `/health` | Statut API + DB + NEwAGENT-IA. Surveillé par Uptime Robot toutes les 5 min (alerte SMS + WhatsApp si down). **À configurer avant le premier utilisateur externe.** |
 
+## Prix publics du carburant
+
+| Méthode | Endpoint | Description |
+|---|---|---|
+| GET | `/fuel-prices/current?country=CA&region=ON&locality=Toronto&fuelType=gasoline` | Prix public officiel courant par localité grossière. La première source activée est le relevé gouvernemental de l'Ontario. Aucune coordonnée GPS n'est transmise au backend. |
+
+- Valeurs `fuelType` : `gasoline`, `diesel`, `gasolineHybrid`, `dieselHybrid`, `electric`. L'électrique et les territoires sans source officielle activée répondent `404 fuel_price_unavailable` plutôt que d'inventer un prix.
+- Le backend n'appelle qu'une URL HTTPS fixe et vérifie l'hôte final après redirection. Réponse source plafonnée à 2 Mo, délai 8 s, cache mémoire 6 h et refus des données vieilles de plus de 14 jours.
+- La réponse contient le prix par litre, la devise, la date observée, la date de récupération, la localité retenue et l'URL de la source. L'app fige ces preuves sur chaque trajet ; cette route ne fournit pas encore un historique par date.
+
 ## Utilisateurs
 
 | Méthode | Endpoint | Description |

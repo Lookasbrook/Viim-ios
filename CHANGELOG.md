@@ -2,6 +2,15 @@
 
 Toutes les modifications notables du projet, par date (plus récent en haut).
 
+## 2026-09-02 (carburant contextualisé — build 18 privé)
+
+- **[Estimation carburant]** La consommation réagit maintenant aux mesures du trajet : vitesse, accélérations/freinages, phases quasi immobiles et dénivelé GPS filtré. La formule, la consommation de référence et le multiplicateur sont figés sur chaque trajet pour rester auditables.
+- **[Prix local officiel]** Ajout d'une route backend sécurisée pour le relevé public du gouvernement de l'Ontario. L'iPhone convertit la position en pays/région/ville avec Apple et n'envoie jamais les coordonnées au serveur ; prix, date, localité et source sont conservés avec le coût.
+- **[Fiabilité GPS]** Altitude et précision verticale sont capturées et migrées sans invalider les anciens trajets. Le split des sessions de localisation reste un essai Debug tant que la porte terrain iOS n'est pas terminée.
+- **[Véhicules]** Le catalogue accueille de nouvelles photos réelles et sous licence pour Toyota Yaris, Renault Duster, Kia Picanto, Nissan Navara, Yamaha FZ-S et Honda CB125F, avec attributions Wikimedia Commons documentées.
+- **[Contrats]** Motorisation explicite, états de preuve du prix et rôles de trajet partagés ; aucune motorisation n'est déduite arbitrairement des capteurs.
+- **[QA]** 186 tests iOS, 75 tests backend et tests Android réussis. Build Debug 0.1.0 (18) signé et installé sur l'iPhone 16 de Guy. Le modèle physique complet, l'historique multi-pays et les validations terrain/flotte restent à faire.
+
 ## 2026-08-30 (reconstruction Android depuis APK)
 
 - **[Android]** Base Kotlin/Jetpack Compose restaurée dans `android/` depuis l’inventaire d’une APK debug Viim retrouvée sur le Pixel 8 : navigation à quatre onglets, contrat carburant partagé, seuils GPS et score vitesse alignés avec iOS.

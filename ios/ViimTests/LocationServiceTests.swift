@@ -3,6 +3,21 @@ import XCTest
 @testable import Viim
 
 final class LocationServiceTests: XCTestCase {
+    func testLocationSampleCapturesAltitudeWithItsAccuracy() {
+        let point = location(
+            latitude: 12.3714,
+            longitude: -1.5197,
+            accuracy: 5,
+            speedMps: 12,
+            timestamp: Date(timeIntervalSince1970: 1_783_000_000)
+        )
+
+        let sample = LocationSample(location: point, speedKmh: point.speed * 3.6)
+
+        XCTAssertEqual(sample.altitudeMeters, 300)
+        XCTAssertEqual(sample.verticalAccuracy, 10)
+    }
+
     func testStationaryFinalizationKeepsShortNoiseOut() {
         let shouldPersist = LocationService.shouldPersistTripAfterStationaryMotion(
             distanceMeters: 40,
@@ -688,6 +703,83 @@ final class LocationServiceTests: XCTestCase {
         XCTAssertEqual(visualSessionCreationCount, 1)
         XCTAssertTrue(service.hasBackgroundActivitySession)
         XCTAssertTrue(service.hasAlwaysServiceSession)
+    }
+
+    func testGpsSessionSplitKeepsVisualSessionOffWhileAlwaysIsIdle() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
+        var visualSessionCreationCount = 0
+        let service = LocationService(
+            manager: manager,
+            carburantFeatureFlags: CarburantFeatureFlags(
+                gpsSessionSplit: true,
+                physicalFuelModel: false,
+                transitClassifier: false
+            ),
+            backgroundActivitySessionFactory: {
+                visualSessionCreationCount += 1
+                return NSObject()
+            },
+            alwaysServiceSessionFactory: { NSObject() }
+        )
+
+        service.prepareForForegroundUse()
+
+        XCTAssertEqual(visualSessionCreationCount, 0)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertTrue(service.hasAlwaysServiceSession)
+        XCTAssertEqual(manager.actions, [.startSignificant])
+
+        manager.actions.removeAll()
+        service.startMonitoring()
+
+        XCTAssertEqual(visualSessionCreationCount, 1)
+        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertEqual(manager.actions, [.startStandard])
+
+        manager.actions.removeAll()
+        service.stopMonitoring()
+
+        XCTAssertEqual(manager.actions, [.stopStandard])
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertTrue(service.hasAlwaysServiceSession)
+        XCTAssertTrue(service.isPassiveWakeupMonitoring)
+    }
+
+    func testGpsSessionSplitCreatesVisualSessionWhenPassiveWakeupStartsTracking() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
+        var visualSessionCreationCount = 0
+        let service = LocationService(
+            manager: manager,
+            carburantFeatureFlags: CarburantFeatureFlags(
+                gpsSessionSplit: true,
+                physicalFuelModel: false,
+                transitClassifier: false
+            ),
+            backgroundActivitySessionFactory: {
+                visualSessionCreationCount += 1
+                return NSObject()
+            },
+            alwaysServiceSessionFactory: { NSObject() }
+        )
+        let delegateManager = CLLocationManager()
+
+        service.restoreAutomaticTrackingSession()
+        XCTAssertEqual(visualSessionCreationCount, 0)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+
+        let wakeup = location(
+            latitude: 12.3714,
+            longitude: -1.5197,
+            accuracy: 10,
+            speedMps: 12,
+            timestamp: Date()
+        )
+        service.locationManager(delegateManager, didUpdateLocations: [wakeup])
+
+        XCTAssertEqual(visualSessionCreationCount, 1)
+        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertTrue(service.isMonitoring)
+        XCTAssertTrue(manager.actions.contains(.startStandard))
     }
 
     func testWhenInUseRestoreDoesNotCreateBackgroundSession() {

@@ -68,6 +68,10 @@ struct LocationSample {
     let speedKmh: Double
     let horizontalAccuracy: CLLocationAccuracy
     let speedAccuracy: CLLocationSpeedAccuracy
+    /// Altitude brute livree par Core Location. Elle n'est exploitable que
+    /// conjointement avec `verticalAccuracy`.
+    let altitudeMeters: CLLocationDistance?
+    let verticalAccuracy: CLLocationAccuracy
 
     init(
         timestamp: Date,
@@ -76,6 +80,8 @@ struct LocationSample {
         speedKmh: Double,
         horizontalAccuracy: CLLocationAccuracy,
         speedAccuracy: CLLocationSpeedAccuracy = 1,
+        altitudeMeters: CLLocationDistance? = nil,
+        verticalAccuracy: CLLocationAccuracy = -1,
         receivedAt: Date? = nil
     ) {
         self.timestamp = timestamp
@@ -85,6 +91,8 @@ struct LocationSample {
         self.speedKmh = speedKmh
         self.horizontalAccuracy = horizontalAccuracy
         self.speedAccuracy = speedAccuracy
+        self.altitudeMeters = altitudeMeters
+        self.verticalAccuracy = verticalAccuracy
     }
 
     init(location: CLLocation, speedKmh: Double, receivedAt: Date = Date()) {
@@ -95,6 +103,8 @@ struct LocationSample {
         self.speedKmh = speedKmh
         self.horizontalAccuracy = location.horizontalAccuracy
         self.speedAccuracy = location.speedAccuracy
+        self.altitudeMeters = location.altitude.isFinite ? location.altitude : nil
+        self.verticalAccuracy = location.verticalAccuracy
     }
 
     var coordinate: CLLocationCoordinate2D {
@@ -179,6 +189,7 @@ final class LocationService: NSObject, ObservableObject {
     private let manager: LocationManaging
     private let backgroundActivitySessionFactory: () -> Any?
     private let alwaysServiceSessionFactory: () -> Any?
+    private let carburantFeatureFlags: CarburantFeatureFlags
     private var shouldMonitorAfterAuthorization = false
     private var shouldRequestCurrentLocationAfterAuthorization = false
     private var batterySavingMode = false
@@ -233,6 +244,7 @@ final class LocationService: NSObject, ObservableObject {
     init(
         activeTripJournal: ActiveTripJournal? = nil,
         manager: LocationManaging = CLLocationManager(),
+        carburantFeatureFlags: CarburantFeatureFlags = .resolved(),
         backgroundActivitySessionFactory: @escaping () -> Any? = {
             if #available(iOS 17.0, *) {
                 return CLBackgroundActivitySession()
@@ -248,6 +260,7 @@ final class LocationService: NSObject, ObservableObject {
     ) {
         self.activeTripJournal = activeTripJournal
         self.manager = manager
+        self.carburantFeatureFlags = carburantFeatureFlags
         self.backgroundActivitySessionFactory = backgroundActivitySessionFactory
         self.alwaysServiceSessionFactory = alwaysServiceSessionFactory
         super.init()
@@ -305,20 +318,21 @@ final class LocationService: NSObject, ObservableObject {
         configureManager()
         requestAuthorization()
         beginAlwaysServiceSessionIfNeeded()
-        beginBackgroundActivitySessionIfNeeded(requiringAlways: true)
+        beginBackgroundActivitySessionForIdleIfNeeded()
         startPassiveWakeupMonitoringIfAllowed()
     }
 
     /// Restaure les attentes de collecte sans dependre de la creation d'une
     /// vue. Cette methode est appelee au lancement, y compris lorsque Core
     /// Location relance Viim en arriere-plan apres une terminaison systeme.
-    /// Les deux sessions doivent etre recreees ICI, avant le premier callback
-    /// de localisation, sinon iOS garde la cadence passive (~5 min) jusqu'au
-    /// prochain passage au premier plan.
+    /// La session Always doit etre recreee ICI, avant le premier callback de
+    /// localisation. Hors `gpsSessionSplit`, la session d'activite visuelle
+    /// historique est aussi restauree ; avec le spike, elle attend le premier
+    /// `startMonitoring()` afin de ne pas rester visible pendant l'idle.
     func restoreAutomaticTrackingSession() {
         configureManager()
         beginAlwaysServiceSessionIfNeeded()
-        beginBackgroundActivitySessionIfNeeded(requiringAlways: true)
+        beginBackgroundActivitySessionForIdleIfNeeded()
         startPassiveWakeupMonitoringIfAllowed()
         ViimDiagnostics.log("location.automaticSession.restored state=\(authorizationState)")
     }
@@ -369,10 +383,11 @@ final class LocationService: NSObject, ObservableObject {
         if keepPassiveWakeups {
             startPassiveWakeupMonitoringIfAllowed()
             startDepartureRegionMonitoringIfAllowed()
-            // En Always, conserver la session d'activite pendant l'idle : elle
-            // doit etre vivante a la terminaison du processus pour que le
-            // prochain reveil en arriere-plan retrouve la cadence GPS continue.
-            if authorizationState != .authorizedAlways {
+            // Le comportement historique conserve la session visuelle en idle
+            // sur Always. Le spike `gpsSessionSplit` l'invalide au contraire
+            // apres chaque trajet tout en gardant SLC/geofence/service session
+            // armes ; la validation terrain decide lequel est retenu.
+            if !shouldRetainBackgroundActivitySessionWhileIdle {
                 endBackgroundActivitySession()
             }
         } else {
@@ -538,6 +553,17 @@ final class LocationService: NSObject, ObservableObject {
         if backgroundActivitySession != nil {
             ViimDiagnostics.log("location.backgroundSession.start authorization=\(authorizationState)")
         }
+    }
+
+    private var shouldRetainBackgroundActivitySessionWhileIdle: Bool {
+        authorizationState == .authorizedAlways && !carburantFeatureFlags.gpsSessionSplit
+    }
+
+    private func beginBackgroundActivitySessionForIdleIfNeeded() {
+        guard shouldRetainBackgroundActivitySessionWhileIdle else {
+            return
+        }
+        beginBackgroundActivitySessionIfNeeded(requiringAlways: true)
     }
 
     private func beginAlwaysServiceSessionIfNeeded() {
@@ -1166,7 +1192,7 @@ extension LocationService: CLLocationManagerDelegate {
         ViimDiagnostics.log("location.authorization state=\(authorizationState)")
         if authorizationState == .authorizedAlways {
             beginAlwaysServiceSessionIfNeeded()
-            beginBackgroundActivitySessionIfNeeded(requiringAlways: true)
+            beginBackgroundActivitySessionForIdleIfNeeded()
         } else {
             endAlwaysServiceSession()
             stopDepartureRegionMonitoring()

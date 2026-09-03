@@ -1088,13 +1088,27 @@ private struct TripFuelEvidenceCard: View {
                     value: trip.fuelProfileName ?? String(localized: "format.score.empty")
                 )
                 TripDetailInfoRow(
-                    titleKey: "trip.fuelEvidence.consumption",
-                    value: consumptionText
+                    titleKey: "trip.fuelEvidence.baselineConsumption",
+                    value: baselineConsumptionText
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.dynamics",
+                    value: dynamicsText
+                )
+                TripDetailInfoRow(
+                    titleKey: "trip.fuelEvidence.modeledFuel",
+                    value: modeledFuelText
                 )
                 TripDetailInfoRow(
                     titleKey: "trip.fuelEvidence.price",
                     value: priceText
                 )
+                if let source = trip.fuelPriceSourceIdentifier {
+                    TripDetailInfoRow(
+                        titleKey: "trip.fuelEvidence.priceSource",
+                        value: [trip.fuelPriceLocality, source].compactMap { $0 }.joined(separator: " · ")
+                    )
+                }
                 TripDetailInfoRow(
                     titleKey: "trip.fuelEvidence.formula",
                     value: trip.fuelFormulaVersion
@@ -1108,13 +1122,33 @@ private struct TripFuelEvidenceCard: View {
         }
     }
 
-    private var consumptionText: String {
+    private var baselineConsumptionText: String {
         guard let value = trip.fuelProfileLitersPer100Km else {
             return String(localized: "format.score.empty")
         }
         return String.localizedStringWithFormat(
             String(localized: "trip.fuelEvidence.consumptionFormat"),
             value
+        )
+    }
+
+    private var dynamicsText: String {
+        guard let multiplier = trip.fuelDynamicsMultiplier else {
+            return String(localized: "format.score.empty")
+        }
+        return String.localizedStringWithFormat(
+            String(localized: "trip.fuelEvidence.dynamicsFormat"),
+            multiplier
+        )
+    }
+
+    private var modeledFuelText: String {
+        guard let liters = trip.fuelLiters else {
+            return String(localized: "format.score.empty")
+        }
+        return String.localizedStringWithFormat(
+            String(localized: "trip.fuelEvidence.modeledFuelFormat"),
+            liters
         )
     }
 
@@ -1257,6 +1291,22 @@ private struct TripNavigationDataCard: View {
                     value: DrivingValueFormatter.routePointsText(validRoutePoints.count)
                 )
 
+                if let elevationProfile {
+                    TripDetailInfoRow(
+                        titleKey: "trip.detail.elevation",
+                        value: DrivingValueFormatter.elevationText(
+                            gainMeters: elevationProfile.gainMeters,
+                            lossMeters: elevationProfile.lossMeters
+                        )
+                    )
+                    TripDetailInfoRow(
+                        titleKey: "trip.detail.elevationCoverage",
+                        value: elevationProfile.coverageRatio.formatted(
+                            .percent.precision(.fractionLength(0)).locale(.current)
+                        )
+                    )
+                }
+
                 if let start = validRoutePoints.first {
                     TripDetailInfoRow(
                         titleKey: "trip.detail.start",
@@ -1280,6 +1330,13 @@ private struct TripNavigationDataCard: View {
             return []
         }
         return TripMetricsCalculator.validRoutePoints(from: trip.routePoints)
+    }
+
+    private var elevationProfile: ElevationProfile? {
+        ElevationProfileAnalyzer.profile(
+            routePoints: validRoutePoints,
+            referenceDistanceKm: trip.distanceKm
+        )
     }
 
     private var routeMetric: ReliableMetric<Int> {

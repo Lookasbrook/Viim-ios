@@ -196,6 +196,8 @@ final class TripStoreTests: XCTestCase {
 
         XCTAssertEqual(recentTrip.distanceKm, expectedDistanceMeters / 1_000, accuracy: 0.000_001)
         XCTAssertEqual(recentTrip.fuelLiters ?? -1, expectedFuelConsumption.liters, accuracy: 0.000_001)
+        XCTAssertEqual(recentTrip.fuelBaselineLiters ?? -1, expectedFuelConsumption.baselineLiters, accuracy: 0.000_001)
+        XCTAssertEqual(recentTrip.fuelDynamicsMultiplier ?? -1, expectedFuelConsumption.dynamicsMultiplier, accuracy: 0.000_001)
         XCTAssertEqual(summary.fuelLiters ?? -1, expectedFuelConsumption.liters, accuracy: 0.000_001)
         XCTAssertNil(recentTrip.fuelFCFA)
         XCTAssertNil(summary.fuelFCFA)
@@ -218,6 +220,100 @@ final class TripStoreTests: XCTestCase {
             recentTrip.fuelCostMinorUnits
         )
         XCTAssertEqual(TripMetricsCalculator.fuelCostMetric(for: recentTrip).value, recentTrip.fuelCostMinorUnits)
+    }
+
+    func testPriceForAnotherFuelTypeCannotCreateCostSnapshot() throws {
+        let store = makeStore()
+        let trip = completedTrip(index: 0)
+        let userProfile = UserProfile(
+            firstName: "Awa",
+            phoneNumber: "+22670000000",
+            vehicleType: .voiture,
+            vehicleBrand: "Toyota",
+            vehicleModel: "Corolla",
+            vehicleYear: "2024",
+            synced: false,
+            fuelType: .diesel
+        )
+        let fuelProfile = try XCTUnwrap(VehicleFuelCatalog.profile(for: userProfile))
+
+        try store.insertCompletedTrip(
+            trip,
+            samples: samples(start: trip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            fuelProfile: fuelProfile,
+            fuelSettings: FuelSettings(
+                currency: .xof,
+                pricePerLiter: 850,
+                fuelType: .gasoline
+            )
+        )
+
+        let saved = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertNotNil(saved.fuelLiters)
+        XCTAssertNil(saved.fuelCostMinorUnits)
+        XCTAssertNil(saved.fuelCurrency)
+    }
+
+    func testStaleFuelPriceCannotCreateCostSnapshot() throws {
+        let store = makeStore()
+        let trip = completedTrip(index: 0)
+        let fuelProfile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
+        )
+
+        try store.insertCompletedTrip(
+            trip,
+            samples: samples(start: trip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            fuelProfile: fuelProfile,
+            fuelSettings: FuelSettings(
+                currency: .cad,
+                pricePerLiter: 1.70,
+                capturedAt: trip.endedAt.addingTimeInterval(-31 * 24 * 60 * 60)
+            )
+        )
+
+        let saved = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertNotNil(saved.fuelLiters)
+        XCTAssertNil(saved.fuelCostMinorUnits)
+        XCTAssertNil(saved.fuelPriceCapturedAt)
+    }
+
+    func testOfficialLocalFuelPriceEvidenceIsSnapshotted() throws {
+        let store = makeStore()
+        let trip = completedTrip(index: 0)
+        let fuelProfile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
+        )
+        let source = "government_of_ontario_fuel_price_survey"
+        let sourceURL = try XCTUnwrap(URL(string: "https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"))
+
+        try store.insertCompletedTrip(
+            trip,
+            samples: samples(start: trip.startedAt),
+            vehicleType: .voiture,
+            isCalibration: false,
+            fuelProfile: fuelProfile,
+            fuelSettings: FuelSettings(
+                currency: .cad,
+                pricePerLiter: 1.55,
+                source: .officialPublicData,
+                capturedAt: trip.endedAt.addingTimeInterval(-2 * 24 * 60 * 60),
+                sourceIdentifier: source,
+                sourceURL: sourceURL,
+                locality: "Toronto"
+            )
+        )
+
+        let saved = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertNotNil(saved.fuelCostMinorUnits)
+        XCTAssertEqual(saved.fuelPriceSource, .officialPublicData)
+        XCTAssertEqual(saved.fuelPriceSourceIdentifier, source)
+        XCTAssertEqual(saved.fuelPriceSourceURL, sourceURL)
+        XCTAssertEqual(saved.fuelPriceLocality, "Toronto")
     }
 
     func testFetchTripsReturnsAllTripsFromStartOfDay() throws {

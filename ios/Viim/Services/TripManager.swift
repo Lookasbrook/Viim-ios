@@ -292,6 +292,14 @@ enum DrivingValueFormatter {
         )
     }
 
+    static func elevationText(gainMeters: Double, lossMeters: Double) -> String {
+        String.localizedStringWithFormat(
+            NSLocalizedString("format.elevation", comment: ""),
+            gainMeters,
+            lossMeters
+        )
+    }
+
     static func tripDateText(_ date: Date) -> String {
         date.formatted(.dateTime.day().month(.wide).hour().minute().locale(.current))
     }

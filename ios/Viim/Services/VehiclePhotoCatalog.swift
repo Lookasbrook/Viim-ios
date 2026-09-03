@@ -12,11 +12,17 @@ enum VehiclePhotoCatalog {
         .init(vehicleType: .voiture, brandKeys: ["toyota"], modelKeys: ["corolla", "corollaaltis", "altis"], assetName: "VehiclePhotoToyotaCorolla", canonicalName: "Toyota Corolla"),
         .init(vehicleType: .voiture, brandKeys: ["toyota"], modelKeys: ["hilux", "hiluxgr", "hiluxe"], assetName: "VehiclePhotoToyotaHilux", canonicalName: "Toyota Hilux"),
         .init(vehicleType: .voiture, brandKeys: ["toyota"], modelKeys: ["rav4", "rav"], assetName: "VehiclePhotoToyotaRAV4", canonicalName: "Toyota RAV4"),
+        .init(vehicleType: .voiture, brandKeys: ["toyota"], modelKeys: ["yaris", "vitz", "yarissedan"], assetName: "VehiclePhotoToyotaYaris", canonicalName: "Toyota Yaris"),
+        .init(vehicleType: .voiture, brandKeys: ["renault", "dacia"], modelKeys: ["duster"], assetName: "VehiclePhotoRenaultDuster", canonicalName: "Renault Duster"),
+        .init(vehicleType: .voiture, brandKeys: ["kia"], modelKeys: ["picanto", "morning"], assetName: "VehiclePhotoKiaPicanto", canonicalName: "Kia Picanto"),
+        .init(vehicleType: .voiture, brandKeys: ["nissan"], modelKeys: ["navara", "frontier"], assetName: "VehiclePhotoNissanNavara", canonicalName: "Nissan Navara"),
         .init(vehicleType: .moto, brandKeys: ["yamaha"], modelKeys: ["crypton", "t110c"], assetName: "VehiclePhotoYamahaCrypton", canonicalName: "Yamaha Crypton"),
         .init(vehicleType: .moto, brandKeys: ["yamaha"], modelKeys: ["ybr", "ybr125"], assetName: "VehiclePhotoYamahaYBR", canonicalName: "Yamaha YBR 125"),
+        .init(vehicleType: .moto, brandKeys: ["yamaha"], modelKeys: ["fz", "fz150", "fzs"], assetName: "VehiclePhotoYamahaFZS", canonicalName: "Yamaha FZ-S"),
         .init(vehicleType: .moto, brandKeys: ["bajaj"], modelKeys: ["boxer", "boxerbm150", "bm150"], assetName: "VehiclePhotoBajajBoxer", canonicalName: "Bajaj Boxer"),
         .init(vehicleType: .moto, brandKeys: ["tvs"], modelKeys: ["apache", "rtr", "rtr180", "rtr200"], assetName: "VehiclePhotoTVSApache", canonicalName: "TVS Apache"),
-        .init(vehicleType: .moto, brandKeys: ["honda"], modelKeys: ["cg125", "cg"], assetName: "VehiclePhotoHondaCG125", canonicalName: "Honda CG125")
+        .init(vehicleType: .moto, brandKeys: ["honda"], modelKeys: ["cg125", "cg"], assetName: "VehiclePhotoHondaCG125", canonicalName: "Honda CG125"),
+        .init(vehicleType: .moto, brandKeys: ["honda"], modelKeys: ["cb125", "cb125f"], assetName: "VehiclePhotoHondaCB125F", canonicalName: "Honda CB125F")
     ]
 
     static func resolve(for profile: UserProfile?) -> VehiclePhotoResolution? {

@@ -1,13 +1,17 @@
+import CoreLocation
 import SwiftUI
 import UIKit
 
 struct ProfilView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var tripManager: TripManager
+    @EnvironmentObject private var locationService: LocationService
     @State private var selectedCurrency: SupportedCurrency = .xof
     @State private var fuelPriceText = ""
+    @State private var selectedFuelType: VehicleFuelType?
     @State private var feedbackKey: LocalizedStringKey?
     @State private var feedbackIsError = false
+    @State private var isLoadingOfficialPrice = false
     @State private var odometerText = ""
     @State private var odometerFeedbackKey: LocalizedStringKey?
     @State private var odometerFeedbackIsError = false
@@ -50,28 +54,64 @@ struct ProfilView: View {
             }
 
             Section {
+                Picker("profile.fuelType", selection: $selectedFuelType) {
+                    Text("profile.fuelType.placeholder")
+                        .tag(nil as VehicleFuelType?)
+                    ForEach(VehicleFuelType.allCases) { fuelType in
+                        Text(fuelType.displayName).tag(Optional(fuelType))
+                    }
+                }
+                .disabled(isLoadingOfficialPrice)
+
                 Picker("profile.currency", selection: $selectedCurrency) {
                     ForEach(SupportedCurrency.allCases) { currency in
                         Text(currency.displayName).tag(currency)
                     }
                 }
+                .disabled(isLoadingOfficialPrice)
 
-                HStack {
-                    TextField("profile.fuelPrice.placeholder", text: $fuelPriceText)
-                        .keyboardType(.decimalPad)
-                    Text(selectedCurrency.rawValue)
-                        .foregroundStyle(ViimColors.muted)
+                if selectedFuelType?.supportsLiquidFuelEstimate != false {
+                    HStack {
+                        TextField("profile.fuelPrice.placeholder", text: $fuelPriceText)
+                            .keyboardType(.decimalPad)
+                        Text(selectedCurrency.rawValue)
+                            .foregroundStyle(ViimColors.muted)
+                    }
+
+                    Button {
+                        Task { await loadOfficialLocalPrice() }
+                    } label: {
+                        if isLoadingOfficialPrice {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Label("profile.fuel.official.lookup", systemImage: "location.magnifyingglass")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(isLoadingOfficialPrice || selectedFuelType?.supportsLiquidFuelEstimate != true)
                 }
 
                 Button("profile.fuel.save", action: saveFuelSettings)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .disabled(isLoadingOfficialPrice)
             } header: {
                 Text("profile.section.fuel")
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("profile.fuel.help")
-                    if onboardingStore.fuelSettings.source != .userProvided {
+                    if onboardingStore.fuelSettings.source == .officialPublicData,
+                       onboardingStore.fuelSettings.canSnapshotCost(at: Date()) {
+                        Text(officialPriceDetail)
+                            .foregroundStyle(ViimColors.success)
+                    } else if onboardingStore.fuelSettings.source == .officialPublicData {
+                        Text("profile.fuel.official.stale")
+                            .foregroundStyle(ViimColors.warning)
+                    } else if onboardingStore.fuelSettings.source != .userProvided {
                         Text("profile.fuel.unverified")
+                            .foregroundStyle(ViimColors.warning)
+                    } else if !onboardingStore.fuelSettings.canSnapshotCost(at: Date()) {
+                        Text("profile.fuel.stale")
                             .foregroundStyle(ViimColors.warning)
                     }
                     if let feedbackKey {
@@ -92,18 +132,44 @@ struct ProfilView: View {
             fuelPriceText = ""
             feedbackKey = nil
         }
+        .onChange(of: selectedFuelType) { newFuelType in
+            guard newFuelType != onboardingStore.fuelSettings.fuelType else {
+                return
+            }
+            fuelPriceText = ""
+            feedbackKey = nil
+        }
     }
 
     private func loadFuelSettings() {
         let settings = onboardingStore.fuelSettings
+        selectedFuelType = onboardingStore.profile?.fuelType ?? settings.fuelType
         selectedCurrency = settings.currency
-        fuelPriceText = settings.source == .userProvided
+        fuelPriceText = settings.canSnapshotCost && settings.fuelType == selectedFuelType
             ? Self.priceText(settings.pricePerLiter)
             : ""
     }
 
     private func saveFuelSettings() {
         dismissKeyboard()
+        guard let selectedFuelType else {
+            feedbackIsError = true
+            feedbackKey = "profile.fuelType.required"
+            return
+        }
+
+        if selectedFuelType == .electric {
+            do {
+                try onboardingStore.updateVehicleFuelType(selectedFuelType)
+                feedbackIsError = false
+                feedbackKey = "profile.fuel.saved"
+            } catch {
+                feedbackIsError = true
+                feedbackKey = "profile.fuel.invalid"
+            }
+            return
+        }
+
         let normalizedPrice = fuelPriceText
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: ",", with: ".")
@@ -114,13 +180,25 @@ struct ProfilView: View {
             return
         }
 
+        let currentSettings = onboardingStore.fuelSettings
+        if currentSettings.source == .officialPublicData,
+           currentSettings.fuelType == selectedFuelType,
+           currentSettings.currency == selectedCurrency,
+           abs(currentSettings.pricePerLiter - price) < 0.000_001 {
+            feedbackIsError = false
+            feedbackKey = "profile.fuel.saved"
+            return
+        }
+
         do {
+            try onboardingStore.updateVehicleFuelType(selectedFuelType)
             try onboardingStore.updateFuelSettings(
                 FuelSettings(
                     currency: selectedCurrency,
                     pricePerLiter: price,
                     source: .userProvided,
-                    capturedAt: Date()
+                    capturedAt: Date(),
+                    fuelType: selectedFuelType
                 )
             )
             feedbackIsError = false
@@ -129,6 +207,104 @@ struct ProfilView: View {
             feedbackIsError = true
             feedbackKey = "profile.fuel.invalid"
         }
+    }
+
+    @MainActor
+    private func loadOfficialLocalPrice() async {
+        guard let selectedFuelType, selectedFuelType.supportsLiquidFuelEstimate else {
+            feedbackIsError = true
+            feedbackKey = "profile.fuelType.required"
+            return
+        }
+
+        isLoadingOfficialPrice = true
+        feedbackKey = nil
+        defer { isLoadingOfficialPrice = false }
+
+        let requestedAt = Date()
+        locationService.requestCurrentLocation()
+        var location: CLLocation?
+        for _ in 0..<20 {
+            if let candidate = locationService.latestLocation,
+               candidate.horizontalAccuracy > 0,
+               candidate.horizontalAccuracy <= 1_000,
+               candidate.timestamp >= requestedAt.addingTimeInterval(-60) {
+                location = candidate
+                break
+            }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+
+        guard let location else {
+            feedbackIsError = true
+            feedbackKey = "profile.fuel.official.locationUnavailable"
+            return
+        }
+
+        do {
+            // Le backend ne recoit jamais les coordonnees : seulement cette
+            // localite grossiere retournee par le service Apple.
+            let placemarks = try await CLGeocoder().reverseGeocodeLocation(
+                location,
+                preferredLocale: Locale(identifier: "fr_CA")
+            )
+            guard let placemark = placemarks.first,
+                  let countryCode = placemark.isoCountryCode,
+                  let regionCode = placemark.administrativeArea,
+                  let locality = placemark.locality else {
+                throw BackendAPIError.invalidResponse
+            }
+
+            let quote = try await BackendAPIClient.shared.fetchOfficialFuelPrice(
+                countryCode: countryCode,
+                regionCode: regionCode,
+                locality: locality,
+                fuelType: selectedFuelType
+            )
+            guard self.selectedFuelType == selectedFuelType,
+                  quote.fuelType == selectedFuelType else {
+                throw BackendAPIError.invalidResponse
+            }
+
+            try onboardingStore.updateVehicleFuelType(selectedFuelType)
+            try onboardingStore.updateFuelSettings(
+                FuelSettings(
+                    currency: quote.currency,
+                    pricePerLiter: quote.pricePerLiter,
+                    source: .officialPublicData,
+                    capturedAt: quote.observedAt,
+                    fuelType: quote.fuelType,
+                    sourceIdentifier: quote.source,
+                    sourceURL: quote.sourceURL,
+                    locality: quote.locality
+                )
+            )
+            selectedCurrency = quote.currency
+            fuelPriceText = Self.priceText(quote.pricePerLiter)
+            feedbackIsError = false
+            feedbackKey = "profile.fuel.official.loaded"
+        } catch let error as BackendAPIError {
+            feedbackIsError = true
+            if case .apiStatus(_, let code) = error, code == "fuel_price_unavailable" {
+                feedbackKey = "profile.fuel.official.unavailable"
+            } else {
+                feedbackKey = "profile.fuel.official.failed"
+            }
+        } catch {
+            feedbackIsError = true
+            feedbackKey = "profile.fuel.official.failed"
+        }
+    }
+
+    private var officialPriceDetail: String {
+        let settings = onboardingStore.fuelSettings
+        let date = settings.capturedAt?.formatted(date: .abbreviated, time: .omitted) ?? "—"
+        let locality = settings.locality ?? String(localized: "profile.fuel.official.localityUnknown")
+        return String.localizedStringWithFormat(
+            String(localized: "profile.fuel.official.detail"),
+            locality,
+            date
+        )
     }
 
     private func saveOdometer() {

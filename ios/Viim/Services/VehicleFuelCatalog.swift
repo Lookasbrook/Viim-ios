@@ -2,6 +2,7 @@ import Foundation
 
 struct VehicleFuelProfile: Equatable {
     let vehicleType: VehicleType
+    let fuelType: VehicleFuelType?
     let canonicalName: String
     let litersPer100Km: Double
     let confidence: MetricConfidence
@@ -10,6 +11,8 @@ struct VehicleFuelProfile: Equatable {
 
 struct FuelConsumptionEstimate: Equatable {
     let liters: Double
+    let baselineLiters: Double
+    let dynamicsMultiplier: Double
     let confidence: MetricConfidence
 }
 
@@ -26,7 +29,7 @@ struct VehicleCatalogSuggestion: Equatable, Identifiable {
 }
 
 enum VehicleFuelCatalog {
-    static let formulaVersion = "vehicle-fuel-catalog-v7-static-base"
+    static let formulaVersion = "vehicle-fuel-catalog-v8-gps-dynamics"
     static let sourceIdentifier = "ViimCatalog.indicative.v7"
 
     private static let entries: [VehicleFuelEntry] = [
@@ -175,10 +178,24 @@ enum VehicleFuelCatalog {
             return nil
         }
 
-        return profile(
+        guard userProfile.fuelType?.supportsLiquidFuelEstimate != false else {
+            return nil
+        }
+
+        guard let baseProfile = profile(
             vehicleType: userProfile.vehicleType,
             brand: userProfile.vehicleBrand,
             model: userProfile.vehicleModel
+        ) else {
+            return nil
+        }
+        return VehicleFuelProfile(
+            vehicleType: baseProfile.vehicleType,
+            fuelType: userProfile.fuelType,
+            canonicalName: baseProfile.canonicalName,
+            litersPer100Km: baseProfile.litersPer100Km,
+            confidence: baseProfile.confidence,
+            sourceIdentifier: baseProfile.sourceIdentifier
         )
     }
 
@@ -186,6 +203,7 @@ enum VehicleFuelCatalog {
         guard vehicleType != .velo else {
             return VehicleFuelProfile(
                 vehicleType: vehicleType,
+                fuelType: nil,
                 canonicalName: String(localized: "vehicle.type.velo"),
                 litersPer100Km: 0,
                 confidence: .reliable,
@@ -199,6 +217,7 @@ enum VehicleFuelCatalog {
 
         return VehicleFuelProfile(
             vehicleType: vehicleType,
+            fuelType: nil,
             canonicalName: entry.canonicalName,
             litersPer100Km: entry.litersPer100Km,
             confidence: .partial,
@@ -237,7 +256,8 @@ enum VehicleFuelCatalog {
     static func estimateConsumption(
         distanceKm: Double,
         fuelProfile: VehicleFuelProfile?,
-        dynamics: DrivingDynamics? = nil
+        dynamics: DrivingDynamics? = nil,
+        tripDurationSec: TimeInterval? = nil
     ) -> FuelConsumptionEstimate? {
         guard let fuelProfile,
               distanceKm.isFinite,
@@ -245,14 +265,34 @@ enum VehicleFuelCatalog {
             return nil
         }
 
-        // La valeur financiere reste strictement la distance GPS validee x
-        // consommation indicative du catalogue. La dynamique GPS n'est pas
-        // une mesure de carburant et ne doit pas modifier un montant tant
-        // qu'elle n'a pas ete calibree contre des pleins ou un capteur moteur.
         let baseLiters = distanceKm * fuelProfile.litersPer100Km / 100
+        let matchingDynamics = dynamics.flatMap { candidate -> DrivingDynamics? in
+            guard candidate.isUsableForFuelEstimate else {
+                return nil
+            }
+
+            // Empêche d'appliquer par erreur la dynamique d'un autre trajet.
+            // La tolerance couvre les petits ecarts d'arrondi entre distance
+            // GPS analysee et distance validee pour la persistance.
+            let distanceToleranceKm = max(0.25, distanceKm * 0.10)
+            guard abs(candidate.distanceKm - distanceKm) <= distanceToleranceKm else {
+                return nil
+            }
+            if let tripDurationSec {
+                guard tripDurationSec.isFinite,
+                      tripDurationSec > 0,
+                      candidate.analyzedDurationSec / tripDurationSec >= 0.60 else {
+                    return nil
+                }
+            }
+            return candidate
+        }
+        let multiplier = matchingDynamics?.fuelConsumptionMultiplier ?? 1
 
         return FuelConsumptionEstimate(
-            liters: baseLiters,
+            liters: baseLiters * multiplier,
+            baselineLiters: baseLiters,
+            dynamicsMultiplier: multiplier,
             confidence: fuelProfile.confidence
         )
     }

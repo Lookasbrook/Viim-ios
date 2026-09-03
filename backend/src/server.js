@@ -5,6 +5,7 @@ import { createAdminRouter } from "./routes/admin.js";
 import { createAlertsRouter } from "./routes/alerts.js";
 import { appleAppSiteAssociation } from "./routes/appleAppSiteAssociation.js";
 import { createCircleRouter, createJoinRouter } from "./routes/circle.js";
+import { createFuelPricesRouter } from "./routes/fuelPrices.js";
 import { healthRouter } from "./routes/health.js";
 import { captureRawBody, createWhatsappWebhookRouter } from "./routes/whatsappWebhook.js";
 import { createAlertStore } from "./services/alertStore.js";
@@ -27,6 +28,7 @@ app.use("/v1/health", healthRouter);
 app.use("/v1/alerts", createAlertsRouter());
 app.use("/v1/webhooks/whatsapp", createWhatsappWebhookRouter());
 app.use("/v1/circle", createCircleRouter());
+app.use("/v1/fuel-prices", createFuelPricesRouter());
 app.use("/join", createJoinRouter());
 app.use("/admin", createAdminRouter());
 

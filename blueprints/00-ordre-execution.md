@@ -2,11 +2,15 @@
 
 Tu es le builder du projet **Viim**. Ce dossier te donne la structure, les contraintes et les critères de validation — tu es libre de l'implémentation. Lis dans cet ordre : ce fichier → `01-ios-app.md` → `02-backend-coolify.md`, puis les références citées.
 
-## Priorité actuelle — 2026-07-14
+## Priorité actuelle — 2026-08-11
 
-Le plan maître actif est [Fiabilité complète, véhicules, coûts et internationalisation](2026-07-14-fiabilite-vehicules-couts-internationalisation.md).
+Le plan actif est [Carburant modélisé, transport collectif, indicateur GPS](2026-08-11-carburant-modelise-transport-indicateur.md). **À critiquer avant exécution** (voir sa §13). Il prévaut sur le plan du 2026-07-14 pour tout ce qui touche au carburant, au coût, à la classification des trajets en transport collectif et à l'indicateur de localisation iOS.
 
-Il remplace les règles contradictoires des anciens blueprints concernant le prix saisi manuellement, la consommation modifiée par le score, le véhicule identifié seulement par marque/modèle, la devise FCFA unique et la validation de dix trajets avant la build privée. Les anciens documents restent des preuves historiques et des diagnostics ; en cas de conflit, le blueprint du 2026-07-14 prévaut.
+## Plan précédent — 2026-07-14
+
+Le plan maître antérieur est [Fiabilité complète, véhicules, coûts et internationalisation](2026-07-14-fiabilite-vehicules-couts-internationalisation.md). Il reste la référence pour tout ce que le plan du 2026-08-11 ne couvre pas.
+
+Le plan du 2026-07-14 remplace les règles contradictoires des blueprints antérieurs concernant le prix saisi manuellement, la consommation modifiée par le score, le véhicule identifié seulement par marque/modèle, la devise FCFA unique et la validation de dix trajets avant la build privée. Les anciens documents restent des preuves historiques et des diagnostics. En cas de conflit, le plan du 2026-08-11 prévaut uniquement dans ses trois domaines bornés ; le plan du 2026-07-14 prévaut partout ailleurs.
 
 Ordre actif : `P0 capture/indicateur et build privée` → `P1 catalogue` → `P2 prix/devises` → `P3 inscription/migration` → `P4 coût` → `P5 sync/écrans` → `P6 assistance` → `P7 validation externe`.
 

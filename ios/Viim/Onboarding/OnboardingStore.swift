@@ -116,25 +116,70 @@ enum SupportedCurrency: String, CaseIterable, Codable, Hashable, Identifiable {
 
 enum FuelPriceSource: String, Codable, Hashable {
     case userProvided
+    case officialPublicData
     case unverifiedDefault
 }
 
+enum VehicleFuelType: String, CaseIterable, Codable, Hashable, Identifiable {
+    case gasoline
+    case diesel
+    case gasolineHybrid
+    case dieselHybrid
+    case electric
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .gasoline: String(localized: "vehicle.fuelType.gasoline")
+        case .diesel: String(localized: "vehicle.fuelType.diesel")
+        case .gasolineHybrid: String(localized: "vehicle.fuelType.gasolineHybrid")
+        case .dieselHybrid: String(localized: "vehicle.fuelType.dieselHybrid")
+        case .electric: String(localized: "vehicle.fuelType.electric")
+        }
+    }
+
+    var supportsLiquidFuelEstimate: Bool {
+        self != .electric
+    }
+}
+
 struct FuelSettings: Codable, Equatable, Hashable {
+    /// Un prix plus ancien n'est plus utilise pour figer un cout de trajet.
+    /// L'utilisateur peut toujours le voir et le confirmer a nouveau.
+    static let maximumSnapshotAge: TimeInterval = 30 * 24 * 60 * 60
+    /// Les sources publiques hebdomadaires doivent être rafraîchies plus souvent
+    /// qu'un prix directement confirmé par l'utilisateur.
+    static let maximumOfficialSnapshotAge: TimeInterval = 14 * 24 * 60 * 60
+    static let maximumFutureClockSkew: TimeInterval = 5 * 60
+
     let currency: SupportedCurrency
     let pricePerLiter: Double
     let source: FuelPriceSource?
     let capturedAt: Date?
+    let fuelType: VehicleFuelType?
+    let sourceIdentifier: String?
+    let sourceURL: URL?
+    let locality: String?
 
     init(
         currency: SupportedCurrency,
         pricePerLiter: Double,
         source: FuelPriceSource = .userProvided,
-        capturedAt: Date? = nil
+        capturedAt: Date? = nil,
+        fuelType: VehicleFuelType? = nil,
+        sourceIdentifier: String? = nil,
+        sourceURL: URL? = nil,
+        locality: String? = nil
     ) {
         self.currency = currency
         self.pricePerLiter = pricePerLiter
         self.source = source
         self.capturedAt = capturedAt
+        self.fuelType = fuelType
+        self.sourceIdentifier = sourceIdentifier
+        self.sourceURL = sourceURL
+        self.locality = locality
     }
 
     static func defaults(for locale: Locale = .current) -> FuelSettings {
@@ -147,7 +192,19 @@ struct FuelSettings: Codable, Equatable, Hashable {
     }
 
     var canSnapshotCost: Bool {
-        source == .userProvided
+        source == .userProvided || source == .officialPublicData
+    }
+
+    func canSnapshotCost(at date: Date) -> Bool {
+        guard canSnapshotCost, let capturedAt else {
+            return false
+        }
+
+        let age = date.timeIntervalSince(capturedAt)
+        let maximumAge = source == .officialPublicData
+            ? Self.maximumOfficialSnapshotAge
+            : Self.maximumSnapshotAge
+        return age >= -Self.maximumFutureClockSkew && age <= maximumAge
     }
 
     func costMinorUnits(for liters: Double?) -> Int? {
@@ -178,6 +235,9 @@ struct UserProfile: Codable, Equatable {
     var odometerBaselineKm: Double? = nil
     var odometerBaselineDate: Date? = nil
     var countryCode: String? = nil
+    /// Choix explicite de l'utilisateur. `nil` conserve la compatibilite des
+    /// profils crees avant l'ajout de cette information.
+    var fuelType: VehicleFuelType? = nil
 
     var vehicleDisplayName: String {
         let parts = [vehicleBrand, vehicleModel, vehicleYear]
@@ -271,6 +331,31 @@ final class OnboardingStore: ObservableObject {
         let encodedSettings = try JSONEncoder().encode(settings)
         userDefaults.set(encodedSettings, forKey: Keys.fuelSettings)
         fuelSettings = settings
+    }
+
+    func updateVehicleFuelType(_ fuelType: VehicleFuelType) throws {
+        guard var updatedProfile = profile, updatedProfile.vehicleType != .velo else {
+            return
+        }
+
+        updatedProfile.fuelType = fuelType
+        userDefaults.set(try JSONEncoder().encode(updatedProfile), forKey: Keys.profile)
+        profile = updatedProfile
+
+        guard fuelSettings.fuelType != fuelType else {
+            return
+        }
+
+        // Un prix saisi pour l'essence ne doit jamais etre reutilise pour le
+        // diesel apres un changement de motorisation.
+        let resetSettings = FuelSettings(
+            currency: fuelSettings.currency,
+            pricePerLiter: fuelSettings.currency.defaultFuelPricePerLiter,
+            source: .unverifiedDefault,
+            fuelType: fuelType
+        )
+        userDefaults.set(try JSONEncoder().encode(resetSettings), forKey: Keys.fuelSettings)
+        fuelSettings = resetSettings
     }
 
     private static func loadProfile(from userDefaults: UserDefaults) -> UserProfile? {

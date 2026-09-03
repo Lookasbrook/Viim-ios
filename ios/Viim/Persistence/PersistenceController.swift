@@ -50,12 +50,17 @@ struct PersistenceController {
             attribute("scoreVigilance", .integer64AttributeType, isOptional: true),
             attribute("scoreEco", .integer64AttributeType, isOptional: true),
             attribute("fuelLiters", .doubleAttributeType, isOptional: true),
+            attribute("fuelBaselineLiters", .doubleAttributeType, isOptional: true),
+            attribute("fuelDynamicsMultiplier", .doubleAttributeType, isOptional: true),
             attribute("fuelFCFA", .integer64AttributeType, isOptional: true),
             attribute("fuelCostMinorUnits", .integer64AttributeType, isOptional: true),
             attribute("fuelCurrencyCode", .stringAttributeType, isOptional: true),
             attribute("fuelPricePerLiter", .doubleAttributeType, isOptional: true),
             attribute("fuelPriceCapturedAt", .dateAttributeType, isOptional: true),
             attribute("fuelPriceSource", .stringAttributeType, isOptional: true),
+            attribute("fuelPriceSourceIdentifier", .stringAttributeType, isOptional: true),
+            attribute("fuelPriceSourceURL", .stringAttributeType, isOptional: true),
+            attribute("fuelPriceLocality", .stringAttributeType, isOptional: true),
             attribute("fuelProfileName", .stringAttributeType, isOptional: true),
             attribute("fuelProfileLitersPer100Km", .doubleAttributeType, isOptional: true),
             attribute("fuelProfileSource", .stringAttributeType, isOptional: true),
@@ -167,6 +172,8 @@ struct PersistenceController {
             attribute("speedKmh", .doubleAttributeType),
             attribute("horizontalAccuracy", .doubleAttributeType),
             attribute("speedAccuracy", .doubleAttributeType),
+            attribute("altitudeMeters", .doubleAttributeType, isOptional: true),
+            attribute("verticalAccuracy", .doubleAttributeType, defaultValue: -1.0),
             attribute("createdAt", .dateAttributeType)
         ]
 

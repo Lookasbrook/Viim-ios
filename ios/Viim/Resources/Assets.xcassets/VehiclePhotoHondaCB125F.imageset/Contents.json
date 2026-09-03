@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "vehicle-photo-honda-cb125f.jpg",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

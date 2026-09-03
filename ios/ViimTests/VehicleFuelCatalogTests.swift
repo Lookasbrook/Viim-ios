@@ -23,7 +23,7 @@ final class VehicleFuelCatalogTests: XCTestCase {
         XCTAssertEqual(cadSettings.costMinorUnits(for: estimate?.liters), 139)
     }
 
-    func testGpsDynamicsDoNotChangeFinancialConsumptionEstimate() throws {
+    func testGpsDynamicsChangeModeledConsumptionWithinCredibleBounds() throws {
         let profile = try XCTUnwrap(
             VehicleFuelCatalog.profile(
                 vehicleType: .voiture,
@@ -72,8 +72,88 @@ final class VehicleFuelCatalogTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(smooth.liters, baseline.liters, accuracy: 0.000_001)
-        XCTAssertEqual(aggressive.liters, baseline.liters, accuracy: 0.000_001)
+        XCTAssertLessThan(smooth.liters, baseline.liters)
+        XCTAssertGreaterThan(aggressive.liters, baseline.liters)
+        XCTAssertGreaterThan(aggressive.liters, smooth.liters)
+        XCTAssertEqual(smooth.dynamicsMultiplier, smoothDynamics.fuelConsumptionMultiplier, accuracy: 0.000_001)
+        XCTAssertEqual(aggressive.dynamicsMultiplier, 1.5, accuracy: 0.000_001)
+        XCTAssertEqual(aggressive.liters, aggressive.baselineLiters * 1.5, accuracy: 0.000_001)
+        XCTAssertEqual(baseline.dynamicsMultiplier, 1, accuracy: 0.000_001)
+    }
+
+    func testInvalidOrMismatchedDynamicsFallsBackToCatalogBaseline() throws {
+        let profile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(
+                vehicleType: .voiture,
+                brand: "Toyota",
+                model: "Corolla"
+            )
+        )
+        let invalidDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: .nan,
+            idleRatio: 0.2,
+            hardAccelerationCount: 2,
+            hardBrakingCount: 1,
+            accelerationRms: 0.8,
+            analyzedDurationSec: 600,
+            distanceKm: 12
+        )
+        let mismatchedDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 18,
+            idleRatio: 0.35,
+            hardAccelerationCount: 6,
+            hardBrakingCount: 5,
+            accelerationRms: 1.4,
+            analyzedDurationSec: 600,
+            distanceKm: 2
+        )
+
+        let invalidEstimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12,
+                fuelProfile: profile,
+                dynamics: invalidDynamics
+            )
+        )
+        let mismatchedEstimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12,
+                fuelProfile: profile,
+                dynamics: mismatchedDynamics
+            )
+        )
+
+        XCTAssertEqual(invalidEstimate.liters, invalidEstimate.baselineLiters, accuracy: 0.000_001)
+        XCTAssertEqual(invalidEstimate.dynamicsMultiplier, 1, accuracy: 0.000_001)
+        XCTAssertEqual(mismatchedEstimate.liters, mismatchedEstimate.baselineLiters, accuracy: 0.000_001)
+        XCTAssertEqual(mismatchedEstimate.dynamicsMultiplier, 1, accuracy: 0.000_001)
+    }
+
+    func testDynamicsWithInsufficientTripCoverageFallsBackToCatalogBaseline() throws {
+        let profile = try XCTUnwrap(
+            VehicleFuelCatalog.profile(vehicleType: .voiture, brand: "Toyota", model: "Corolla")
+        )
+        let shortDynamics = DrivingDynamics(
+            meanMovingSpeedKmh: 18,
+            idleRatio: 0.35,
+            hardAccelerationCount: 6,
+            hardBrakingCount: 5,
+            accelerationRms: 1.4,
+            analyzedDurationSec: 61,
+            distanceKm: 12
+        )
+
+        let estimate = try XCTUnwrap(
+            VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12,
+                fuelProfile: profile,
+                dynamics: shortDynamics,
+                tripDurationSec: 3_600
+            )
+        )
+
+        XCTAssertEqual(estimate.dynamicsMultiplier, 1, accuracy: 0.000_001)
+        XCTAssertEqual(estimate.liters, estimate.baselineLiters, accuracy: 0.000_001)
     }
 
     func testDynamicsMultiplierStaysWithinCredibleBounds() {
@@ -209,6 +289,100 @@ final class VehicleFuelCatalogTests: XCTestCase {
         XCTAssertEqual(settings.source, .unverifiedDefault)
         XCTAssertFalse(settings.canSnapshotCost)
         XCTAssertNil(settings.costMinorUnits(for: 1.25))
+    }
+
+    func testFuelPriceMustBeDatedAndRecentToSnapshotCost() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let undated = FuelSettings(currency: .cad, pricePerLiter: 1.70)
+        let fresh = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.70,
+            capturedAt: now.addingTimeInterval(-29 * 24 * 60 * 60)
+        )
+        let stale = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.70,
+            capturedAt: now.addingTimeInterval(-31 * 24 * 60 * 60)
+        )
+
+        XCTAssertFalse(undated.canSnapshotCost(at: now))
+        XCTAssertTrue(fresh.canSnapshotCost(at: now))
+        XCTAssertFalse(stale.canSnapshotCost(at: now))
+    }
+
+    func testRecentOfficialPublicPriceCanSnapshotCost() {
+        let observedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let settings = FuelSettings(
+            currency: .cad,
+            pricePerLiter: 1.55,
+            source: .officialPublicData,
+            capturedAt: observedAt,
+            fuelType: .gasoline,
+            sourceIdentifier: "government_of_ontario_fuel_price_survey",
+            locality: "Toronto"
+        )
+
+        XCTAssertTrue(settings.canSnapshotCost(at: observedAt.addingTimeInterval(7 * 24 * 60 * 60)))
+        XCTAssertFalse(settings.canSnapshotCost(at: observedAt.addingTimeInterval(15 * 24 * 60 * 60)))
+        XCTAssertEqual(settings.costMinorUnits(for: 10), 1_550)
+    }
+
+    func testElectricVehicleDoesNotInventLiquidFuelConsumption() {
+        let profile = UserProfile(
+            firstName: "Awa",
+            phoneNumber: "+22670000000",
+            vehicleType: .voiture,
+            vehicleBrand: "Toyota",
+            vehicleModel: "Corolla",
+            vehicleYear: "2024",
+            synced: false,
+            fuelType: .electric
+        )
+
+        XCTAssertNil(VehicleFuelCatalog.profile(for: profile))
+    }
+
+    func testExplicitFuelTypeIsCarriedIntoResolvedProfile() throws {
+        let profile = UserProfile(
+            firstName: "Awa",
+            phoneNumber: "+22670000000",
+            vehicleType: .voiture,
+            vehicleBrand: "Toyota",
+            vehicleModel: "Corolla",
+            vehicleYear: "2024",
+            synced: false,
+            fuelType: .diesel
+        )
+
+        XCTAssertEqual(try XCTUnwrap(VehicleFuelCatalog.profile(for: profile)).fuelType, .diesel)
+    }
+
+    func testChangingFuelTypeInvalidatesPriceForPreviousFuel() throws {
+        let suiteName = "VehicleFuelCatalogTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let profile = UserProfile(
+            firstName: "Awa",
+            phoneNumber: "+22670000000",
+            vehicleType: .voiture,
+            vehicleBrand: "Toyota",
+            vehicleModel: "Corolla",
+            vehicleYear: "2024",
+            synced: false,
+            fuelType: .gasoline
+        )
+        defaults.set(try JSONEncoder().encode(profile), forKey: "viim.userProfile.v1")
+        let store = OnboardingStore(userDefaults: defaults)
+        try store.updateFuelSettings(
+            FuelSettings(currency: .xof, pricePerLiter: 850, fuelType: .gasoline)
+        )
+
+        try store.updateVehicleFuelType(.diesel)
+
+        XCTAssertEqual(store.profile?.fuelType, .diesel)
+        XCTAssertEqual(store.fuelSettings.fuelType, .diesel)
+        XCTAssertEqual(store.fuelSettings.source, .unverifiedDefault)
+        XCTAssertFalse(store.fuelSettings.canSnapshotCost)
     }
 
     func testEmergencyNumbersAreCountrySpecificAndUnknownCountryDoesNotGuess() {

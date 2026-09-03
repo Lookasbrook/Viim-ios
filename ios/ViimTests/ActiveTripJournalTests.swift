@@ -32,7 +32,7 @@ final class ActiveTripJournalTests: XCTestCase {
         XCTAssertEqual(try journal.samples(for: tripId).count, 2)
     }
 
-    func testJournalStoresDraftAndSamplesWithSpeedAccuracy() throws {
+    func testJournalStoresDraftAndSamplesWithSpeedAndAltitudeAccuracy() throws {
         let persistenceController = PersistenceController(inMemory: true)
         let journal = ActiveTripJournal(context: persistenceController.container.viewContext)
         let start = Date(timeIntervalSince1970: 1_783_000_000)
@@ -70,6 +70,8 @@ final class ActiveTripJournalTests: XCTestCase {
         XCTAssertEqual(drafts.first?.distanceMeters, 240)
         XCTAssertEqual(savedSamples.count, 3)
         XCTAssertEqual(savedSamples.map(\.speedAccuracy), [1, 1, 1])
+        XCTAssertEqual(savedSamples.map(\.altitudeMeters), [320, 320, 320])
+        XCTAssertEqual(savedSamples.map(\.verticalAccuracy), [4, 4, 4])
 
         try journal.deleteTrip(id: tripId)
 
@@ -119,7 +121,9 @@ final class ActiveTripJournalTests: XCTestCase {
             longitude: longitude,
             speedKmh: speedKmh,
             horizontalAccuracy: 5,
-            speedAccuracy: 1
+            speedAccuracy: 1,
+            altitudeMeters: 320,
+            verticalAccuracy: 4
         )
     }
 }

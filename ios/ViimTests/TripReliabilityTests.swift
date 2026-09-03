@@ -3,6 +3,24 @@ import XCTest
 @testable import Viim
 
 final class TripReliabilityTests: XCTestCase {
+    func testValidRoutePointsPreserveAltitudeEvidence() throws {
+        let sample = LocationSample(
+            timestamp: Date(timeIntervalSince1970: 1_783_000_000),
+            latitude: 12.3714,
+            longitude: -1.5197,
+            speedKmh: 40,
+            horizontalAccuracy: 5,
+            speedAccuracy: 1,
+            altitudeMeters: 321,
+            verticalAccuracy: 4
+        )
+
+        let point = try XCTUnwrap(TripMetricsCalculator.validRoutePoints(from: [sample]).first)
+
+        XCTAssertEqual(point.altitudeMeters, 321)
+        XCTAssertEqual(point.verticalAccuracy, 4)
+    }
+
     func testPersistabilityRequiresDistanceDurationAndGpsSamples() {
         let start = Date(timeIntervalSince1970: 1_783_000_000)
         let trip = CompletedDetectedTrip(
@@ -191,12 +209,17 @@ final class TripReliabilityTests: XCTestCase {
             scoreVigilance: nil,
             scoreEco: nil,
             fuelLiters: nil,
+            fuelBaselineLiters: nil,
+            fuelDynamicsMultiplier: nil,
             fuelFCFA: nil,
             fuelCostMinorUnits: nil,
             fuelCurrency: nil,
             fuelPricePerLiter: nil,
             fuelPriceCapturedAt: nil,
             fuelPriceSource: nil,
+            fuelPriceSourceIdentifier: nil,
+            fuelPriceSourceURL: nil,
+            fuelPriceLocality: nil,
             fuelProfileName: nil,
             fuelProfileLitersPer100Km: nil,
             fuelProfileSource: nil,

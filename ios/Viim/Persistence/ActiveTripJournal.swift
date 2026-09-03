@@ -230,6 +230,8 @@ struct ActiveTripJournal {
         object.setValue(sample.speedKmh, forKey: "speedKmh")
         object.setValue(sample.horizontalAccuracy, forKey: "horizontalAccuracy")
         object.setValue(sample.speedAccuracy, forKey: "speedAccuracy")
+        object.setValue(sample.altitudeMeters, forKey: "altitudeMeters")
+        object.setValue(sample.verticalAccuracy, forKey: "verticalAccuracy")
         // createdAt porte l'heure de reception du point : c'est la seconde
         // chronologie utilisee pour restaurer la duree d'un trajet dont les
         // timestamps GPS ont ete compresses par une relivraison iOS.
@@ -284,6 +286,8 @@ struct ActiveTripJournal {
             speedKmh: speedKmh,
             horizontalAccuracy: horizontalAccuracy,
             speedAccuracy: speedAccuracy,
+            altitudeMeters: object.value(forKey: "altitudeMeters") as? Double,
+            verticalAccuracy: object.value(forKey: "verticalAccuracy") as? Double ?? -1,
             receivedAt: object.value(forKey: "createdAt") as? Date
         )
     }

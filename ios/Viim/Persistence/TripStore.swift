@@ -16,12 +16,17 @@ struct TripRecord: Identifiable, Equatable {
     let scoreVigilance: Int?
     let scoreEco: Int?
     let fuelLiters: Double?
+    let fuelBaselineLiters: Double?
+    let fuelDynamicsMultiplier: Double?
     let fuelFCFA: Int?
     let fuelCostMinorUnits: Int?
     let fuelCurrency: SupportedCurrency?
     let fuelPricePerLiter: Double?
     let fuelPriceCapturedAt: Date?
     let fuelPriceSource: FuelPriceSource?
+    let fuelPriceSourceIdentifier: String?
+    let fuelPriceSourceURL: URL?
+    let fuelPriceLocality: String?
     let fuelProfileName: String?
     let fuelProfileLitersPer100Km: Double?
     let fuelProfileSource: String?
@@ -58,6 +63,8 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
     let speedKmh: Double
     let horizontalAccuracy: CLLocationAccuracy
     let speedAccuracy: CLLocationSpeedAccuracy
+    let altitudeMeters: CLLocationDistance?
+    let verticalAccuracy: CLLocationAccuracy
 
     init(
         timestamp: Date,
@@ -65,7 +72,9 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
         longitude: Double,
         speedKmh: Double,
         horizontalAccuracy: CLLocationAccuracy,
-        speedAccuracy: CLLocationSpeedAccuracy = -1
+        speedAccuracy: CLLocationSpeedAccuracy = -1,
+        altitudeMeters: CLLocationDistance? = nil,
+        verticalAccuracy: CLLocationAccuracy = -1
     ) {
         self.timestamp = timestamp
         self.latitude = latitude
@@ -73,6 +82,8 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
         self.speedKmh = speedKmh
         self.horizontalAccuracy = horizontalAccuracy
         self.speedAccuracy = speedAccuracy
+        self.altitudeMeters = altitudeMeters
+        self.verticalAccuracy = verticalAccuracy
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -82,6 +93,8 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
         case speedKmh
         case horizontalAccuracy
         case speedAccuracy
+        case altitudeMeters
+        case verticalAccuracy
     }
 
     init(from decoder: Decoder) throws {
@@ -92,6 +105,8 @@ struct TripRoutePoint: Codable, Equatable, Identifiable {
         speedKmh = try container.decode(Double.self, forKey: .speedKmh)
         horizontalAccuracy = try container.decode(Double.self, forKey: .horizontalAccuracy)
         speedAccuracy = try container.decodeIfPresent(Double.self, forKey: .speedAccuracy) ?? -1
+        altitudeMeters = try container.decodeIfPresent(Double.self, forKey: .altitudeMeters)
+        verticalAccuracy = try container.decodeIfPresent(Double.self, forKey: .verticalAccuracy) ?? -1
     }
 
     var id: TimeInterval {
@@ -379,7 +394,8 @@ struct TripStore {
                     samples: samples,
                     vehicleType: vehicleType,
                     distanceKm: distanceKm
-                )
+                ),
+                tripDurationSec: duration
             )
 
             let object = NSManagedObject(entity: TripStore.entity(named: "Trip", in: context), insertInto: context)
@@ -397,6 +413,8 @@ struct TripStore {
             Self.setOptionalInt(scores.scoreEco, forKey: "scoreEco", on: object)
             if let fuelEstimate {
                 object.setValue(fuelEstimate.liters, forKey: "fuelLiters")
+                object.setValue(fuelEstimate.baselineLiters, forKey: "fuelBaselineLiters")
+                object.setValue(fuelEstimate.dynamicsMultiplier, forKey: "fuelDynamicsMultiplier")
                 object.setValue(nil, forKey: "fuelFCFA")
                 object.setValue(resolvedFuelProfile?.canonicalName, forKey: "fuelProfileName")
                 object.setValue(resolvedFuelProfile?.litersPer100Km, forKey: "fuelProfileLitersPer100Km")
@@ -409,29 +427,45 @@ struct TripStore {
                     object.setValue(0.0, forKey: "fuelPricePerLiter")
                     object.setValue(completedTrip.endedAt, forKey: "fuelPriceCapturedAt")
                     object.setValue(FuelPriceSource.userProvided.rawValue, forKey: "fuelPriceSource")
+                    object.setValue("bicycle_zero", forKey: "fuelPriceSourceIdentifier")
+                    object.setValue(nil, forKey: "fuelPriceSourceURL")
+                    object.setValue(nil, forKey: "fuelPriceLocality")
                 } else if let fuelSettings,
-                          fuelSettings.canSnapshotCost,
+                          fuelSettings.canSnapshotCost(at: completedTrip.endedAt),
+                          (resolvedFuelProfile?.fuelType == nil ||
+                            fuelSettings.fuelType == resolvedFuelProfile?.fuelType),
                           let cost = fuelSettings.costMinorUnits(for: fuelEstimate.liters) {
                     object.setValue(Int64(cost), forKey: "fuelCostMinorUnits")
                     object.setValue(fuelSettings.currency.rawValue, forKey: "fuelCurrencyCode")
                     object.setValue(fuelSettings.pricePerLiter, forKey: "fuelPricePerLiter")
                     object.setValue(fuelSettings.capturedAt ?? completedTrip.endedAt, forKey: "fuelPriceCapturedAt")
-                    object.setValue(FuelPriceSource.userProvided.rawValue, forKey: "fuelPriceSource")
+                    object.setValue(fuelSettings.source?.rawValue, forKey: "fuelPriceSource")
+                    object.setValue(fuelSettings.sourceIdentifier, forKey: "fuelPriceSourceIdentifier")
+                    object.setValue(fuelSettings.sourceURL?.absoluteString, forKey: "fuelPriceSourceURL")
+                    object.setValue(fuelSettings.locality, forKey: "fuelPriceLocality")
                 } else {
                     object.setValue(nil, forKey: "fuelCostMinorUnits")
                     object.setValue(nil, forKey: "fuelCurrencyCode")
                     object.setValue(nil, forKey: "fuelPricePerLiter")
                     object.setValue(nil, forKey: "fuelPriceCapturedAt")
                     object.setValue(nil, forKey: "fuelPriceSource")
+                    object.setValue(nil, forKey: "fuelPriceSourceIdentifier")
+                    object.setValue(nil, forKey: "fuelPriceSourceURL")
+                    object.setValue(nil, forKey: "fuelPriceLocality")
                 }
             } else {
                 object.setValue(nil, forKey: "fuelLiters")
+                object.setValue(nil, forKey: "fuelBaselineLiters")
+                object.setValue(nil, forKey: "fuelDynamicsMultiplier")
                 object.setValue(nil, forKey: "fuelFCFA")
                 object.setValue(nil, forKey: "fuelCostMinorUnits")
                 object.setValue(nil, forKey: "fuelCurrencyCode")
                 object.setValue(nil, forKey: "fuelPricePerLiter")
                 object.setValue(nil, forKey: "fuelPriceCapturedAt")
                 object.setValue(nil, forKey: "fuelPriceSource")
+                object.setValue(nil, forKey: "fuelPriceSourceIdentifier")
+                object.setValue(nil, forKey: "fuelPriceSourceURL")
+                object.setValue(nil, forKey: "fuelPriceLocality")
                 object.setValue(nil, forKey: "fuelProfileName")
                 object.setValue(nil, forKey: "fuelProfileLitersPer100Km")
                 object.setValue(nil, forKey: "fuelProfileSource")
@@ -549,6 +583,8 @@ struct TripStore {
             scoreVigilance: optionalInt(object.value(forKey: "scoreVigilance")),
             scoreEco: optionalInt(object.value(forKey: "scoreEco")),
             fuelLiters: object.value(forKey: "fuelLiters") as? Double,
+            fuelBaselineLiters: object.value(forKey: "fuelBaselineLiters") as? Double,
+            fuelDynamicsMultiplier: object.value(forKey: "fuelDynamicsMultiplier") as? Double,
             fuelFCFA: optionalInt(object.value(forKey: "fuelFCFA")),
             fuelCostMinorUnits: optionalInt(object.value(forKey: "fuelCostMinorUnits")),
             fuelCurrency: (object.value(forKey: "fuelCurrencyCode") as? String)
@@ -557,6 +593,9 @@ struct TripStore {
             fuelPriceCapturedAt: object.value(forKey: "fuelPriceCapturedAt") as? Date,
             fuelPriceSource: (object.value(forKey: "fuelPriceSource") as? String)
                 .flatMap(FuelPriceSource.init(rawValue:)),
+            fuelPriceSourceIdentifier: object.value(forKey: "fuelPriceSourceIdentifier") as? String,
+            fuelPriceSourceURL: (object.value(forKey: "fuelPriceSourceURL") as? String).flatMap(URL.init(string:)),
+            fuelPriceLocality: object.value(forKey: "fuelPriceLocality") as? String,
             fuelProfileName: object.value(forKey: "fuelProfileName") as? String,
             fuelProfileLitersPer100Km: object.value(forKey: "fuelProfileLitersPer100Km") as? Double,
             fuelProfileSource: object.value(forKey: "fuelProfileSource") as? String,
@@ -900,7 +939,9 @@ struct TripStore {
                 longitude: point.longitude,
                 speedKmh: point.speedKmh,
                 horizontalAccuracy: point.horizontalAccuracy,
-                speedAccuracy: point.speedAccuracy
+                speedAccuracy: point.speedAccuracy,
+                altitudeMeters: point.altitudeMeters,
+                verticalAccuracy: point.verticalAccuracy
             )
         }
     }

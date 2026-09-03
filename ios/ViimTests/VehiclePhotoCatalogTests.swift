@@ -8,6 +8,10 @@ final class VehiclePhotoCatalogTests: XCTestCase {
         XCTAssertEqual(asset(.voiture, "Toyota", "Corolla Altis"), "VehiclePhotoToyotaCorolla")
         XCTAssertEqual(asset(.voiture, "Toyota", "Hilux E"), "VehiclePhotoToyotaHilux")
         XCTAssertEqual(asset(.voiture, "Toyota", "RAV 4"), "VehiclePhotoToyotaRAV4")
+        XCTAssertEqual(asset(.voiture, "Toyota", "Yaris"), "VehiclePhotoToyotaYaris")
+        XCTAssertEqual(asset(.voiture, "Dacia", "Duster"), "VehiclePhotoRenaultDuster")
+        XCTAssertEqual(asset(.voiture, "Kia", "Picanto"), "VehiclePhotoKiaPicanto")
+        XCTAssertEqual(asset(.voiture, "Nissan", "Navara"), "VehiclePhotoNissanNavara")
         XCTAssertEqual(asset(.voiture, "Toyota", "Land Cruiser Prado"), "VehiclePhotoToyotaPrado")
         XCTAssertEqual(asset(.voiture, "Toyota", "Land Cruiser 70"), "VehiclePhotoToyotaLandCruiser")
     }
@@ -15,6 +19,8 @@ final class VehiclePhotoCatalogTests: XCTestCase {
     func testMotoModelsResolveToExactAssets() {
         XCTAssertEqual(asset(.moto, "Yamaha", "Crypton"), "VehiclePhotoYamahaCrypton")
         XCTAssertEqual(asset(.moto, "Yamaha", "YBR 125"), "VehiclePhotoYamahaYBR")
+        XCTAssertEqual(asset(.moto, "Yamaha", "FZ-S 150"), "VehiclePhotoYamahaFZS")
+        XCTAssertEqual(asset(.moto, "Honda", "CB125F"), "VehiclePhotoHondaCB125F")
         XCTAssertEqual(asset(.moto, "Bajaj", "Boxer BM 150"), "VehiclePhotoBajajBoxer")
         XCTAssertEqual(asset(.moto, "TVS", "Apache RTR 200"), "VehiclePhotoTVSApache")
         XCTAssertEqual(asset(.moto, "Honda", "CG 125"), "VehiclePhotoHondaCG125")

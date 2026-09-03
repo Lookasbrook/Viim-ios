@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 
 /// Resume de la dynamique reelle d'un trajet, derive des vitesses GPS
@@ -7,7 +8,7 @@ import Foundation
 struct DrivingDynamics: Equatable {
     /// Vitesse moyenne pendant les phases de deplacement (km/h).
     let meanMovingSpeedKmh: Double
-    /// Fraction du temps analyse passee quasi a l'arret (moteur tournant).
+    /// Fraction du temps analyse passee quasi a l'arret. L'etat moteur est inconnu.
     let idleRatio: Double
     /// Accelerations franches (> seuil) detectees sur le trajet.
     let hardAccelerationCount: Int
@@ -26,6 +27,19 @@ struct DrivingDynamics: Equatable {
         }
         return Double(hardAccelerationCount + hardBrakingCount) / distanceKm * 10
     }
+
+    /// Les valeurs de dynamique peuvent aussi provenir de trajets historiques.
+    /// Refuser toute valeur incoherente evite qu'un NaN ou un snapshot corrompu
+    /// contamine les litres et le cout persistants.
+    var isUsableForFuelEstimate: Bool {
+        meanMovingSpeedKmh.isFinite && meanMovingSpeedKmh >= 0 &&
+            idleRatio.isFinite && (0...1).contains(idleRatio) &&
+            hardAccelerationCount >= 0 && hardBrakingCount >= 0 &&
+            accelerationRms.isFinite && accelerationRms >= 0 &&
+            analyzedDurationSec.isFinite &&
+            analyzedDurationSec >= DrivingDynamicsAnalyzer.minimumAnalyzedDuration &&
+            distanceKm.isFinite && distanceKm > 0
+    }
 }
 
 enum DrivingDynamicsAnalyzer {
@@ -34,7 +48,7 @@ enum DrivingDynamicsAnalyzer {
     /// Seuils issus des standards telematiques assurantiels (m/s2).
     static let hardAccelerationThreshold = 2.5
     static let hardBrakingThreshold = -3.0
-    /// En dessous, le vehicule est considere a l'arret (ralenti).
+    /// En dessous, le vehicule est considere quasi a l'arret par le GPS.
     static let idleSpeedThresholdKmh = 4.0
     /// Paires d'echantillons exploitables pour une derivee de vitesse.
     private static let minimumPairInterval: TimeInterval = 0.4
@@ -156,7 +170,9 @@ extension DrivingDynamics {
     /// - profil de vitesse : le stop-and-go urbain et la tres haute vitesse
     ///   consomment plus que le cycle mixte de la fiche technique ;
     /// - agressivite : accelerations soutenues = surconsommation ;
-    /// - ralenti : du carburant brule sans kilometre parcouru.
+    /// - faible vitesse / arret : proxy GPS du stop-and-go. Le telephone ne
+    ///   sait pas si le moteur tourne, ce facteur reste donc volontairement
+    ///   faible et ne doit pas etre presente comme du ralenti mesure.
     var fuelConsumptionMultiplier: Double {
         let speedFactor: Double
         switch meanMovingSpeedKmh {
@@ -184,5 +200,169 @@ extension DrivingDynamics {
 
         let combined = speedFactor * aggressivenessFactor * idleFactor * eventsFactor
         return min(1.5, max(0.85, combined))
+    }
+}
+
+struct ElevationProfile: Equatable {
+    let gainMeters: Double
+    let lossMeters: Double
+    let analyzedDistanceMeters: Double
+    let coverageRatio: Double
+}
+
+/// Produit un denivele conservateur a partir de l'altitude GPS. L'analyse se
+/// fait sur des fenetres longues afin de ne pas additionner le bruit vertical
+/// de chaque point comme s'il s'agissait de petites montees successives.
+enum ElevationProfileAnalyzer {
+    static let formulaVersion = "elevation-profile-v1-conservative"
+    static let maximumVerticalAccuracyMeters = 20.0
+    static let minimumWindowDistanceMeters = 150.0
+    static let maximumSegmentDistanceMeters = 500.0
+    static let minimumAnalyzedDistanceMeters = 300.0
+    static let minimumCoverageRatio = 0.5
+    static let maximumPlausibleGrade = 0.25
+
+    static func profile(
+        samples: [LocationSample],
+        referenceDistanceKm: Double
+    ) -> ElevationProfile? {
+        profile(
+            points: samples.map {
+                ElevationPoint(
+                    timestamp: $0.timestamp,
+                    latitude: $0.latitude,
+                    longitude: $0.longitude,
+                    horizontalAccuracy: $0.horizontalAccuracy,
+                    altitudeMeters: $0.altitudeMeters,
+                    verticalAccuracy: $0.verticalAccuracy
+                )
+            },
+            referenceDistanceKm: referenceDistanceKm
+        )
+    }
+
+    static func profile(
+        routePoints: [TripRoutePoint],
+        referenceDistanceKm: Double
+    ) -> ElevationProfile? {
+        profile(
+            points: routePoints.map {
+                ElevationPoint(
+                    timestamp: $0.timestamp,
+                    latitude: $0.latitude,
+                    longitude: $0.longitude,
+                    horizontalAccuracy: $0.horizontalAccuracy,
+                    altitudeMeters: $0.altitudeMeters,
+                    verticalAccuracy: $0.verticalAccuracy
+                )
+            },
+            referenceDistanceKm: referenceDistanceKm
+        )
+    }
+
+    private static func profile(
+        points: [ElevationPoint],
+        referenceDistanceKm: Double
+    ) -> ElevationProfile? {
+        guard referenceDistanceKm.isFinite, referenceDistanceKm > 0 else {
+            return nil
+        }
+
+        let validPoints = points
+            .filter(\.isUsable)
+            .sorted { $0.timestamp < $1.timestamp }
+        guard validPoints.count >= 2 else {
+            return nil
+        }
+
+        var windowStart = validPoints[0]
+        var previous = validPoints[0]
+        var windowDistance = 0.0
+        var analyzedDistance = 0.0
+        var gain = 0.0
+        var loss = 0.0
+
+        for current in validPoints.dropFirst() {
+            let segmentDistance = previous.location.distance(from: current.location)
+            previous = current
+
+            guard segmentDistance.isFinite,
+                  segmentDistance > 0,
+                  segmentDistance <= maximumSegmentDistanceMeters else {
+                windowStart = current
+                windowDistance = 0
+                continue
+            }
+
+            windowDistance += segmentDistance
+            guard windowDistance >= minimumWindowDistanceMeters else {
+                continue
+            }
+
+            let altitudeDelta = current.altitude - windowStart.altitude
+            let grade = altitudeDelta / windowDistance
+            guard grade.isFinite, abs(grade) <= maximumPlausibleGrade else {
+                windowStart = current
+                windowDistance = 0
+                continue
+            }
+
+            // Retrancher l'incertitude plutot que la compter comme denivele.
+            // Le resultat sous-estime parfois une pente douce, mais n'invente
+            // pas des dizaines de metres sur une route plate.
+            let uncertainty = max(windowStart.verticalAccuracy, current.verticalAccuracy)
+            let conservativeDelta = max(0, abs(altitudeDelta) - uncertainty)
+            if altitudeDelta > 0 {
+                gain += conservativeDelta
+            } else if altitudeDelta < 0 {
+                loss += conservativeDelta
+            }
+            analyzedDistance += windowDistance
+            windowStart = current
+            windowDistance = 0
+        }
+
+        let referenceDistanceMeters = referenceDistanceKm * 1_000
+        let coverageRatio = min(1, analyzedDistance / referenceDistanceMeters)
+        guard analyzedDistance >= minimumAnalyzedDistanceMeters,
+              coverageRatio >= minimumCoverageRatio else {
+            return nil
+        }
+
+        return ElevationProfile(
+            gainMeters: gain,
+            lossMeters: loss,
+            analyzedDistanceMeters: analyzedDistance,
+            coverageRatio: coverageRatio
+        )
+    }
+
+    private struct ElevationPoint {
+        let timestamp: Date
+        let latitude: Double
+        let longitude: Double
+        let horizontalAccuracy: Double
+        let altitudeMeters: Double?
+        let verticalAccuracy: Double
+
+        var altitude: Double {
+            altitudeMeters ?? 0
+        }
+
+        var location: CLLocation {
+            CLLocation(latitude: latitude, longitude: longitude)
+        }
+
+        var isUsable: Bool {
+            guard let altitudeMeters else {
+                return false
+            }
+            let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            return CLLocationCoordinate2DIsValid(coordinate) &&
+                horizontalAccuracy.isFinite && horizontalAccuracy >= 0 && horizontalAccuracy <= 100 &&
+                altitudeMeters.isFinite &&
+                verticalAccuracy.isFinite && verticalAccuracy >= 0 &&
+                verticalAccuracy <= ElevationProfileAnalyzer.maximumVerticalAccuracyMeters
+        }
     }
 }

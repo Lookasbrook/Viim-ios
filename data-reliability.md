@@ -2,6 +2,19 @@
 
 Objectif : aucune valeur metier ne doit etre affichee sans source de verite, formule, condition de validite et raison explicite quand la valeur manque.
 
+## Etat au 2026-09-02 — build 18 privé, lot carburant partiel
+
+Preuves disponibles pour le lot :
+
+- suite iOS : 186/186 tests réussis sur simulateur ;
+- backend : 75/75 tests réussis ;
+- tests Android réussis ;
+- build Debug 0.1.0 (18) signé et installé sur l'iPhone 16 de Guy ;
+- prix public Ontario récupéré sans transmettre les coordonnées GPS au backend ;
+- aucune validation de roulage T1–T6, aucune calibration par plein et aucun déploiement backend dans ce lot.
+
+Le coût gagne en traçabilité : l'estimation de litres réagit à la vitesse, aux variations d'accélération, aux phases quasi immobiles et au dénivelé GPS filtré ; un prix officiel Ontario peut être daté et figé avec sa source. Il ne s'agit pas encore du modèle physique complet (masse, traînée, CoreMotion, météo, revêtement et calibration flotte restent absents), donc les litres restent une estimation et non une mesure.
+
 ## Etat au 2026-07-19 — durcissement build 17 non deploye
 
 Preuves disponibles :

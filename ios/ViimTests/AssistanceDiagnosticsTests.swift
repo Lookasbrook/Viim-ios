@@ -100,6 +100,109 @@ final class BackendAPIClientTests: XCTestCase {
         }
     }
 
+    func testOfficialFuelPriceUsesOnlyCoarseLocalityAndDecodesEvidence() async throws {
+        let client = makeClient { request in
+            let components = try XCTUnwrap(URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false))
+            let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).compactMap { item in
+                item.value.map { (item.name, $0) }
+            })
+            XCTAssertEqual(components.path, "/v1/fuel-prices/current")
+            XCTAssertEqual(query["country"], "CA")
+            XCTAssertEqual(query["region"], "ON")
+            XCTAssertEqual(query["locality"], "Toronto")
+            XCTAssertEqual(query["fuelType"], "gasoline")
+            XCTAssertNil(query["latitude"])
+            XCTAssertNil(query["longitude"])
+            return self.httpResponse(
+                for: request,
+                statusCode: 200,
+                body: #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/v1/files/fuel-prices/fueltypesall.csv"}"#
+            )
+        }
+
+        let quote = try await client.fetchOfficialFuelPrice(
+            countryCode: "CA",
+            regionCode: "ON",
+            locality: "Toronto",
+            fuelType: .gasoline
+        )
+
+        XCTAssertEqual(quote.pricePerLiter, 1.55)
+        XCTAssertEqual(quote.currency, .cad)
+        XCTAssertEqual(quote.source, "government_of_ontario_fuel_price_survey")
+        XCTAssertEqual(quote.sourceURL.scheme, "https")
+    }
+
+    func testOfficialFuelPricePreservesBackendErrorCode() async throws {
+        let client = makeClient { request in
+            self.httpResponse(
+                for: request,
+                statusCode: 404,
+                body: #"{"error":"fuel_price_unavailable"}"#
+            )
+        }
+
+        do {
+            _ = try await client.fetchOfficialFuelPrice(
+                countryCode: "BF",
+                regionCode: "KADIOGO",
+                locality: "Ouagadougou",
+                fuelType: .gasoline
+            )
+            XCTFail("Expected BackendAPIError.apiStatus")
+        } catch let error as BackendAPIError {
+            XCTAssertEqual(error, .apiStatus(statusCode: 404, code: "fuel_price_unavailable"))
+        }
+    }
+
+    func testOfficialFuelPriceMapsOfflineTransportToNetworkError() async throws {
+        let client = makeClient { _ in
+            throw URLError(.notConnectedToInternet)
+        }
+
+        do {
+            _ = try await client.fetchOfficialFuelPrice(
+                countryCode: "CA",
+                regionCode: "ON",
+                locality: "Toronto",
+                fuelType: .gasoline
+            )
+            XCTFail("Expected BackendAPIError.network")
+        } catch let error as BackendAPIError {
+            XCTAssertEqual(error, .network(.notConnectedToInternet))
+        }
+    }
+
+    func testOfficialFuelPriceRejectsUntrustedOrMalformedEvidence() async throws {
+        let invalidBodies = [
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"http://example.com/fuel.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":-1,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"not-a-date","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"hydrogen","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
+            #"{"countryCode":"US","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"QC","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"untrusted","sourceUrl":"https://www.ontario.ca/fuel.csv"}"#,
+            #"{"countryCode":"CA","regionCode":"ON","locality":"Toronto","fuelType":"gasoline","pricePerLiter":1.55,"currency":"CAD","observedAt":"2026-08-31T00:00:00.000Z","retrievedAt":"2026-09-02T12:00:00.000Z","source":"government_of_ontario_fuel_price_survey","sourceUrl":"https://example.com/fuel.csv"}"#
+        ]
+
+        for body in invalidBodies {
+            let client = makeClient { request in
+                self.httpResponse(for: request, statusCode: 200, body: body)
+            }
+            do {
+                _ = try await client.fetchOfficialFuelPrice(
+                    countryCode: "CA",
+                    regionCode: "ON",
+                    locality: "Toronto",
+                    fuelType: .gasoline
+                )
+                XCTFail("Expected BackendAPIError.invalidResponse for \(body)")
+            } catch let error as BackendAPIError {
+                XCTAssertEqual(error, .invalidResponse)
+            }
+        }
+    }
+
     private func makeClient(
         handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
     ) -> BackendAPIClient {

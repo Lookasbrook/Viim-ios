@@ -38,6 +38,7 @@ struct ViimApp: App {
         }
         tripRecorder.recoverActiveTrips()
 
+        CarburantFeatureFlags.persistDebugOverridesIfRequested()
         let locationService = LocationService(activeTripJournal: activeTripJournal)
         let motionActivityService = MotionActivityService()
         let tripDetectionCoordinator = TripDetectionCoordinator(
@@ -119,9 +120,11 @@ private struct AppLaunchView: View {
         let settings = onboardingStore.fuelSettings
         return [
             profile.vehicleType.rawValue,
+            profile.fuelType?.rawValue ?? "legacy",
             settings.currency.rawValue,
             String(settings.pricePerLiter),
-            settings.source?.rawValue ?? "legacy"
+            settings.source?.rawValue ?? "legacy",
+            settings.fuelType?.rawValue ?? "legacy"
         ].joined(separator: "|")
     }
 
