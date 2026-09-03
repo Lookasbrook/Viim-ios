@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 
 @main
 struct ViimApp: App {
@@ -233,6 +234,8 @@ private struct AppLaunchView: View {
 
 private struct PersistenceRecoveryView: View {
     let state: PersistenceRecoveryState
+    @State private var recoveryExport: RawPersistenceSnapshot?
+    @State private var exportError: String?
 
     var body: some View {
         VStack(spacing: 18) {
@@ -250,13 +253,54 @@ private struct PersistenceRecoveryView: View {
                 .font(.caption.monospaced())
                 .foregroundStyle(ViimColors.muted)
                 .textSelection(.enabled)
+            Button {
+                exportStoreFamily()
+            } label: {
+                Label("persistence.recovery.export", systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ViimColors.blue)
+            if let exportError {
+                Text(exportError)
+                    .font(.caption)
+                    .foregroundStyle(ViimColors.danger)
+                    .multilineTextAlignment(.center)
+            }
             Text("persistence.recovery.action")
                 .font(.callout.weight(.semibold))
                 .multilineTextAlignment(.center)
         }
         .padding(28)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+        .sheet(item: $recoveryExport) { snapshot in
+            RecoveryShareSheet(activityItems: snapshot.fileURLs)
+        }
     }
+
+    private func exportStoreFamily() {
+        do {
+            recoveryExport = try PersistenceController.createRecoveryExport(state: state)
+            exportError = nil
+            ViimDiagnostics.log("persistence.recovery.export created=true")
+        } catch {
+            let nsError = error as NSError
+            exportError = String(localized: "persistence.recovery.exportError")
+            ViimDiagnostics.log(
+                "persistence.recovery.export created=false domain=\(nsError.domain) code=\(nsError.code)"
+            )
+        }
+    }
+}
+
+private struct RecoveryShareSheet: UIViewControllerRepresentable {
+    let activityItems: [URL]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 @MainActor

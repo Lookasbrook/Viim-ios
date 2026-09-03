@@ -14,6 +14,7 @@ enum ViimStoreModelVersion: String, CaseIterable {
 
 enum PersistenceBackupError: LocalizedError {
     case noSQLiteStore
+    case sourceStoreMissing(URL)
     case destinationAlreadyExists(URL)
     case backupVerificationMismatch(expected: [String: Int], actual: [String: Int])
 
@@ -21,6 +22,8 @@ enum PersistenceBackupError: LocalizedError {
         switch self {
         case .noSQLiteStore:
             return "Aucun store SQLite Viim n'est charge."
+        case .sourceStoreMissing(let url):
+            return "Le store Viim est introuvable : \(url.lastPathComponent)."
         case .destinationAlreadyExists(let url):
             return "La sauvegarde existe deja : \(url.lastPathComponent)."
         case .backupVerificationMismatch(let expected, let actual):
@@ -32,6 +35,12 @@ enum PersistenceBackupError: LocalizedError {
 struct VerifiedPersistenceBackup: Equatable {
     let url: URL
     let rowCountsByEntity: [String: Int]
+}
+
+struct RawPersistenceSnapshot: Equatable, Identifiable {
+    let id: UUID
+    let directoryURL: URL
+    let fileURLs: [URL]
 }
 
 struct PersistenceRecoveryState: Equatable {
@@ -66,8 +75,21 @@ struct PersistenceController {
         }
     }
 
-    static func bootstrap(storeURL: URL? = nil) -> PersistenceBootstrapResult {
+    static func bootstrap(
+        storeURL: URL? = nil,
+        migrationBackupRootURL: URL? = nil
+    ) -> PersistenceBootstrapResult {
+        let resolvedStoreURL = storeURL ?? defaultSQLiteStoreURL()
         do {
+            if let resolvedStoreURL,
+               let snapshot = try createPreMigrationSnapshotIfNeeded(
+                   storeURL: resolvedStoreURL,
+                   backupRootURL: migrationBackupRootURL ?? defaultMigrationBackupRootURL()
+               ) {
+                ViimDiagnostics.log(
+                    "persistence.migration.backup created=true files=\(snapshot.fileURLs.count)"
+                )
+            }
             return .ready(
                 try PersistenceController(
                     loadingInMemory: false,
@@ -76,7 +98,6 @@ struct PersistenceController {
             )
         } catch {
             let nsError = error as NSError
-            let resolvedStoreURL = storeURL ?? defaultSQLiteStoreURL()
             let state = PersistenceRecoveryState(
                 storeURL: resolvedStoreURL,
                 errorDomain: nsError.domain,
@@ -120,6 +141,113 @@ struct PersistenceController {
     private static func defaultSQLiteStoreURL() -> URL? {
         NSPersistentContainer.defaultDirectoryURL()
             .appendingPathComponent("Viim.sqlite")
+    }
+
+    private static func defaultMigrationBackupRootURL() -> URL {
+        let applicationSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? NSPersistentContainer.defaultDirectoryURL()
+        return applicationSupport.appendingPathComponent("ViimMigrationBackups", isDirectory: true)
+    }
+
+    static func createPreMigrationSnapshotIfNeeded(
+        storeURL: URL,
+        backupRootURL: URL
+    ) throws -> RawPersistenceSnapshot? {
+        guard FileManager.default.fileExists(atPath: storeURL.path) else {
+            return nil
+        }
+
+        let metadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(
+            ofType: NSSQLiteStoreType,
+            at: storeURL,
+            options: nil
+        )
+        guard !makeManagedObjectModel().isConfiguration(
+            withName: nil,
+            compatibleWithStoreMetadata: metadata
+        ) else {
+            return nil
+        }
+
+        return try copyStoreFamily(
+            storeURL: storeURL,
+            destinationRootURL: backupRootURL,
+            directoryPrefix: "pre-migration"
+        )
+    }
+
+    static func createRecoveryExport(
+        state: PersistenceRecoveryState,
+        destinationRootURL: URL? = nil
+    ) throws -> RawPersistenceSnapshot {
+        guard let storeURL = state.storeURL else {
+            throw PersistenceBackupError.noSQLiteStore
+        }
+        let rootURL = destinationRootURL
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent(
+                "ViimRecoveryExports",
+                isDirectory: true
+            )
+        return try copyStoreFamily(
+            storeURL: storeURL,
+            destinationRootURL: rootURL,
+            directoryPrefix: "recovery"
+        )
+    }
+
+    private static func copyStoreFamily(
+        storeURL: URL,
+        destinationRootURL: URL,
+        directoryPrefix: String
+    ) throws -> RawPersistenceSnapshot {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: storeURL.path) else {
+            throw PersistenceBackupError.sourceStoreMissing(storeURL)
+        }
+
+        try fileManager.createDirectory(
+            at: destinationRootURL,
+            withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+        )
+        let snapshotID = UUID()
+        let directoryURL = destinationRootURL.appendingPathComponent(
+            "Viim-\(directoryPrefix)-\(snapshotID.uuidString)",
+            isDirectory: true
+        )
+        try fileManager.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: false,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+        )
+        var resourceValues = URLResourceValues()
+        resourceValues.isExcludedFromBackup = true
+        var mutableDirectoryURL = directoryURL
+        try mutableDirectoryURL.setResourceValues(resourceValues)
+
+        let sourceURLs = [
+            storeURL,
+            URL(fileURLWithPath: storeURL.path + "-wal"),
+            URL(fileURLWithPath: storeURL.path + "-shm")
+        ]
+        let copiedURLs = try sourceURLs.compactMap { sourceURL -> URL? in
+            guard fileManager.fileExists(atPath: sourceURL.path) else { return nil }
+            let destinationURL = directoryURL.appendingPathComponent(sourceURL.lastPathComponent)
+            try fileManager.copyItem(at: sourceURL, to: destinationURL)
+            try fileManager.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: destinationURL.path
+            )
+            return destinationURL
+        }
+
+        return RawPersistenceSnapshot(
+            id: snapshotID,
+            directoryURL: directoryURL,
+            fileURLs: copiedURLs
+        )
     }
 
     /// Cree une sauvegarde SQLite coherente, y compris lorsque le store actif

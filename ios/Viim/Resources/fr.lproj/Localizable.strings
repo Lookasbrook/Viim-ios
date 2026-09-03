@@ -161,6 +161,8 @@
 "persistence.recovery.title" = "Vos données sont protégées";
 "persistence.recovery.detail" = "Viim n’a pas pu ouvrir les trajets enregistrés. La collecte est suspendue et aucune base vide n’a été créée.";
 "persistence.recovery.action" = "Fermez puis rouvrez l’app. Si le problème persiste, transmettez ce diagnostic à l’assistance.";
+"persistence.recovery.export" = "Exporter une copie de récupération";
+"persistence.recovery.exportError" = "La copie de récupération n’a pas pu être créée. Ne réinstallez pas l’app et contactez l’assistance.";
 "trip.detail.title" = "Données du trajet";
 "trip.detail.navigation" = "Navigation";
 "trip.detail.gpsData" = "Données GPS";

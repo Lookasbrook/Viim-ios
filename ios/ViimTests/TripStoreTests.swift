@@ -4,6 +4,143 @@ import XCTest
 @testable import Viim
 
 final class TripStoreTests: XCTestCase {
+    func testRecoveryExportCopiesSQLiteWALAndSHMWithoutChangingSources() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Viim-recovery-export-\(UUID().uuidString)", isDirectory: true)
+        let exportRoot = directory.appendingPathComponent("exports", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+        let sourceBytes: [String: Data] = [
+            "Viim.sqlite": Data("sqlite-source".utf8),
+            "Viim.sqlite-wal": Data("wal-source".utf8),
+            "Viim.sqlite-shm": Data("shm-source".utf8)
+        ]
+        for (name, data) in sourceBytes {
+            try data.write(to: directory.appendingPathComponent(name), options: .atomic)
+        }
+        let state = PersistenceRecoveryState(
+            storeURL: storeURL,
+            errorDomain: NSCocoaErrorDomain,
+            errorCode: 1
+        )
+
+        let snapshot = try PersistenceController.createRecoveryExport(
+            state: state,
+            destinationRootURL: exportRoot
+        )
+
+        XCTAssertEqual(Set(snapshot.fileURLs.map(\.lastPathComponent)), Set(sourceBytes.keys))
+        for (name, expectedData) in sourceBytes {
+            XCTAssertEqual(
+                try Data(contentsOf: snapshot.directoryURL.appendingPathComponent(name)),
+                expectedData
+            )
+            XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent(name)), expectedData)
+        }
+    }
+
+    func testBootstrapCreatesRawBackupBeforeLightweightMigration() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Viim-pre-migration-\(UUID().uuidString)", isDirectory: true)
+        let backupRoot = directory.appendingPathComponent("backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+
+        let legacyModel = PersistenceController.makeManagedObjectModel()
+        legacyModel.versionIdentifiers = ["Viim.testLegacy"]
+        let legacyTrip = try XCTUnwrap(legacyModel.entitiesByName["Trip"])
+        legacyTrip.properties = legacyTrip.properties.filter { $0.name != "fuelUncertaintyRatio" }
+        let legacyContainer = NSPersistentContainer(name: "Viim", managedObjectModel: legacyModel)
+        let description = NSPersistentStoreDescription(url: storeURL)
+        description.type = NSSQLiteStoreType
+        description.shouldAddStoreAsynchronously = false
+        legacyContainer.persistentStoreDescriptions = [description]
+        var loadError: Error?
+        legacyContainer.loadPersistentStores { _, error in loadError = error }
+        XCTAssertNil(loadError)
+        for store in legacyContainer.persistentStoreCoordinator.persistentStores {
+            try legacyContainer.persistentStoreCoordinator.remove(store)
+        }
+        let originalStoreBytes = try Data(contentsOf: storeURL)
+
+        let result = PersistenceController.bootstrap(
+            storeURL: storeURL,
+            migrationBackupRootURL: backupRoot
+        )
+
+        guard case .ready = result else {
+            return XCTFail("La migration legere doit reussir apres la sauvegarde")
+        }
+        let snapshotDirectories = try FileManager.default.contentsOfDirectory(
+            at: backupRoot,
+            includingPropertiesForKeys: nil
+        )
+        XCTAssertEqual(snapshotDirectories.count, 1)
+        let copiedStoreURL = try XCTUnwrap(snapshotDirectories.first)
+            .appendingPathComponent("Viim.sqlite")
+        XCTAssertEqual(try Data(contentsOf: copiedStoreURL), originalStoreBytes)
+    }
+
+    func testCompatibleStoreDoesNotCreateMigrationBackup() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Viim-compatible-\(UUID().uuidString)", isDirectory: true)
+        let backupRoot = directory.appendingPathComponent("backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+        let controller = PersistenceController(storeURL: storeURL)
+        for store in controller.container.persistentStoreCoordinator.persistentStores {
+            try controller.container.persistentStoreCoordinator.remove(store)
+        }
+
+        let snapshot = try PersistenceController.createPreMigrationSnapshotIfNeeded(
+            storeURL: storeURL,
+            backupRootURL: backupRoot
+        )
+
+        XCTAssertNil(snapshot)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: backupRoot.path))
+    }
+
+    func testBootstrapDoesNotMigrateWhenPreMigrationBackupCannotBeCreated() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Viim-blocked-migration-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Viim.sqlite")
+        let blockedBackupRoot = directory.appendingPathComponent("not-a-directory")
+
+        let legacyModel = PersistenceController.makeManagedObjectModel()
+        legacyModel.versionIdentifiers = ["Viim.testBlockedMigration"]
+        let legacyTrip = try XCTUnwrap(legacyModel.entitiesByName["Trip"])
+        legacyTrip.properties = legacyTrip.properties.filter { $0.name != "fuelUncertaintyRatio" }
+        let legacyContainer = NSPersistentContainer(name: "Viim", managedObjectModel: legacyModel)
+        let description = NSPersistentStoreDescription(url: storeURL)
+        description.type = NSSQLiteStoreType
+        description.shouldAddStoreAsynchronously = false
+        legacyContainer.persistentStoreDescriptions = [description]
+        var loadError: Error?
+        legacyContainer.loadPersistentStores { _, error in loadError = error }
+        XCTAssertNil(loadError)
+        for store in legacyContainer.persistentStoreCoordinator.persistentStores {
+            try legacyContainer.persistentStoreCoordinator.remove(store)
+        }
+        let originalStoreBytes = try Data(contentsOf: storeURL)
+        try Data("backup-root-is-a-file".utf8).write(to: blockedBackupRoot, options: .atomic)
+
+        let result = PersistenceController.bootstrap(
+            storeURL: storeURL,
+            migrationBackupRootURL: blockedBackupRoot
+        )
+
+        guard case .recoveryRequired = result else {
+            return XCTFail("La migration doit etre bloquee si la sauvegarde prealable echoue")
+        }
+        XCTAssertEqual(try Data(contentsOf: storeURL), originalStoreBytes)
+    }
+
     func testBootstrapUsesRecoveryModeWithoutChangingCorruptedStore() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("Viim-corrupt-\(UUID().uuidString)", isDirectory: true)
