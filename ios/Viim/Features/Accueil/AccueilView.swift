@@ -1161,6 +1161,13 @@ private struct RecentTripCard: View {
     }
 
     private var fuelCostText: String {
+        // Meme garde que la distance, la duree, la vitesse et le score : un
+        // trajet non fiable ne doit pas exposer un cout precis derive de sa
+        // distance masquee. moneyRangeText court-circuiterait sinon le
+        // ReliableMetric via les bornes brutes encore stockees.
+        guard trip.isTrustedForDisplay else {
+            return String(localized: "format.score.empty")
+        }
         let currency = trip.fuelCurrency ?? .xof
         return DrivingValueFormatter.moneyRangeText(
             lowerMinorUnits: trip.fuelCostLowerBoundMinorUnits,
@@ -1327,6 +1334,12 @@ private struct TripDetailView: View {
     }
 
     private var fuelCostText: String {
+        // Aligne le cout sur les autres tuiles : masque tant que le trajet
+        // n'est pas fiable, sinon moneyRangeText afficherait une fourchette
+        // issue des bornes brutes stockees malgre le gate qualite.
+        guard trip.isTrustedForDisplay else {
+            return String(localized: "format.score.empty")
+        }
         let currency = trip.fuelCurrency ?? .xof
         return DrivingValueFormatter.moneyRangeText(
             lowerMinorUnits: trip.fuelCostLowerBoundMinorUnits,

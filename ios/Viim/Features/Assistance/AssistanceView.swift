@@ -183,10 +183,8 @@ struct AssistanceView: View {
                                     style: collectionHealthChipStyle
                                 )
                             }
-                            Text(collectionHealthStatus.localizedDetailKey)
-                                .font(.caption)
-                                .foregroundStyle(ViimColors.muted)
-                                .fixedSize(horizontal: false, vertical: true)
+                            // La puce ci-dessus porte deja la phrase d'etat
+                            // (cf. collection.health.*) : ne pas la repeter ici.
                             Text(
                                 "assistance.collectionHealth.summary \(collectionHealthSummary.acceptedSampleHeartbeatCount) \(collectionHealthSummary.persistedTripCount) \(collectionHealthSummary.rejectedTripCount) \(collectionHealthSummary.recoveredTripCount)"
                             )

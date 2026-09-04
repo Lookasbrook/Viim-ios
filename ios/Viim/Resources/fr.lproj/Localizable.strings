@@ -506,7 +506,7 @@
 "prevention.maintenance.vehicleFallback" = "Véhicule à confirmer";
 "prevention.maintenance.trackingActive" = "Suivi actif";
 "prevention.maintenance.odometerMissing" = "Odomètre requis";
-"prevention.maintenance.odometerFormat" = "Odomètre : %.0f km";
+"prevention.maintenance.odometerFormat" = "Odomètre estimé : %.0f km";
 "prevention.maintenance.needsOdometer" = "Renseignez votre kilométrage dans Profil pour activer les rappels d'entretien.";
 "prevention.maintenance.oil" = "Vidange";
 "prevention.maintenance.chain" = "Chaîne";
