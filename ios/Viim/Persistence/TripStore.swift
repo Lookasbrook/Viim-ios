@@ -767,6 +767,13 @@ struct TripStore {
             .flatMap(FuelPriceSource.init(rawValue:))
         let officialCostIsAuditable = fuelPriceSource != .officialPublicData ||
             hasVerifiedOfficialCostGeography(object, tripID: id)
+        // Les anciens calculs pouvaient attribuer 100 malgre des interruptions.
+        // Masquer ces scores a la lecture, y compris dans les agregats, sans
+        // modifier les donnees historiques ni inventer un nouveau resultat.
+        let coverage = object.value(forKey: "coverageRatio") as? Double
+        let scoreCoverageIsInsufficient = coverage.map {
+            !$0.isFinite || $0 < ScoreEngine.minimumTemporalCoverageRatio
+        } ?? false
 
         return TripRecord(
             id: id,
@@ -776,11 +783,11 @@ struct TripStore {
             durationSec: Int(object.value(forKey: "durationSec") as? Int64 ?? 0),
             avgSpeedKmh: object.value(forKey: "avgSpeedKmh") as? Double ?? 0,
             maxSpeedKmh: object.value(forKey: "maxSpeedKmh") as? Double ?? 0,
-            score: optionalInt(object.value(forKey: "score")),
-            scoreVitesse: optionalInt(object.value(forKey: "scoreVitesse")),
-            scoreFluidite: optionalInt(object.value(forKey: "scoreFluidite")),
-            scoreVigilance: optionalInt(object.value(forKey: "scoreVigilance")),
-            scoreEco: optionalInt(object.value(forKey: "scoreEco")),
+            score: scoreCoverageIsInsufficient ? nil : optionalInt(object.value(forKey: "score")),
+            scoreVitesse: scoreCoverageIsInsufficient ? nil : optionalInt(object.value(forKey: "scoreVitesse")),
+            scoreFluidite: scoreCoverageIsInsufficient ? nil : optionalInt(object.value(forKey: "scoreFluidite")),
+            scoreVigilance: scoreCoverageIsInsufficient ? nil : optionalInt(object.value(forKey: "scoreVigilance")),
+            scoreEco: scoreCoverageIsInsufficient ? nil : optionalInt(object.value(forKey: "scoreEco")),
             scoreFormulaVersion: object.value(forKey: "scoreFormulaVersion") as? String ?? "legacy",
             fuelLiters: object.value(forKey: "fuelLiters") as? Double,
             fuelLitersLowerBound: object.value(forKey: "fuelLitersLowerBound") as? Double,

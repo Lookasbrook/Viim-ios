@@ -201,6 +201,7 @@ private struct AppLaunchView: View {
             }
         }
         .onChange(of: scenePhase) { phase in
+            ViimDiagnostics.log("app.scene phase=\(String(describing: phase)) lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled)")
             guard persistenceRecoveryState == nil,
                   phase == .active,
                   onboardingStore.isCompleted else {

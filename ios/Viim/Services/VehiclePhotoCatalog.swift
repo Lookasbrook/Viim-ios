@@ -81,6 +81,11 @@ enum VehiclePhotoCatalog {
     private static let entries: [VehiclePhotoEntry] = [
         photo(.voiture, ["toyota"], ["prado", "landcruiserprado"], "VehiclePhotoToyotaPrado", "Toyota Land Cruiser Prado", "Self-Proclaimed-Car-Enthusiast", "https://commons.wikimedia.org/wiki/File:2013-2017_Toyota_Land_Cruiser_Prado_(front).jpg", .ccBySA40, "bc05eb5dabfa5e2510b0b072311d4591f7b52bda"),
         photo(.voiture, ["toyota"], ["landcruiser70"], "VehiclePhotoToyotaLandCruiser", "Toyota Land Cruiser 70", "TTTNIS", "https://commons.wikimedia.org/wiki/File:2023_Toyota_Land_Cruiser_70_front_left.jpg", .cc0, "ae0bfb7fd6b3b033bae0fc238f097687c355d5cb"),
+        // E170 (11e generation, 2014-2019). Place avant l'entree Corolla Altis
+        // sans borne d'annee : pour un millesime 2014-2019 cette photo prime,
+        // sinon la resolution retombe sur l'Altis. Les finitions GLi/XLi sont
+        // les plus courantes hors Amerique du Nord (Burkina inclus).
+        photo(.voiture, ["toyota"], ["corolla", "corollal", "corollale", "corollaleeco", "corollas", "corollase", "corollaxle", "corollaxse", "corollagli", "corollaxli", "corollasedan"], "VehiclePhotoToyotaCorollaE170", "Toyota Corolla (E170, 2014-2019)", "Kevauto", "https://commons.wikimedia.org/wiki/File:2015_Toyota_Corolla_LE_front_5.6.18.jpg", .ccBySA40, "9f470c31a6c02198d4d61b2c7749a65f3586db75", yearRange: 2014...2019),
         photo(.voiture, ["toyota"], ["corolla", "corollaaltis", "altis"], "VehiclePhotoToyotaCorolla", "Toyota Corolla Altis", "Poramin", "https://commons.wikimedia.org/wiki/File:Toyota_Corolla_Altis_Front_27082022.jpg", .ccBySA40, "179b674915813b1628d4851a15b31ce214077e8d"),
         photo(.voiture, ["toyota"], ["hilux", "hiluxe"], "VehiclePhotoToyotaHilux", "Toyota Hilux E", "Ethan Llamas", "https://commons.wikimedia.org/wiki/File:2020_Toyota_Hilux_E_(front_left_side_view).jpg", .ccBySA40, "f56e0cdf570e768817183670166710d6ef94b29a"),
         photo(.voiture, ["toyota"], ["rav4"], "VehiclePhotoToyotaRAV4", "Toyota RAV4 (5e generation)", "Wh.0414.justin", "https://commons.wikimedia.org/wiki/File:Toyota_RAV4_(5th_Gen.)_front_look.jpg", .ccBySA40, "1368557d6ae29286610ef0de997253ae4216af08"),

@@ -239,6 +239,7 @@ struct AssistanceView: View {
                                 .foregroundStyle(ViimColors.muted)
                                 .fixedSize(horizontal: false, vertical: true)
 
+                            #if DEBUG
                             NavigationLink {
                                 CollisionCalibrationReviewView()
                             } label: {
@@ -256,6 +257,7 @@ struct AssistanceView: View {
                             .buttonStyle(.bordered)
                             .tint(ViimColors.warning)
                             .accessibilityIdentifier("assistance.collisionCalibration.review")
+                            #endif
                         }
                     }
 
@@ -278,23 +280,10 @@ struct AssistanceView: View {
                             NavigationLink {
                                 MedicalProfileView(onChange: reloadSecureData)
                             } label: {
-                                AssistanceListRow(icon: "cross.case.fill", titleKey: "assistance.medical.title", detailKey: medicalProfile?.hasContent == true ? "assistance.medical.savedStatus" : "assistance.medical.status", tint: ViimColors.green)
+                                AssistanceListRow(icon: "cross.case.fill", titleKey: "assistance.medical.title", detailKey: medicalProfile?.hasContent == true ? "assistance.medical.savedStatus" : "assistance.medical.status", tint: ViimColors.green, showsDivider: false)
                             }
                             .buttonStyle(.plain)
 
-                            NavigationLink {
-                                AssistanceDetailView(icon: "doc.text.fill", titleKey: "assistance.report.title", detailKey: "assistance.report.detail", tint: ViimColors.gold)
-                            } label: {
-                                AssistanceListRow(icon: "doc.text.fill", titleKey: "assistance.report.title", detailKey: "assistance.row.open", tint: ViimColors.gold)
-                            }
-                            .buttonStyle(.plain)
-
-                            NavigationLink {
-                                AssistanceDetailView(icon: "wrench.and.screwdriver.fill", titleKey: "assistance.towing.title", detailKey: "assistance.towing.detail", tint: ViimColors.warning)
-                            } label: {
-                                AssistanceListRow(icon: "wrench.and.screwdriver.fill", titleKey: "assistance.towing.title", detailKey: "assistance.row.open", tint: ViimColors.warning, showsDivider: false)
-                            }
-                            .buttonStyle(.plain)
                         }
                     }
 
@@ -311,15 +300,6 @@ struct AssistanceView: View {
                             phoneNumber: emergencyNumbers.police,
                             tint: ViimColors.navy
                         )
-                    }
-
-                    ViimCard {
-                        NavigationLink {
-                            AssistanceDetailView(icon: "cross.vial.fill", titleKey: "assistance.hospitals.title", detailKey: "assistance.hospitals.screen.detail", tint: ViimColors.red)
-                        } label: {
-                            AssistanceListRow(icon: "cross.vial.fill", titleKey: "assistance.hospitals.title", detailKey: "assistance.hospitals.detail", tint: ViimColors.red, showsDivider: false)
-                        }
-                        .buttonStyle(.plain)
                     }
 
                     Text("assistance.medical.privacy")

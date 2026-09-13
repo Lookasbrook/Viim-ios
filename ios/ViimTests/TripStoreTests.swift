@@ -634,6 +634,28 @@ final class TripStoreTests: XCTestCase {
         XCTAssertEqual(recentTrip.scoreVitesse, 82)
     }
 
+    func testHistoricalScoreWithIncompleteCoverageIsExcludedWithoutRewritingStorage() throws {
+        let persistence = PersistenceController(inMemory: true)
+        let context = persistence.container.viewContext
+        let store = TripStore(context: context)
+        let trip = completedTrip(index: 0)
+        try store.insertCompletedTrip(
+            trip, samples: samples(start: trip.startedAt), vehicleType: .voiture,
+            isCalibration: false,
+            scores: TripScores(score: 100, scoreVitesse: 100, scoreFluidite: 100, scoreVigilance: nil, scoreEco: 100)
+        )
+        let object = try XCTUnwrap(context.fetch(NSFetchRequest<NSManagedObject>(entityName: "Trip")).first)
+        object.setValue(0.63, forKey: "coverageRatio")
+        try context.save()
+        let stored = try XCTUnwrap(store.fetchRecentTrips(limit: 1).first)
+        XCTAssertNil(stored.score)
+        XCTAssertNil(stored.scoreVitesse)
+        XCTAssertNil(stored.scoreFluidite)
+        XCTAssertNil(stored.scoreEco)
+        XCTAssertNil(try store.fetchSummary().avgScore)
+        XCTAssertEqual((object.value(forKey: "score") as? NSNumber)?.intValue, 100)
+    }
+
     func testStoredDistanceUsesFilteredGpsSegmentsInsteadOfReportedAccumulator() throws {
         let store = makeStore()
         let start = Date(timeIntervalSince1970: 1_783_000_000)

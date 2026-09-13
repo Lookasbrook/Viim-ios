@@ -91,7 +91,7 @@ enum VehicleFuelCatalog {
     static let minimumDynamicsCoverageRatio = 0.80
 
     private static let entries: [VehicleFuelEntry] = [
-        car("Toyota", "Corolla", ["corolla", "corollaaltis", "altis"], 6.8, rank: 10),
+        car("Toyota", "Corolla", ["corolla", "corollale", "corollaaltis", "altis"], 6.8, rank: 10),
         car("Toyota", "Yaris", ["yaris", "vitz", "yarissedan"], 5.8, rank: 11),
         car("Toyota", "Camry", ["camry"], 8.2, rank: 24),
         car("Toyota", "Avensis", ["avensis"], 7.4, rank: 38),

@@ -43,7 +43,7 @@ struct DrivingDynamics: Equatable {
 }
 
 enum DrivingDynamicsAnalyzer {
-    static let formulaVersion = "driving-dynamics-v2-episodes"
+    static let formulaVersion = "driving-dynamics-v3-interpolated"
 
     /// Seuils issus des standards telematiques assurantiels (m/s2).
     static let hardAccelerationThreshold = 2.5
@@ -223,14 +223,41 @@ extension DrivingDynamics {
     }
 
     private var speedFuelConsumptionFactor: Double {
-        switch meanMovingSpeedKmh {
-        case ..<20: 1.20
-        case 20..<35: 1.12
-        case 35..<55: 1.05
-        case 55..<90: 1.0
-        case 90..<110: 1.05
-        default: 1.12
+        DrivingDynamics.speedFuelConsumptionFactor(forMeanMovingSpeedKmh: meanMovingSpeedKmh)
+    }
+
+    /// Interpolation lineaire par morceaux entre des points d'ancrage plutot
+    /// qu'une fonction en escalier : une meme conduite a 45 ou 62 km/h ne doit
+    /// pas retomber sur la meme valeur plate. Les ancres reprennent les regimes
+    /// de l'ancien bareme (stop-and-go urbain et tres haute vitesse plus
+    /// gourmands que le cycle mixte), la forme est juste continue.
+    static func speedFuelConsumptionFactor(forMeanMovingSpeedKmh speedKmh: Double) -> Double {
+        let anchors: [(speed: Double, factor: Double)] = [
+            (15, 1.20),
+            (27.5, 1.12),
+            (45, 1.05),
+            (72.5, 1.00),
+            (100, 1.05),
+            (120, 1.12)
+        ]
+
+        guard let first = anchors.first, let last = anchors.last else {
+            return 1.0
         }
+        guard speedKmh.isFinite else {
+            return 1.0
+        }
+        if speedKmh <= first.speed {
+            return first.factor
+        }
+        if speedKmh >= last.speed {
+            return last.factor
+        }
+        for (lower, upper) in zip(anchors, anchors.dropFirst()) where speedKmh <= upper.speed {
+            let progress = (speedKmh - lower.speed) / (upper.speed - lower.speed)
+            return lower.factor + progress * (upper.factor - lower.factor)
+        }
+        return last.factor
     }
 }
 

@@ -17,33 +17,48 @@ struct TripScores: Equatable {
 }
 
 enum ScoreEngine {
-    static let version = "score-speed-fluidity-eco-v4-episodes"
+    static let version = "score-speed-fluidity-eco-v6-coverage"
+    static let minimumTemporalCoverageRatio = 0.80
 
     private static let speedToleranceKmh = 5.0
     private static let speedPenaltyPerKmh = 2.5
-    private static let sustainedOverspeedDuration: TimeInterval = 10
     private static let maximumOverspeedSampleGap: TimeInterval = 30
+    private static let minimumOverspeedSampleGap: TimeInterval = 0.4
     private static let abruptEventPenaltyPer10Km = 8.0
+
+    /// Au-dela de la tolerance, un exces de cette ampleur (km/h) est traite
+    /// comme un depassement « ordinaire » : la severite vaut alors 1.
+    private static let overspeedReferenceExcessKmh = 12.0
+    private static let minimumOverspeedSeverity = 0.6
+    private static let maximumOverspeedSeverity = 1.8
+
+    /// En dessous de ce RMS d'acceleration positive (m/s2), le profil est
+    /// considere lisse : bruit GPS residuel d'une conduite souple.
+    private static let fluidityRmsFloor = 0.4
+    private static let fluidityRmsPenaltyFactor = 22.0
 
     static func scores(
         for completedTrip: CompletedDetectedTrip,
         samples: [LocationSample],
         vehicleType: VehicleType
     ) -> TripScores {
-        let scoreSpeedMetric = scoreSpeedMetric(
-            samples: samples,
+        let boundedSamples = samples.filter {
+            $0.timestamp >= completedTrip.startedAt && $0.timestamp <= completedTrip.endedAt
+        }
+        guard let speed = timeWeightedSpeedScore(
+            samples: boundedSamples,
+            duration: completedTrip.duration,
             vehicleType: vehicleType
-        )
-        guard let maxSpeedKmh = scoreSpeedMetric.value else {
+        ) else {
             return .unavailable
         }
 
         let dynamics = DrivingDynamicsAnalyzer.dynamics(
-            samples: samples,
+            samples: boundedSamples,
             vehicleType: vehicleType,
             distanceKm: completedTrip.distanceMeters / 1_000
         )
-        return scores(maxSpeedKmh: maxSpeedKmh, vehicleType: vehicleType, dynamics: dynamics)
+        return assemble(speed: speed, dynamics: dynamics)
     }
 
     static func scores(
@@ -51,7 +66,13 @@ enum ScoreEngine {
         vehicleType: VehicleType,
         dynamics: DrivingDynamics? = nil
     ) -> TripScores {
-        let speed = speedScore(maxSpeedKmh: maxSpeedKmh, vehicleType: vehicleType)
+        assemble(
+            speed: speedScore(maxSpeedKmh: maxSpeedKmh, vehicleType: vehicleType),
+            dynamics: dynamics
+        )
+    }
+
+    private static func assemble(speed: Int?, dynamics: DrivingDynamics?) -> TripScores {
         let fluidity = fluidityScore(dynamics: dynamics)
         let eco = ecoScore(dynamics: dynamics)
         let global = globalScore(from: [speed, fluidity, eco])
@@ -65,15 +86,84 @@ enum ScoreEngine {
         )
     }
 
+    /// Vitesse : penalise en continu la part du trajet passee au-dessus du
+    /// seuil technique, ponderee par l'ampleur du depassement. Les pointes GPS
+    /// isolees sont absorbees par la moyenne de chaque paire d'echantillons ;
+    /// sans couverture temporelle exploitable, le score reste indisponible
+    /// plutot que d'afficher un 100 non fonde.
+    private static func timeWeightedSpeedScore(
+        samples: [LocationSample],
+        duration: TimeInterval,
+        vehicleType: VehicleType
+    ) -> Int? {
+        let accurateSamples = samples
+            .filter { sample in
+                TripReliabilityRules.isValidSpeedAccuracy(sample.horizontalAccuracy) &&
+                    TripReliabilityRules.isValidReportedSpeedAccuracy(sample.speedAccuracy) &&
+                    sample.speedKmh.isFinite &&
+                    sample.speedKmh >= 0 &&
+                    sample.speedKmh <= TripReliabilityRules.maximumReasonableSpeedKmh(for: vehicleType)
+            }
+            .sorted { $0.timestamp < $1.timestamp }
+
+        guard accurateSamples.count >= 2 else {
+            return nil
+        }
+
+        let threshold = speedLimitKmh(for: vehicleType) + speedToleranceKmh
+        var analyzedSeconds = 0.0
+        var overspeedSeconds = 0.0
+        var excessIntegral = 0.0
+
+        for (previous, current) in zip(accurateSamples, accurateSamples.dropFirst()) {
+            let interval = current.timestamp.timeIntervalSince(previous.timestamp)
+            let receiptInterval = current.receivedAt.timeIntervalSince(previous.receivedAt)
+            guard interval >= minimumOverspeedSampleGap,
+                  interval <= maximumOverspeedSampleGap,
+                  receiptInterval >= 0,
+                  receiptInterval <= maximumOverspeedSampleGap else {
+                continue
+            }
+
+            let averageSpeed = (previous.speedKmh + current.speedKmh) / 2
+            analyzedSeconds += interval
+            if averageSpeed > threshold {
+                overspeedSeconds += interval
+                excessIntegral += (averageSpeed - threshold) * interval
+            }
+        }
+
+        guard duration.isFinite, duration > 0,
+              analyzedSeconds / duration >= minimumTemporalCoverageRatio else {
+            // Des vitesses observees faibles ne prouvent rien pendant les
+            // interruptions. Ne pas attribuer 100 a une trace clairsemee.
+            return nil
+        }
+
+        let overspeedRatio = overspeedSeconds / analyzedSeconds
+        let meanExcessWhileOver = overspeedSeconds > 0 ? excessIntegral / overspeedSeconds : 0
+        let severity = min(
+            maximumOverspeedSeverity,
+            max(minimumOverspeedSeverity, meanExcessWhileOver / overspeedReferenceExcessKmh)
+        )
+        let penalty = overspeedRatio * 100 * severity
+        return clampedScore(100 - Int(penalty.rounded()))
+    }
+
     /// Fluidite : penalise les accelerations franches et freinages brusques,
-    /// normalises par la distance pour ne pas punir les longs trajets.
+    /// normalises par la distance, plus un terme continu tire du RMS des
+    /// accelerations positives pour que la texture d'une conduite un peu
+    /// nerveuse fasse bouger le score sans attendre un evenement « franc ».
     private static func fluidityScore(dynamics: DrivingDynamics?) -> Int? {
         guard let dynamics,
               let eventsPer10Km = dynamics.abruptEventsPer10Km else {
             return nil
         }
 
-        return clampedScore(100 - Int((eventsPer10Km * abruptEventPenaltyPer10Km).rounded()))
+        let eventPenalty = eventsPer10Km * abruptEventPenaltyPer10Km
+        let rmsExcess = max(0, dynamics.accelerationRms - fluidityRmsFloor)
+        let rmsPenalty = rmsExcess * fluidityRmsPenaltyFactor
+        return clampedScore(100 - Int((eventPenalty + rmsPenalty).rounded()))
     }
 
     /// Eco-conduite : derive du multiplicateur carburant. Une conduite au
@@ -108,69 +198,6 @@ enum ScoreEngine {
         case .velo:
             return 35
         }
-    }
-
-    private static func scoreSpeedMetric(
-        samples: [LocationSample],
-        vehicleType: VehicleType
-    ) -> ReliableMetric<Double> {
-        let accurateSamples = samples
-            .filter { sample in
-                TripReliabilityRules.isValidSpeedAccuracy(sample.horizontalAccuracy) &&
-                    TripReliabilityRules.isValidReportedSpeedAccuracy(sample.speedAccuracy) &&
-                    sample.speedKmh.isFinite &&
-                    sample.speedKmh >= 0 &&
-                    sample.speedKmh <= TripReliabilityRules.maximumReasonableSpeedKmh(for: vehicleType)
-            }
-            .sorted { $0.timestamp < $1.timestamp }
-
-        guard !accurateSamples.isEmpty else {
-            return .missing(
-                confidence: .unavailable,
-                reasonCode: .gpsAccuracyTooLow,
-                source: "LocationService.samples",
-                formulaVersion: TripMetricsCalculator.formulaVersion
-            )
-        }
-
-        let threshold = speedLimitKmh(for: vehicleType) + speedToleranceKmh
-        var overspeedStart: Date?
-        var previousOverspeedSampleDate: Date?
-        var windowMaxSpeed = 0.0
-        var sustainedMaxSpeed: Double?
-
-        for sample in accurateSamples {
-            if sample.speedKmh > threshold {
-                if let previousOverspeedSampleDate,
-                   sample.timestamp.timeIntervalSince(previousOverspeedSampleDate) > maximumOverspeedSampleGap {
-                    overspeedStart = nil
-                    windowMaxSpeed = 0
-                }
-                if overspeedStart == nil {
-                    overspeedStart = sample.timestamp
-                    windowMaxSpeed = sample.speedKmh
-                } else {
-                    windowMaxSpeed = max(windowMaxSpeed, sample.speedKmh)
-                }
-
-                if let overspeedStart,
-                   sample.timestamp.timeIntervalSince(overspeedStart) >= sustainedOverspeedDuration {
-                    sustainedMaxSpeed = max(sustainedMaxSpeed ?? windowMaxSpeed, windowMaxSpeed)
-                }
-                previousOverspeedSampleDate = sample.timestamp
-            } else {
-                overspeedStart = nil
-                previousOverspeedSampleDate = nil
-                windowMaxSpeed = 0
-            }
-        }
-
-        let maxSpeed = accurateSamples.map(\.speedKmh).max() ?? 0
-        return .reliable(
-            sustainedMaxSpeed ?? min(maxSpeed, threshold),
-            source: "LocationService.samples",
-            formulaVersion: version
-        )
     }
 
     private static func globalScore(from values: [Int?]) -> Int? {

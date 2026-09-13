@@ -17,6 +17,11 @@ struct AccueilView: View {
                     HomeHero(firstName: onboardingStore.profile?.firstName)
                         .staggeredAppear(hasAppeared, index: 0)
 
+                    if protectionReadinessService.snapshot.collectionHealth.isBackgroundCaptureStalled {
+                        CollectionStalledBanner(onOpenSettings: openSystemSettings)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+
                     VehicleTrackingCard(
                         profile: onboardingStore.profile,
                         statusKey: tripDetectionDetailKey,
@@ -36,11 +41,7 @@ struct AccueilView: View {
                         onEnableBackgroundDetection: {
                             locationService.requestBackgroundAuthorization()
                         },
-                        onOpenSettings: {
-                            if let url = URL(string: UIApplication.openSettingsURLString) {
-                                UIApplication.shared.open(url)
-                            }
-                        }
+                        onOpenSettings: openSystemSettings
                     )
                     .staggeredAppear(hasAppeared, index: 2)
 
@@ -128,6 +129,12 @@ struct AccueilView: View {
         .onAppear {
             guard !hasAppeared else { return }
             hasAppeared = true
+        }
+    }
+
+    private func openSystemSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
         }
     }
 
@@ -614,6 +621,15 @@ private struct VehicleTrackingCard: View {
 
                 if let attribution = photoResolution?.attribution {
                     VehiclePhotoCreditLine(attribution: attribution)
+                } else if hasNamedVehicle {
+                    // Le repli silhouette est volontaire (pas de photo verifiee
+                    // pour ce modele), mais sans cette ligne il se lit comme un
+                    // bug d'affichage. Cf. incident 2026-09-09.
+                    Text("vehicle.photo.unavailable")
+                        .font(.caption2)
+                        .foregroundStyle(ViimColors.muted)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
                 }
             }
         }
@@ -621,6 +637,12 @@ private struct VehicleTrackingCard: View {
 
     private var photoResolution: VehiclePhotoResolution? {
         VehiclePhotoCatalog.resolve(for: profile)
+    }
+
+    private var hasNamedVehicle: Bool {
+        guard let profile else { return false }
+        return [profile.vehicleBrand, profile.vehicleModel]
+            .contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     private var vehicleName: String {
@@ -710,6 +732,51 @@ private struct VehiclePhotoThumbnail: View {
 
     private var vehicleType: VehicleType {
         profile?.vehicleType ?? .moto
+    }
+}
+
+/// Banniere bloquante affichee quand `isBackgroundCaptureStalled` est vrai :
+/// un reglage systeme empeche la capture ecran verrouille alors que
+/// l'utilisateur conduit regulierement. Non masquable : c'est la seule chose
+/// qui aurait rendu l'incident 2026-08-20 visible en moins de trois semaines.
+private struct CollectionStalledBanner: View {
+    let onOpenSettings: () -> Void
+
+    var body: some View {
+        Button(action: onOpenSettings) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.octagon.fill")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("home.collectionStalled.title")
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("home.collectionStalled.detail")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.92))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("home.collectionStalled.action")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.top, 2)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(ViimColors.danger, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(PressableButtonStyle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 

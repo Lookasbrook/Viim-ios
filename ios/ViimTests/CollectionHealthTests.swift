@@ -226,6 +226,95 @@ final class CollectionHealthTests: XCTestCase {
         XCTAssertEqual(snapshot.state, .configurationRequired(.foregroundOnly))
     }
 
+    // MARK: - Panne de capture arriere-plan (incident 2026-08-20)
+
+    func testBackgroundCaptureStallFlaggedWhenDrivingRecursUnderForegroundOnly() {
+        let snapshot = evaluate(
+            [
+                event(.motionMovementDetected, secondsAgo: 90_000),
+                event(.motionMovementDetected, secondsAgo: 3_600)
+            ],
+            readiness: .foregroundOnly
+        )
+
+        XCTAssertTrue(snapshot.isBackgroundCaptureStalled)
+        XCTAssertEqual(snapshot.state, .configurationRequired(.foregroundOnly))
+    }
+
+    func testBackgroundCaptureStallCountsTripStartedAsDrivingEvidence() {
+        let snapshot = evaluate(
+            [
+                event(.tripStarted, secondsAgo: 180_000),
+                event(.tripStarted, secondsAgo: 3_600)
+            ],
+            readiness: .backgroundRefreshDisabled
+        )
+
+        XCTAssertTrue(snapshot.isBackgroundCaptureStalled)
+    }
+
+    func testBackgroundCaptureStallNotFlaggedWhenBackgroundIsReady() {
+        let snapshot = evaluate(
+            [
+                event(.motionMovementDetected, secondsAgo: 90_000),
+                event(.motionMovementDetected, secondsAgo: 3_600)
+            ],
+            readiness: .ready
+        )
+
+        XCTAssertFalse(snapshot.isBackgroundCaptureStalled)
+    }
+
+    func testBackgroundCaptureStallNeedsTwoDistinctDaysOfDriving() {
+        let snapshot = evaluate(
+            [
+                event(.motionMovementDetected, secondsAgo: 7_200),
+                event(.motionMovementDetected, secondsAgo: 3_600)
+            ],
+            readiness: .foregroundOnly
+        )
+
+        XCTAssertFalse(snapshot.isBackgroundCaptureStalled)
+    }
+
+    func testBackgroundCaptureStallNotFlaggedWithoutDrivingEvidence() {
+        let snapshot = evaluate(
+            [
+                event(.trackingNotReady, secondsAgo: 90_000),
+                event(.passiveWakeupReceived, secondsAgo: 3_600)
+            ],
+            readiness: .foregroundOnly
+        )
+
+        XCTAssertFalse(snapshot.isBackgroundCaptureStalled)
+    }
+
+    func testBackgroundCaptureStallIgnoresTransientPassiveWakeupPending() {
+        let snapshot = evaluate(
+            [
+                event(.motionMovementDetected, secondsAgo: 90_000),
+                event(.motionMovementDetected, secondsAgo: 3_600)
+            ],
+            readiness: .passiveWakeupPending
+        )
+
+        XCTAssertFalse(snapshot.isBackgroundCaptureStalled)
+    }
+
+    func testBackgroundCaptureStallSuppressedWhenStorageUnavailable() {
+        let snapshot = evaluate(
+            [
+                event(.motionMovementDetected, secondsAgo: 90_000),
+                event(.motionMovementDetected, secondsAgo: 3_600)
+            ],
+            readiness: .foregroundOnly,
+            storageAvailable: false
+        )
+
+        XCTAssertFalse(snapshot.isBackgroundCaptureStalled)
+        XCTAssertEqual(snapshot.state, .unavailable)
+    }
+
     func testStaleActiveDraftPrecedesRetryableFailure() {
         let snapshot = evaluate(
             [outcome(.failedRetryable, secondsAgo: 600)],

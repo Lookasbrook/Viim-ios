@@ -424,6 +424,14 @@ struct CollectionHealthSnapshot: Equatable {
     let lastAcceptedSampleAt: Date?
     let lastSuccessfulTripAt: Date?
     let summary: CollectionHealthWindowSummary
+    /// Vrai quand un blocage de reglage systeme (localisation « Lorsque l'app
+    /// est active », Actualisation en arriere-plan coupee, position imprecise)
+    /// coexiste avec une conduite recurrente prouvee : au moins deux jours
+    /// distincts avec mouvement ou demarrage de trajet dans la fenetre de sept
+    /// jours. C'est la signature de l'incident 2026-08-20 (permission retombee a
+    /// When In Use, trois semaines sans trajet et aucune alerte forte). L'ecran
+    /// d'accueil s'en sert pour afficher une banniere bloquante.
+    let isBackgroundCaptureStalled: Bool
 
     static let unavailable = Self(
         state: .unavailable,
@@ -442,7 +450,8 @@ struct CollectionHealthSnapshot: Equatable {
             recoveredTripCount: 0,
             failedRetryableTripCount: 0,
             persistenceFailureCount: 0
-        )
+        ),
+        isBackgroundCaptureStalled: false
     )
 
     static func evaluate(
@@ -546,9 +555,51 @@ struct CollectionHealthSnapshot: Equatable {
             lastLocationBatchAt: lastLocationBatchAt,
             lastAcceptedSampleAt: lastAcceptedSampleAt,
             lastSuccessfulTripAt: lastSuccessfulTripAt,
-            summary: summary
+            summary: summary,
+            isBackgroundCaptureStalled: storageAvailable && detectBackgroundCaptureStall(
+                collectionReadiness: collectionReadiness,
+                events: retainedEvents,
+                now: now
+            )
         )
     }
+
+    /// Un blocage de reglage systeme n'est une panne que si l'utilisateur
+    /// conduit vraiment. On exige deux jours calendaires distincts (UTC) avec
+    /// une preuve de deplacement dans la fenetre de sept jours. `.ready`,
+    /// `.permissionNotDetermined` (onboarding pas encore passe) et
+    /// `.passiveWakeupPending` (armement transitoire de l'app, pas une action
+    /// utilisateur) ne declenchent jamais la banniere.
+    static func detectBackgroundCaptureStall(
+        collectionReadiness: LocationCollectionReadiness,
+        events: [CollectionHealthEvent],
+        now: Date,
+        calendar: Calendar = CollectionHealthSnapshot.utcCalendar
+    ) -> Bool {
+        guard collectionReadiness != .ready,
+              collectionReadiness != .permissionNotDetermined,
+              collectionReadiness != .passiveWakeupPending else {
+            return false
+        }
+        let windowStart = now.addingTimeInterval(-recentEvidenceInterval)
+        let drivingDays = Set(
+            events
+                .filter { event in
+                    event.isStructurallyValid &&
+                        (event.kind == .motionMovementDetected || event.kind == .tripStarted) &&
+                        event.occurredAt >= windowStart &&
+                        event.occurredAt <= now
+                }
+                .map { calendar.startOfDay(for: $0.occurredAt) }
+        )
+        return drivingDays.count >= 2
+    }
+
+    static let utcCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? calendar.timeZone
+        return calendar
+    }()
 
     private static func latestDate(
         for kind: CollectionHealthEventKind,

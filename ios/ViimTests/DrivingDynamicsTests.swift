@@ -253,6 +253,19 @@ final class DrivingDynamicsTests: XCTestCase {
         XCTAssertEqual(decoded.first?.verticalAccuracy, -1)
     }
 
+    func testSpeedFuelConsumptionFactorInterpolatesBetweenAnchors() {
+        let low = DrivingDynamics.speedFuelConsumptionFactor(forMeanMovingSpeedKmh: 45)
+        let mid = DrivingDynamics.speedFuelConsumptionFactor(forMeanMovingSpeedKmh: 58)
+        let high = DrivingDynamics.speedFuelConsumptionFactor(forMeanMovingSpeedKmh: 72.5)
+
+        XCTAssertEqual(low, 1.05, accuracy: 0.001)
+        XCTAssertEqual(high, 1.0, accuracy: 0.001)
+        // 58 km/h tombe entre deux anciennes tranches plates : la valeur doit
+        // etre strictement comprise entre les deux ancres.
+        XCTAssertLessThan(mid, low)
+        XCTAssertGreaterThan(mid, high)
+    }
+
     func testScoreEngineActivatesFluidityAndEcoScores() {
         let calmDynamics = DrivingDynamics(
             meanMovingSpeedKmh: 60,

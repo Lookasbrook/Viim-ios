@@ -284,6 +284,7 @@ final class LocationService: NSObject, ObservableObject {
     private var lastAcceptedLocation: CLLocation?
     private var lastRouteLocation: CLLocation?
     private var lastReceivedLocation: CLLocation?
+    private var lastLocationBatchReceivedAt: Date?
     private var lastMovementEvidenceAt: Date?
     private var lastDiagnosticsHeartbeatAt: Date?
     private var lastHealthReadinessEvent: CollectionHealthEventKind?
@@ -309,6 +310,7 @@ final class LocationService: NSObject, ObservableObject {
     // d'une relance en arriere-plan. Contrairement a
     // CLBackgroundActivitySession, elle n'affiche pas la pastille bleue.
     private var alwaysServiceSession: Any?
+    private var serviceDiagnosticsTask: Task<Void, Never>?
     private let activeTripJournal: ActiveTripJournal?
     private let collectionHealthJournal: (any CollectionHealthJournaling)?
 
@@ -372,6 +374,10 @@ final class LocationService: NSObject, ObservableObject {
         configureManager()
     }
 
+    deinit {
+        serviceDiagnosticsTask?.cancel()
+    }
+
     func setBatterySavingMode(_ isEnabled: Bool) {
         batterySavingMode = isEnabled
         configureManager()
@@ -418,7 +424,17 @@ final class LocationService: NSObject, ObservableObject {
         beginAlwaysServiceSessionIfNeeded()
         beginBackgroundActivitySessionForIdleIfNeeded()
         startPassiveWakeupMonitoringIfAllowed()
+        resumeContinuousUpdatesIfNeeded(context: "foreground")
         refreshCollectionReadiness(context: "foreground")
+    }
+
+    /// Reaffirmer la demande native apres une pause/reprise sans perdre le
+    /// trajet en cours. Le booleen local ne prouve pas que le GPS livre encore.
+    private func resumeContinuousUpdatesIfNeeded(context: String) {
+        guard isMonitoring, authorizationState.canTrackLocation else { return }
+        configureManager()
+        manager.startUpdatingLocation()
+        ViimDiagnostics.log("location.continuous.reassert context=\(context)")
     }
 
     /// Restaure les attentes de collecte sans dependre de la creation d'une
@@ -486,6 +502,9 @@ final class LocationService: NSObject, ObservableObject {
         }
 
         configureManager()
+        // Ouvrir d'abord le service Always : quand il couvre l'arriere-plan,
+        // la session d'activite (et sa pastille bleue) n'est jamais creee.
+        beginAlwaysServiceSessionIfNeeded()
         beginBackgroundActivitySessionIfNeeded()
         stopDepartureRegionMonitoring()
         // Conserver le service de changements significatifs pendant la
@@ -524,7 +543,7 @@ final class LocationService: NSObject, ObservableObject {
             // autorisation Always.
             if Self.shouldEndIdleBackgroundActivitySession(
                 authorization: authorizationState
-            ) {
+            ) || alwaysServiceSessionCoversBackground {
                 endBackgroundActivitySession()
             } else {
                 beginBackgroundActivitySessionForIdleIfNeeded()
@@ -674,11 +693,24 @@ final class LocationService: NSObject, ObservableObject {
         manager.distanceFilter = batterySavingMode ? Constants.economyDistanceFilterMeters : Constants.normalDistanceFilterMeters
     }
 
+    /// Sous autorisation Always avec une `CLServiceSession(.always)` active
+    /// (iOS 18+), la session d'activite en arriere-plan est redondante : le
+    /// suivi de fond passe par le service Always, `startMonitoringSignificant…`
+    /// et la surveillance de region, sans afficher la pastille bleue que
+    /// `CLBackgroundActivitySession` impose. On evite donc de l'ouvrir. Sur
+    /// iOS 17 (pas de `CLServiceSession`) et en When In Use, elle reste requise.
+    private var alwaysServiceSessionCoversBackground: Bool {
+        authorizationState == .authorizedAlways && alwaysServiceSession != nil
+    }
+
     /// `requiringAlways` reserve la creation aux autorisations Always : au
     /// lancement et pendant l'idle, un utilisateur When In Use ne doit pas
     /// porter l'indicateur de localisation en permanence.
     private func beginBackgroundActivitySessionIfNeeded(requiringAlways: Bool = false) {
         guard #available(iOS 17.0, *) else {
+            return
+        }
+        if alwaysServiceSessionCoversBackground {
             return
         }
         if requiringAlways, authorizationState != .authorizedAlways {
@@ -723,12 +755,35 @@ final class LocationService: NSObject, ObservableObject {
         }
 
         alwaysServiceSession = alwaysServiceSessionFactory()
+        if let session = alwaysServiceSession as? CLServiceSession {
+            serviceDiagnosticsTask = Task {
+                do {
+                    for try await diagnostic in session.diagnostics {
+                        guard !Task.isCancelled else { return }
+                        ViimDiagnostics.log(
+                            "location.serviceDiagnostic denied=\(diagnostic.authorizationDenied) globallyDenied=\(diagnostic.authorizationDeniedGlobally) restricted=\(diagnostic.authorizationRestricted) alwaysDenied=\(diagnostic.alwaysAuthorizationDenied) insufficientlyInUse=\(diagnostic.insufficientlyInUse) accuracyDenied=\(diagnostic.fullAccuracyDenied) sessionRequired=\(diagnostic.serviceSessionRequired) requestPending=\(diagnostic.authorizationRequestInProgress)"
+                        )
+                    }
+                } catch {
+                    if !Task.isCancelled {
+                        ViimDiagnostics.log("location.serviceDiagnostic failed=true")
+                    }
+                }
+            }
+        }
         if alwaysServiceSession != nil {
             ViimDiagnostics.log("location.alwaysServiceSession.start")
+            // Le service Always couvre desormais l'arriere-plan sans pastille :
+            // fermer la session d'activite si elle etait ouverte.
+            if alwaysServiceSessionCoversBackground {
+                endBackgroundActivitySession()
+            }
         }
     }
 
     private func endAlwaysServiceSession() {
+        serviceDiagnosticsTask?.cancel()
+        serviceDiagnosticsTask = nil
         guard #available(iOS 18.0, *) else {
             alwaysServiceSession = nil
             return
@@ -1004,8 +1059,14 @@ final class LocationService: NSObject, ObservableObject {
             endTrip(endedAt: Self.endDateForStationaryFinalization(activeTrip: activeTrip))
         }
 
-        latestLocation = location
-        publishCurrentSpeed(speedKmh, at: sample.receivedAt)
+        if latestLocation == nil || location.timestamp >= latestLocation!.timestamp {
+            latestLocation = location
+            if Self.isPublishedSpeedFresh(lastUpdateAt: location.timestamp, now: sample.receivedAt) {
+                publishCurrentSpeed(speedKmh, at: location.timestamp)
+            } else {
+                clearPublishedSpeed()
+            }
+        }
         updateTripDetection(with: sample, location: location)
         lastAcceptedLocation = location
     }
@@ -1049,7 +1110,7 @@ final class LocationService: NSObject, ObservableObject {
         }
         speedStaleWorkItem = workItem
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + Constants.publishedSpeedMaximumAge,
+            deadline: .now() + max(0, Constants.publishedSpeedMaximumAge - Date().timeIntervalSince(receivedAt)),
             execute: workItem
         )
     }
@@ -1463,8 +1524,9 @@ extension LocationService: CLLocationManagerDelegate {
                 endBackgroundActivitySession()
             }
         }
-        if !authorizationState.canTrackLocation {
-            endBackgroundActivitySession()
+        if authorizationState == .denied || authorizationState == .restricted {
+            stopMonitoring(keepPassiveWakeups: false)
+            latestLocation = nil
         }
         startPassiveWakeupMonitoringIfAllowed()
         refreshCollectionReadiness(context: "authorizationChanged")
@@ -1480,6 +1542,13 @@ extension LocationService: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         let receivedAt = Date()
+        if let previous = lastLocationBatchReceivedAt,
+           receivedAt.timeIntervalSince(previous) > 30 {
+            ViimDiagnostics.log(
+                "location.deliveryGap seconds=\(Int(receivedAt.timeIntervalSince(previous))) count=\(locations.count) appState=\(UIApplication.shared.applicationState.rawValue) monitoring=\(isMonitoring) lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled)"
+            )
+        }
+        lastLocationBatchReceivedAt = receivedAt
         let wasPassiveWakeup = !isMonitoring &&
             authorizationState == .authorizedAlways &&
             UIApplication.shared.applicationState != .active
@@ -1490,7 +1559,9 @@ extension LocationService: CLLocationManagerDelegate {
         if wasPassiveWakeup {
             recordCollectionHealth(.passiveWakeupReceived, at: receivedAt)
         }
-        if isAutomaticCollection, locations.contains(where: isUsable) {
+        if isAutomaticCollection, locations.contains(where: {
+            isUsable($0) && Self.isPublishedSpeedFresh(lastUpdateAt: $0.timestamp, now: receivedAt)
+        }) {
             recordCollectionHealth(.acceptedSample, at: receivedAt)
         }
 
@@ -1510,7 +1581,16 @@ extension LocationService: CLLocationManagerDelegate {
             }
         }
 
-        locations.forEach(ingest)
+        locations.sorted { $0.timestamp < $1.timestamp }.forEach(ingest)
+    }
+
+    func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
+        ViimDiagnostics.log("location.systemPaused monitoring=\(isMonitoring)")
+        resumeContinuousUpdatesIfNeeded(context: "systemPause")
+    }
+
+    func locationManagerDidResumeLocationUpdates(_ manager: CLLocationManager) {
+        ViimDiagnostics.log("location.systemResumed monitoring=\(isMonitoring)")
     }
 
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {

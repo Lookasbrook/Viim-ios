@@ -2,6 +2,28 @@ import XCTest
 @testable import Viim
 
 final class VehicleFuelCatalogTests: XCTestCase {
+    func testCorollaLEUsesIndicativeReferenceWithoutClaimingExactVariant() throws {
+        for model in ["Corolla Le", "COROLLA LE", "Corolla-LE"] {
+            let profile = try XCTUnwrap(VehicleFuelCatalog.profile(
+                vehicleType: .voiture, brand: "Toyota", model: model
+            ))
+            XCTAssertEqual(profile.referenceResolution, .indicativeModel)
+            XCTAssertEqual(profile.confidence, .partial)
+            let estimate = try XCTUnwrap(VehicleFuelCatalog.estimateConsumption(
+                distanceKm: 12, fuelProfile: profile
+            ))
+            XCTAssertEqual(estimate.liters, 0.816, accuracy: 0.0001)
+        }
+        for model in ["Corolla Cross", "Corolla LE Hybrid", "Corolla inconnu"] {
+            XCTAssertNil(VehicleFuelCatalog.profile(
+                vehicleType: .voiture, brand: "Toyota", model: model
+            ))
+        }
+        XCTAssertNil(VehicleFuelCatalog.profile(
+            vehicleType: .voiture, brand: "Honda", model: "Corolla LE"
+        ))
+    }
+
     func testToyotaCorollaGetsNavigationBasedFuelConsumptionEstimate() {
         let profile = VehicleFuelCatalog.profile(
             vehicleType: .voiture,

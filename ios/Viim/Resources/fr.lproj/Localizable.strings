@@ -27,6 +27,7 @@
 "onboarding.vehicle.preview.detail" = "Aperçu — vous pourrez ajouter une photo de votre véhicule";
 "vehicle.photo.authorFormat" = "Photo : %@";
 "vehicle.photo.modified" = "redimensionnée";
+"vehicle.photo.unavailable" = "Aucune photo vérifiée pour ce modèle — silhouette générique affichée.";
 "onboarding.vehicle.brand.label" = "Marque";
 "onboarding.vehicle.brand.placeholder" = "Marque";
 "onboarding.vehicle.model.label" = "Modèle";
@@ -80,6 +81,9 @@
 "home.vehicle.status" = "Suivi actif";
 "home.vehicle.empty" = "Moyen de déplacement à confirmer";
 "home.monitoring.title" = "Suivi de trajet";
+"home.collectionStalled.title" = "Viim n'enregistre pas tes trajets";
+"home.collectionStalled.detail" = "Tu conduis mais la localisation est réglée sur « Lorsque l'app est active ». Aucun trajet n'est capturé quand l'écran est verrouillé. Passe sur « Toujours » et active l'actualisation en arrière-plan.";
+"home.collectionStalled.action" = "Ouvrir les réglages iOS →";
 "home.monitoring.permission.detail" = "Autorisez la position pour détecter vos trajets.";
 "home.monitoring.denied.detail" = "La position est refusée dans les réglages iOS.";
 "home.monitoring.whenInUse.detail" = "Viim détecte les trajets pendant que l'app est ouverte. Activez l'arrière-plan pour l'écran verrouillé.";
@@ -108,7 +112,7 @@
 "home.summary.partial" = "Données partielles";
 "home.summary.persistenceError" = "Mise à jour";
 "home.summary.score.ready" = "Score calculé sur vos trajets récents.";
-"home.summary.score.pending" = "Le score s'affiche dès qu'un trajet est enregistré.";
+"home.summary.score.pending" = "Le score nécessite un trajet avec suffisamment de mesures GPS continues.";
 "home.metric.score.label" = "Score /100";
 "home.metric.distance.empty" = "0 km";
 "home.metric.distance.label" = "Distance";
@@ -257,7 +261,7 @@
 "metric.reason.tripNeedsReview.short" = "À vérifier";
 "metric.reason.tripNeedsReview.detail" = "La qualité GPS de ce trajet ne permet pas d'afficher cette valeur comme fiable.";
 "metric.reason.scoreUnavailable.short" = "--";
-"metric.reason.scoreUnavailable.detail" = "Donnée indisponible.";
+"metric.reason.scoreUnavailable.detail" = "Les mesures disponibles ne permettent pas de calculer un score représentatif de ce trajet.";
 "metric.reason.syncEngineMissing.short" = "Local seulement";
 "metric.reason.syncEngineMissing.detail" = "Sauvegardé sur cet iPhone. Aucune synchronisation serveur des trajets n'est active.";
 
@@ -282,8 +286,8 @@
 "driving.performance.basedOnTrips" = "Score moyen basé sur vos %d trajets des 30 derniers jours.";
 "driving.performance.basedOnCoveredTrips" = "Score moyen calculé sur %d trajets parmi %d fiables.";
 "driving.performance.detail" = "Score global calculé séparément à partir des critères GPS disponibles : seuil technique de vitesse, fluidité et éco-conduite.";
-"driving.performance.empty" = "Votre score apparaîtra dès votre premier trajet enregistré.";
-"driving.performance.empty.detail" = "Roulez normalement : Viim détecte et note vos trajets automatiquement.";
+"driving.performance.empty" = "Pas encore de score exploitable";
+"driving.performance.empty.detail" = "Le score apparaît lorsque les mesures GPS couvrent suffisamment le trajet. Un trajet incomplet peut être enregistré sans être noté.";
 "driving.score.partialChip" = "Critères partiels";
 "driving.score.gpsChip" = "Critères GPS";
 "driving.score.technicalThresholdChip" = "Seuil technique";
@@ -332,9 +336,9 @@
 "assistance.collectionHealth.title" = "Santé de la collecte";
 "assistance.collectionHealth.summary" = "7 j : %lld preuves GPS · %lld trajets enregistrés · %lld rejetés · %lld récupérés";
 "assistance.manualAlerts.detail" = "Le bouton ci-dessous envoie uniquement un message de test à vos contacts configurés. Il ne confirme pas qu'une détection automatique est active.";
-"assistance.collisionCalibration.title" = "Calibration collision — recherche";
+"assistance.collisionCalibration.title" = "Détection automatique de collision";
 "assistance.collisionCalibration.noAlerts" = "Alertes automatiques indisponibles";
-"assistance.collisionCalibration.detail" = "Pendant certains trajets motorisés, Viim observe localement des événements capteur afin d'évaluer un futur système. Ces observations ne déclenchent ni SOS, ni message, ni appel.";
+"assistance.collisionCalibration.detail" = "La détection automatique n'est pas disponible. En cas d'incident, utilisez les actions manuelles ci-dessus ou appelez les secours. Aucune alerte n'est déclenchée automatiquement.";
 "assistance.collisionCalibration.reviewAction" = "Vérifier les observations capteur";
 "assistance.collisionCalibration.reviewTitle" = "Observations capteur";
 "assistance.collisionCalibration.disclaimer" = "Fonction de recherche uniquement : Viim ne détecte pas encore les collisions et ne prévient personne automatiquement.";

@@ -19,7 +19,14 @@ final class TripManagerTests: XCTestCase {
 
         let outcome = manager.persistCompletedTrip(
             trip,
-            samples: samples(start: start),
+            samples: (0...60).map { index in
+                sample(
+                    latitude: 12.3714 + Double(index) * 0.008 / 60,
+                    longitude: -1.5197 + Double(index) * 0.008 / 60,
+                    speed: 6,
+                    timestamp: start.addingTimeInterval(Double(index) * 10)
+                )
+            },
             vehicleType: .moto
         )
 

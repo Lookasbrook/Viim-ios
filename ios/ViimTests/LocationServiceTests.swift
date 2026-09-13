@@ -3,6 +3,80 @@ import XCTest
 @testable import Viim
 
 final class LocationServiceTests: XCTestCase {
+    func testInitialUndeterminedCallbackDoesNotCancelPendingStartRequest() {
+        let manager = LocationManagerSpy(authorizationStatus: .notDetermined)
+        let service = LocationService(manager: manager, backgroundRefreshStatusProvider: { .available })
+        service.startMonitoring()
+        service.locationManagerDidChangeAuthorization(CLLocationManager())
+        manager.authorizationStatus = .authorizedWhenInUse
+        service.locationManagerDidChangeAuthorization(CLLocationManager())
+        XCTAssertTrue(service.isMonitoring)
+        XCTAssertTrue(manager.actions.contains(.startStandard))
+    }
+
+    func testDelayedGPSIsStoredButNeverPresentedAsLiveSpeedOrFreshCollection() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
+        let journal = CollectionHealthJournalSpy()
+        let service = LocationService(collectionHealthJournal: journal, manager: manager,
+                                      backgroundRefreshStatusProvider: { .available })
+        service.startMonitoring()
+        let old = location(latitude: 45, longitude: -73, accuracy: 5, speedMps: 12,
+                           timestamp: Date().addingTimeInterval(-300))
+        service.locationManager(CLLocationManager(), didUpdateLocations: [old])
+        XCTAssertFalse(service.isCurrentSpeedFresh)
+        XCTAssertEqual(service.currentSpeedKmh, 0)
+        XCTAssertEqual(service.latestLocation?.timestamp, old.timestamp)
+        XCTAssertTrue(journal.events.contains { $0.kind == .locationBatchReceived })
+        XCTAssertFalse(journal.events.contains { $0.kind == .acceptedSample })
+    }
+
+    func testUnorderedBatchKeepsNewestLivePosition() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
+        let service = LocationService(manager: manager, backgroundRefreshStatusProvider: { .available })
+        service.startMonitoring()
+        let now = Date()
+        let fresh = location(latitude: 45, longitude: -73, accuracy: 5, speedMps: 5, timestamp: now)
+        let old = location(latitude: 45, longitude: -73, accuracy: 5, speedMps: 20,
+                           timestamp: now.addingTimeInterval(-300))
+        service.locationManager(CLLocationManager(), didUpdateLocations: [fresh, old])
+        XCTAssertEqual(service.latestLocation?.timestamp, now)
+        XCTAssertTrue(service.isCurrentSpeedFresh)
+        XCTAssertEqual(service.currentSpeedKmh, 18, accuracy: 0.01)
+        service.locationManager(CLLocationManager(), didUpdateLocations: [old])
+        XCTAssertEqual(service.latestLocation?.timestamp, now)
+        XCTAssertTrue(service.isCurrentSpeedFresh)
+    }
+
+    func testForegroundAndSystemPauseReassertActiveGPSWithoutRestartingIdleTracking() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
+        let service = LocationService(manager: manager, backgroundRefreshStatusProvider: { .available })
+        service.startMonitoring()
+        manager.actions.removeAll()
+        service.prepareForForegroundUse()
+        service.locationManagerDidPauseLocationUpdates(CLLocationManager())
+        XCTAssertEqual(manager.actions.filter { $0 == .startStandard }.count, 2)
+        XCTAssertTrue(service.isMonitoring)
+        service.stopMonitoring(keepPassiveWakeups: false)
+        manager.actions.removeAll()
+        service.locationManagerDidPauseLocationUpdates(CLLocationManager())
+        XCTAssertFalse(manager.actions.contains(.startStandard))
+    }
+
+    func testRevokedPermissionStopsNativeMonitoringAndClearsLiveState() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
+        let service = LocationService(manager: manager, backgroundRefreshStatusProvider: { .available })
+        service.startMonitoring()
+        manager.authorizationStatus = .denied
+        service.locationManagerDidChangeAuthorization(CLLocationManager())
+        XCTAssertFalse(service.isMonitoring)
+        XCTAssertFalse(service.isPassiveWakeupMonitoring)
+        XCTAssertFalse(service.hasAlwaysServiceSession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.isCurrentSpeedFresh)
+        XCTAssertNil(service.latestLocation)
+        XCTAssertTrue(manager.actions.contains(.stopStandard))
+    }
+
     func testPublishedSpeedFreshnessExpiresAndRejectsFutureReceiptTime() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
 
@@ -193,7 +267,10 @@ final class LocationServiceTests: XCTestCase {
 
         service.prepareForForegroundUse()
         XCTAssertEqual(service.collectionReadiness, .ready)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        // Le service Always couvre l'arriere-plan : aucune session d'activite,
+        // donc aucune pastille bleue.
+        XCTAssertTrue(service.hasAlwaysServiceSession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
 
         manager.authorizationStatus = .denied
 
@@ -251,7 +328,7 @@ final class LocationServiceTests: XCTestCase {
         )
 
         service.prepareForForegroundUse()
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
         XCTAssertTrue(service.hasAlwaysServiceSession)
 
         manager.authorizationStatus = .authorizedWhenInUse
@@ -895,7 +972,7 @@ final class LocationServiceTests: XCTestCase {
         )
     }
 
-    func testAlwaysAuthorizationKeepsBackgroundSessionAcrossIdleStops() {
+    func testAlwaysServiceSessionCoversBackgroundWithoutIndicatorAcrossIdleStops() {
         let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
         var visualSessionCreationCount = 0
         var alwaysSessionCreationCount = 0
@@ -913,13 +990,13 @@ final class LocationServiceTests: XCTestCase {
 
         service.prepareForForegroundUse()
 
-        // La session d'activite doit exister des le premier plan et survivre a
-        // l'idle : c'est la condition Apple pour retrouver la cadence GPS
-        // continue apres une relance en arriere-plan.
-        XCTAssertEqual(visualSessionCreationCount, 1)
+        // Sous Always, la continuite arriere-plan passe par CLServiceSession
+        // (.always) + changements significatifs. CLBackgroundActivitySession et
+        // sa pastille bleue ne sont jamais ouvertes.
         XCTAssertEqual(alwaysSessionCreationCount, 1)
+        XCTAssertEqual(visualSessionCreationCount, 0)
         XCTAssertTrue(service.hasAlwaysServiceSession)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
         XCTAssertTrue(manager.allowsBackgroundLocationUpdates)
         XCTAssertFalse(manager.showsBackgroundLocationIndicator)
         XCTAssertEqual(manager.actions, [.startSignificant])
@@ -929,8 +1006,8 @@ final class LocationServiceTests: XCTestCase {
 
         XCTAssertEqual(manager.actions, [.startStandard])
         XCTAssertTrue(service.isPassiveWakeupMonitoring)
-        XCTAssertEqual(visualSessionCreationCount, 1)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertEqual(visualSessionCreationCount, 0)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
 
         manager.actions.removeAll()
         service.stopMonitoring()
@@ -938,7 +1015,7 @@ final class LocationServiceTests: XCTestCase {
         XCTAssertEqual(manager.actions, [.stopStandard])
         XCTAssertTrue(service.isPassiveWakeupMonitoring)
         XCTAssertTrue(service.hasAlwaysServiceSession)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
 
         service.stopMonitoring(keepPassiveWakeups: false)
 
@@ -947,7 +1024,7 @@ final class LocationServiceTests: XCTestCase {
         XCTAssertFalse(service.hasBackgroundActivitySession)
     }
 
-    func testColdLaunchRestoreRecreatesBackgroundSessionImmediately() {
+    func testColdLaunchRestoreRecreatesAlwaysServiceSessionWithoutIndicator() {
         let manager = LocationManagerSpy(authorizationStatus: .authorizedAlways)
         var visualSessionCreationCount = 0
         let service = LocationService(
@@ -961,8 +1038,8 @@ final class LocationServiceTests: XCTestCase {
 
         service.restoreAutomaticTrackingSession()
 
-        XCTAssertEqual(visualSessionCreationCount, 1)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertEqual(visualSessionCreationCount, 0)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
         XCTAssertTrue(service.hasAlwaysServiceSession)
     }
 
@@ -985,23 +1062,24 @@ final class LocationServiceTests: XCTestCase {
 
         service.prepareForForegroundUse()
 
-        XCTAssertEqual(visualSessionCreationCount, 1)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertEqual(visualSessionCreationCount, 0)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
         XCTAssertTrue(service.hasAlwaysServiceSession)
         XCTAssertEqual(manager.actions, [.startSignificant])
 
         manager.actions.removeAll()
         service.startMonitoring()
 
-        XCTAssertEqual(visualSessionCreationCount, 1)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertEqual(visualSessionCreationCount, 0)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertTrue(service.hasAlwaysServiceSession)
         XCTAssertEqual(manager.actions, [.startStandard])
 
         manager.actions.removeAll()
         service.stopMonitoring()
 
         XCTAssertEqual(manager.actions, [.stopStandard])
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
         XCTAssertTrue(service.hasAlwaysServiceSession)
         XCTAssertTrue(service.isPassiveWakeupMonitoring)
     }
@@ -1025,8 +1103,9 @@ final class LocationServiceTests: XCTestCase {
         let delegateManager = CLLocationManager()
 
         service.restoreAutomaticTrackingSession()
-        XCTAssertEqual(visualSessionCreationCount, 1)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertEqual(visualSessionCreationCount, 0)
+        XCTAssertTrue(service.hasAlwaysServiceSession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
 
         let wakeup = location(
             latitude: 12.3714,
@@ -1037,8 +1116,9 @@ final class LocationServiceTests: XCTestCase {
         )
         service.locationManager(delegateManager, didUpdateLocations: [wakeup])
 
-        XCTAssertEqual(visualSessionCreationCount, 1)
-        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertEqual(visualSessionCreationCount, 0)
+        XCTAssertTrue(service.hasAlwaysServiceSession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
         XCTAssertTrue(service.isMonitoring)
         XCTAssertTrue(manager.actions.contains(.startStandard))
     }
@@ -1059,6 +1139,35 @@ final class LocationServiceTests: XCTestCase {
 
         XCTAssertEqual(visualSessionCreationCount, 0)
         XCTAssertFalse(service.hasBackgroundActivitySession)
+    }
+
+    func testGrantingAlwaysTearsDownTheIndicatorBackgroundSession() {
+        let manager = LocationManagerSpy(authorizationStatus: .authorizedWhenInUse)
+        var visualSessionCreationCount = 0
+        let service = LocationService(
+            manager: manager,
+            backgroundActivitySessionFactory: {
+                visualSessionCreationCount += 1
+                return NSObject()
+            },
+            alwaysServiceSessionFactory: { NSObject() }
+        )
+
+        // En When In Use, un trajet actif ouvre la session d'activite (pastille).
+        service.prepareForForegroundUse()
+        service.startMonitoring()
+        XCTAssertEqual(visualSessionCreationCount, 1)
+        XCTAssertTrue(service.hasBackgroundActivitySession)
+        XCTAssertFalse(service.hasAlwaysServiceSession)
+
+        // L'utilisateur accorde « Toujours » : le service Always prend le relais
+        // et la session d'activite (donc la pastille) est fermee.
+        manager.authorizationStatus = .authorizedAlways
+        service.locationManagerDidChangeAuthorization(CLLocationManager())
+
+        XCTAssertTrue(service.hasAlwaysServiceSession)
+        XCTAssertFalse(service.hasBackgroundActivitySession)
+        XCTAssertFalse(manager.showsBackgroundLocationIndicator)
     }
 
     func testDepartureRegionArmsOnIdleStopAndPromotesOnExit() {

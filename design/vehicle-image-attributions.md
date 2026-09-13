@@ -19,8 +19,18 @@ génération représentée ; sinon l'app conserve l'illustration neutre. Aucune 
 précise et licenciée n'a été trouvée pour TVS HLX 125 ou Bajaj Boxer BM 100 ; ces
 modèles conservent donc l'illustration neutre.
 
+Ajout du 2026-09-09 : `VehiclePhotoToyotaCorollaE170`, photographie d'une Toyota
+Corolla LE 2015 (11e génération, E170) par Kevauto, CC BY-SA 4.0, travail
+personnel. Empreinte SHA-1 de révision `9f470c31a6c02198d4d61b2c7749a65f3586db75`
+relue via l'API Wikimedia Commons et vérifiée octet pour octet sur le fichier
+téléchargé, redimensionné à 1200 px. Cette entrée porte la plage d'années
+2014-2019 et prime sur l'entrée Corolla Altis pour ces millésimes ; hors plage,
+la résolution retombe sur l'Altis. Corrige l'incident 2026-08-20 où « Toyota
+Corolla Le 2015 » ne correspondait à aucune entrée et affichait la silhouette.
+
 | Asset | Source | Auteur | Licence |
 | --- | --- | --- | --- |
+| `VehiclePhotoToyotaCorollaE170` | [2015 Toyota Corolla LE front 5.6.18](https://commons.wikimedia.org/wiki/File:2015_Toyota_Corolla_LE_front_5.6.18.jpg) | Kevauto | CC BY-SA 4.0 |
 | `VehiclePhotoToyotaCorolla` | [Toyota Corolla Altis Front 27082022](https://commons.wikimedia.org/wiki/File:Toyota_Corolla_Altis_Front_27082022.jpg) | Poramin | CC BY-SA 4.0 |
 | `VehiclePhotoToyotaHilux` | [2020 Toyota Hilux E](https://commons.wikimedia.org/wiki/File:2020_Toyota_Hilux_E_(front_left_side_view).jpg) | Ethan Llamas | CC BY-SA 4.0 |
 | `VehiclePhotoToyotaRAV4` | [Toyota RAV4 (5th Gen.) front look](https://commons.wikimedia.org/wiki/File:Toyota_RAV4_(5th_Gen.)_front_look.jpg) | Wh.0414.justin | CC BY-SA 4.0 |
